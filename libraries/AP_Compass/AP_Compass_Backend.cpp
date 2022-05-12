@@ -8,6 +8,8 @@
 
 extern const AP_HAL::HAL& hal;
 
+extern float aim_roll; 
+
 AP_Compass_Backend::AP_Compass_Backend()
     : _compass(AP::compass())
 {
@@ -27,6 +29,10 @@ void AP_Compass_Backend::rotate_field(Vector3f &mag, uint8_t instance)
         // add user selectable orientation
         mag.rotate((enum Rotation)state.orientation.get());
     }
+    
+    Quaternion quat;
+    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_roll));
+    mag = quat * mag;
 }
 
 void AP_Compass_Backend::publish_raw_field(const Vector3f &mag, uint8_t instance)

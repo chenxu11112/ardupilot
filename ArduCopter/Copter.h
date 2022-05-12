@@ -44,6 +44,7 @@
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi.h>        // Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi_6DoF.h>   // 6DoF Attitude control library
 #include <AC_AttitudeControl/AC_AttitudeControl_Heli.h>         // Attitude control library for traditional helicopter
+#include <AC_AttitudeControl/AC_AttitudeControl_Multi_with_Tilt.h>   // Multi_with_Tilt Attitude control library
 #include <AC_AttitudeControl/AC_PosControl.h>                   // Position control library
 #include <AP_Motors/AP_Motors.h>            // AP Motors library
 #include <AP_Stats/AP_Stats.h>              // statistics library

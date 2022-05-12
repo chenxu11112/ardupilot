@@ -9,9 +9,62 @@ void Copter::userhook_init()
 #endif
 
 #ifdef USERHOOK_FASTLOOP
+float aim_roll;
+float delta_roll;
 void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
+    uint16_t value = hal.rcin->read(CH_6);
+    if (value == 1500)
+    {
+        if (aim_roll < 70.0f)
+        {
+            aim_roll += 0.1f;
+            delta_roll = 0.1f;
+        }
+        else if (aim_roll < 80.0f)
+        {
+            aim_roll += 0.05f;
+            delta_roll = 0.05f;
+        }
+        else if (aim_roll < 90.0f)
+        {
+            aim_roll += 0.02f;
+            delta_roll = 0.02f;
+        }
+        else
+        {
+            delta_roll = 0.0f;
+        }
+    }
+    else if (value == 2000)
+    {
+        if (aim_roll > 20.0f)
+        {
+            aim_roll -= 0.1f;
+            delta_roll = -0.1f;
+        }
+        else if (aim_roll > 10.0f)
+        {
+            aim_roll -= 0.05f;
+            delta_roll = -0.05f;
+        }
+        else if (aim_roll > 0.0f)
+        {
+            aim_roll -= 0.02f;
+            delta_roll = -0.02f;
+        }
+        else
+        {
+            delta_roll = 0.0f;
+        }
+    }
+    else
+    {
+        delta_roll = 0.0f;
+    }
+
+    printf("pitch=%f\r\n", aim_roll);
 }
 #endif
 

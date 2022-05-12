@@ -368,10 +368,13 @@ void Copter::allocate_motors(void)
 {
     switch ((AP_Motors::motor_frame_class)g2.frame_class.get()) {
 #if FRAME_CONFIG != HELI_FRAME
+        case AP_Motors::MOTOR_FRAME_OCTA:
+            motors = new AP_MotorsMatrix_with_Tilt(copter.scheduler.get_loop_rate_hz());
+            motors_var_info = AP_MotorsMatrix_with_Tilt::var_info;
+            break;
         case AP_Motors::MOTOR_FRAME_QUAD:
         case AP_Motors::MOTOR_FRAME_HEXA:
         case AP_Motors::MOTOR_FRAME_Y6:
-        case AP_Motors::MOTOR_FRAME_OCTA:
         case AP_Motors::MOTOR_FRAME_OCTAQUAD:
         case AP_Motors::MOTOR_FRAME_DODECAHEXA:
         case AP_Motors::MOTOR_FRAME_DECA:
@@ -448,6 +451,9 @@ void Copter::allocate_motors(void)
         attitude_control = new AC_AttitudeControl_Multi_6DoF(*ahrs_view, aparm, *motors, scheduler.get_loop_period_s());
         ac_var_info = AC_AttitudeControl_Multi_6DoF::var_info;
 #endif // AP_SCRIPTING_ENABLED
+    } else if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_OCTA) {
+        attitude_control = new AC_AttitudeControl_Multi_with_Tilt(*ahrs_view, aparm, *motors, scheduler.get_loop_period_s());
+        ac_var_info = AC_AttitudeControl_Multi_with_Tilt::var_info;
     } else {
         attitude_control = new AC_AttitudeControl_Multi(*ahrs_view, aparm, *motors, scheduler.get_loop_period_s());
         ac_var_info = AC_AttitudeControl_Multi::var_info;
