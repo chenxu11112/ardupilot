@@ -1,0 +1,158 @@
+# MCU class and specific type
+MCU STM32G491 STM32G491xx
+
+# assume 128k flash part
+FLASH_SIZE_KB 512
+
+# bootloader starts firmware at 32+4
+FLASH_RESERVE_START_KB 30
+
+# store parameters in pages 13 and 14
+define STORAGE_FLASH_PAGE 13
+define HAL_STORAGE_SIZE 800
+
+# board ID for firmware load
+APJ_BOARD_ID 1001
+
+# setup build for a peripheral firmware
+env AP_PERIPH 1
+
+# enable watchdog
+define HAL_WATCHDOG_ENABLED_DEFAULT true
+
+# crystal frequency
+OSCILLATOR_HZ 8000000
+
+# use TIM5 to leave TIM2 for LED
+STM32_ST_USE_TIMER 4
+define CH_CFG_ST_RESOLUTION 16
+# SWD debugging
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+SERIAL_ORDER USART3 USART1 USART2
+
+# USART1 for GPS
+PB6 USART1_TX USART1 NODMA
+PB7 USART1_RX USART1 NODMA
+
+# USART2 for GPS
+PA2 USART2_TX USART2 NODMA
+PA3 USART2_RX USART2 NODMA
+
+# USART3 for debug
+PB10 USART3_TX USART3 NODMA
+PB11 USART3_RX USART3 NODMA
+
+# a LED to flash
+PC10 LED OUTPUT LOW
+define HAL_LED_ON 0
+
+# # only one I2C bus
+# I2C_ORDER I2C2
+
+# # only one I2C bus in normal config
+# PA8 I2C2_SDA I2C2
+# PA9 I2C2_SCL I2C2
+
+# define HAL_USE_I2C TRUE
+# define STM32_I2C_USE_I2C2 TRUE
+
+# define HAL_I2C_CLEAR_ON_TIMEOUT 0
+
+# define HAL_I2C_INTERNAL_MASK 0
+
+# only one SPI bus in normal config
+PA5 SPI1_SCK SPI1
+PA6 SPI1_MISO SPI1
+PA7 SPI1_MOSI SPI1
+
+# SPI CS
+PC4 MAG_CS CS
+
+# SPI devices
+SPIDEV rm3100 SPI1 DEVID1    MAG_CS MODE0  1*MHZ  1*MHZ
+
+# compass
+# COMPASS IST8310 I2C:0:0x0C false ROTATION_ROLL_180_YAW_90
+COMPASS RM3100 SPI:rm3100 false ROTATION_PITCH_180
+
+# WS2812 LED
+PB3 TIM2_CH2 TIM2 PWM(1) GPIO(50)
+PB4 TIM3_CH1 TIM3 PWM(2) GPIO(51)
+
+# no BARO
+define HAL_BARO_ALLOW_INIT_NO_BARO
+define HAL_HAVE_SAFETY_SWITCH 0
+
+# no ADC driver
+define HAL_USE_ADC FALSE
+define STM32_ADC_USE_ADC1 FALSE
+define HAL_DISABLE_ADC_DRIVER TRUE
+
+define HAL_NO_GPIO_IRQ
+
+# avoid RCIN thread to save memory
+define HAL_NO_RCIN_THREAD
+
+# define HAL_USE_RTC FALSE
+# define DISABLE_SERIAL_ESC_COMM TRUE
+define NO_DATAFLASH TRUE
+
+define DMA_RESERVE_SIZE 0
+
+define PERIPH_FW TRUE
+
+define HAL_DISABLE_LOOP_DELAY
+
+define HAL_MINIMIZE_FEATURES 0
+
+# enable CAN support
+PB8 CAN1_RX CAN1
+PB9 CAN1_TX CAN1
+
+# # use DNA
+define HAL_CAN_DEFAULT_NODE_ID 0
+
+define CAN_APP_NODE_NAME "org.ardupilot.gmu3"
+
+define HAL_ENABLE_SLCAN 1
+# passthrough CAN1
+define HAL_DEFAULT_CPORT 1
+
+define HAL_NO_GCS
+define HAL_NO_MONITOR_THREAD
+
+define HAL_BUILD_AP_PERIPH
+
+define HAL_DEVICE_THREAD_STACK 512
+
+# we setup a small defaults.parm
+define AP_PARAM_MAX_EMBEDDED_PARAM 256
+
+# disable dual GPS and GPS blending to save flash space
+define GPS_MAX_RECEIVERS 1
+define GPS_MAX_INSTANCES 1
+define HAL_COMPASS_MAX_SENSORS 2
+
+define HAL_BARO_ALLOW_INIT_NO_BARO
+
+# GPS+MAG+NeoPixels
+define HAL_PERIPH_ENABLE_GPS
+define HAL_PERIPH_ENABLE_MAG
+define HAL_PERIPH_ENABLE_BARO
+define HAL_PERIPH_ENABLE_RC_OUT
+define HAL_PERIPH_ENABLE_NOTIFY
+
+# GPS on 2nd port
+define HAL_PERIPH_GPS_PORT_DEFAULT 1
+
+# use the app descriptor needed by MissionPlanner for CAN upload
+env APP_DESCRIPTOR MissionPlanner
+
+# reserve 256 bytes for comms between app and bootloader
+RAM_RESERVE_START 256
+
+# keep ROMFS uncompressed as we don't have enough RAM
+# to uncompress the bootloader at runtime
+env ROMFS_UNCOMPRESSED True
