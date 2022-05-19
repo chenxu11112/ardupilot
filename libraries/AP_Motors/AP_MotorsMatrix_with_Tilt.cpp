@@ -172,15 +172,15 @@ int16_t AP_MotorsMatrix_with_Tilt::output_to_tilt(float actuator)
 }
 
 const float sqrt2 = sqrtf(2);
-const float armz = 1.0f;
+const float armz = 0.0f;
 
 #define fx forward_thrust
 #define fz (-throttle_thrust)
 #define mx roll_thrust
 #define my pitch_thrust
 #define mz yaw_thrust
-    #include <stdio.h>
-    #include <stdarg.h>
+#include <stdio.h>
+#include <stdarg.h>
 // calculate outputs to the motors
 void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
 {
@@ -234,7 +234,6 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
         pitch_thrust = 1;
         limit.pitch = true;
     }
-
 
     // printf("throttle_thrust=%f\r\n", throttle_thrust);
 
