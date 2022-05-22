@@ -8,7 +8,7 @@
 
 extern const AP_HAL::HAL& hal;
 
-extern float aim_roll; 
+extern float aim_pitch_deg; 
 
 AP_Compass_Backend::AP_Compass_Backend()
     : _compass(AP::compass())
@@ -31,7 +31,7 @@ void AP_Compass_Backend::rotate_field(Vector3f &mag, uint8_t instance)
     }
     
     Quaternion quat;
-    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_roll));
+    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
     mag = quat * mag;
 }
 

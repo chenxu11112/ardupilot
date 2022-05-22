@@ -172,10 +172,10 @@ int16_t AP_MotorsMatrix_with_Tilt::output_to_tilt(float actuator)
 }
 
 const float sqrt2 = sqrtf(2);
-const float armz = 0.0f;
+const float armz = 0.1f;
 
-#define fx forward_thrust
-#define fz (-throttle_thrust)
+#define fx (force_body[0])
+#define fz (force_body[2])
 #define mx roll_thrust
 #define my pitch_thrust
 #define mz yaw_thrust
@@ -237,23 +237,26 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
 
     // printf("throttle_thrust=%f\r\n", throttle_thrust);
 
-    // forward_thrust = 0;
-    // pitch_thrust = 0;
-    // roll_thrust = 0;
-    // yaw_thrust = 0;
+    //   mx*((4*sinrad)/9 - (cosrad*sqrt2)/9) - fz*(cosrad + armz*sinrad*sqrt2) - fx*(sinrad - armz*cosrad*sqrt2) + mz*((4*cosrad)/9 + (sinrad*sqrt2)/9) + my*sqrt2
+    //                                                          mx*((4*cosrad)/9 + (sinrad*sqrt2)/9) - cosrad*fx - mz*((4*sinrad)/9 - (cosrad*sqrt2)/9) + fz*sinrad
+    //   mx*((4*sinrad)/9 + (cosrad*sqrt2)/9) - fz*(cosrad - armz*sinrad*sqrt2) - fx*(sinrad + armz*cosrad*sqrt2) + mz*((4*cosrad)/9 - (sinrad*sqrt2)/9) - my*sqrt2
+    //                                                          cosrad*fx - mx*((4*cosrad)/9 - (sinrad*sqrt2)/9) + mz*((4*sinrad)/9 + (cosrad*sqrt2)/9) - fz*sinrad
+    //   my*sqrt2 - fz*(cosrad + armz*sinrad*sqrt2) - mx*((4*sinrad)/9 - (cosrad*sqrt2)/9) - mz*((4*cosrad)/9 + (sinrad*sqrt2)/9) - fx*(sinrad - armz*cosrad*sqrt2)
+    //                                                          cosrad*fx + mx*((4*cosrad)/9 + (sinrad*sqrt2)/9) - mz*((4*sinrad)/9 - (cosrad*sqrt2)/9) - fz*sinrad
+    // - fx*(sinrad + armz*cosrad*sqrt2) - fz*(cosrad - armz*sinrad*sqrt2) - mx*((4*sinrad)/9 + (cosrad*sqrt2)/9) - mz*((4*cosrad)/9 - (sinrad*sqrt2)/9) - my*sqrt2
+    //                                                          mz*((4*sinrad)/9 + (cosrad*sqrt2)/9) - mx*((4*cosrad)/9 - (sinrad*sqrt2)/9) - cosrad*fx + fz*sinrad
 
-    //    pitch_thrust - roll_thrust/5 - throttle_thrust + (2*yaw_thrust)/5
-    //                    (2*roll_thrust)/5 - forward_thrust + yaw_thrust/5
-    //    roll_thrust/5 - pitch_thrust - throttle_thrust + (2*yaw_thrust)/5
-    //                    forward_thrust - (2*roll_thrust)/5 + yaw_thrust/5
-    //    pitch_thrust + roll_thrust/5 - throttle_thrust - (2*yaw_thrust)/5
-    //                    forward_thrust + (2*roll_thrust)/5 + yaw_thrust/5
-    //  - pitch_thrust - roll_thrust/5 - throttle_thrust - (2*yaw_thrust)/5
-    //                    yaw_thrust/5 - (2*roll_thrust)/5 - forward_thrust
+    extern float aim_pitch_deg;
+    float sinrad = sinf(radians(aim_pitch_deg));
+    float cosrad = cosf(radians(aim_pitch_deg));
 
-    extern float aim_roll;
-    float sinrad = sinf(radians(aim_roll));
-    float cosrad = cosf(radians(aim_roll));
+    extern float ahrs_pitch_deg;
+
+    Quaternion quat;
+    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(-ahrs_pitch_deg));
+
+    Vector3f force_nav{forward_thrust, 0, -throttle_thrust};
+    Vector3f force_body = quat * force_nav;
 
     _virutal_thrust[0] = mx * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) - fz * (cosrad + armz * sinrad * sqrt2) - fx * (sinrad - armz * cosrad * sqrt2) + mz * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) + my * sqrt2;
     _virutal_thrust[1] = mx * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) - cosrad * fx - mz * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) + fz * sinrad;
@@ -263,18 +266,6 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
     _virutal_thrust[5] = cosrad * fx + mx * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) - mz * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) - fz * sinrad;
     _virutal_thrust[6] = -fx * (sinrad + armz * cosrad * sqrt2) - fz * (cosrad - armz * sinrad * sqrt2) - mx * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) - mz * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) - my * sqrt2;
     _virutal_thrust[7] = mz * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) - mx * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) - cosrad * fx + fz * sinrad;
-
-    // _virutal_thrust[0] = pitch_thrust - roll_thrust / 5 + throttle_thrust + (2 * yaw_thrust) / 5;
-    // _virutal_thrust[1] = (2 * roll_thrust) / 5 - forward_thrust + yaw_thrust / 5;
-
-    // _virutal_thrust[2] = roll_thrust / 5 - pitch_thrust + throttle_thrust + (2 * yaw_thrust) / 5;
-    // _virutal_thrust[3] = forward_thrust - (2 * roll_thrust) / 5 + yaw_thrust / 5;
-
-    // _virutal_thrust[4] = pitch_thrust + roll_thrust / 5 + throttle_thrust - (2 * yaw_thrust) / 5;
-    // _virutal_thrust[5] = forward_thrust + (2 * roll_thrust) / 5 + yaw_thrust / 5;
-
-    // _virutal_thrust[6] = -pitch_thrust - roll_thrust / 5 + throttle_thrust - (2 * yaw_thrust) / 5;
-    // _virutal_thrust[7] = yaw_thrust / 5 - (2 * roll_thrust) / 5 - forward_thrust;
 
     for (i = 0; i < 4; i++)
     {
