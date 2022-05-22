@@ -4,22 +4,6 @@
  #include <AP_ToshibaCAN/AP_ToshibaCAN.h>
 #endif
 
-// performs pre-arm checks. expects to be called at 1hz.
-void AP_Arming_Copter::update(void)
-{
-    // perform pre-arm checks & display failures every 30 seconds
-    static uint8_t pre_arm_display_counter = PREARM_DISPLAY_PERIOD/2;
-    pre_arm_display_counter++;
-    bool display_fail = false;
-    if ((_arming_options & uint32_t(AP_Arming::ArmingOptions::DISABLE_PREARM_DISPLAY)) == 0 &&
-        pre_arm_display_counter >= PREARM_DISPLAY_PERIOD) {
-        display_fail = true;
-        pre_arm_display_counter = 0;
-    }
-
-    pre_arm_checks(display_fail);
-}
-
 bool AP_Arming_Copter::pre_arm_checks(bool display_failure)
 {
     const bool passed = run_pre_arm_checks(display_failure);
@@ -334,8 +318,8 @@ bool AP_Arming_Copter::motor_checks(bool display_failure)
         // check we have an ESC present for every SERVOx_FUNCTION = motorx
         // find and report first missing ESC, extra ESCs are OK
         AP_ToshibaCAN *tcan = AP_ToshibaCAN::get_tcan(tcan_index);
-        const uint16_t motors_mask = copter.motors->get_motor_mask();
-        const uint16_t esc_mask = tcan->get_present_mask();
+        const uint32_t motors_mask = copter.motors->get_motor_mask();
+        const uint32_t esc_mask = tcan->get_present_mask();
         uint8_t escs_missing = 0;
         uint8_t first_missing = 0;
         for (uint8_t i = 0; i < 16; i++) {

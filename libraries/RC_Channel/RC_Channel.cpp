@@ -572,6 +572,7 @@ const RC_Channel::LookupTable RC_Channel::lookuptable[] = {
     { AUX_FUNC::RUNCAM_CONTROL,"RunCamControl"},
     { AUX_FUNC::RUNCAM_OSD_CONTROL,"RunCamOSDControl"},
     { AUX_FUNC::VISODOM_ALIGN,"VisOdomAlign"},
+    { AUX_FUNC::AIRMODE, "AirMode"},
     { AUX_FUNC::EKF_POS_SOURCE,"EKFPosSource"},
     { AUX_FUNC::CAM_MODE_TOGGLE,"CamModeToggle"},
     { AUX_FUNC::GENERATOR,"Generator"},
@@ -586,7 +587,7 @@ const RC_Channel::LookupTable RC_Channel::lookuptable[] = {
 /* lookup the announcement for switch change */
 const char *RC_Channel::string_for_aux_function(AUX_FUNC function) const     
 {
-     for (const struct LookupTable entry : lookuptable) {
+     for (const struct LookupTable &entry : lookuptable) {
         if (entry.option == function) {
             return entry.announcement;
         }
