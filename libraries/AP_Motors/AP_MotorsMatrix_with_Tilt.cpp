@@ -134,7 +134,7 @@ void AP_MotorsMatrix_with_Tilt::output_to_motors()
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
 //  this can be used to ensure other pwm outputs (i.e. for servos) do not conflict
-uint16_t AP_MotorsMatrix_with_Tilt::get_motor_mask()
+uint32_t AP_MotorsMatrix_with_Tilt::get_motor_mask()
 {
     uint32_t motor_mask = 0;
     uint8_t chan;
@@ -280,7 +280,16 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
     {
         _thrust[i] = sqrtf(_virutal_thrust[2 * i + 1] * _virutal_thrust[2 * i + 1] + _virutal_thrust[2 * i] * _virutal_thrust[2 * i]);
         if (throttle_thrust > 0.15f)
-            _tilt[i] = degrees(atan2f(_virutal_thrust[2 * i + 1], _virutal_thrust[2 * i])) / 360.0f;
+        {
+            if (i == 0 || i == 3)
+            {
+                _tilt[i] = (degrees(atan2f(_virutal_thrust[2 * i + 1], _virutal_thrust[2 * i]))) / 360.0f;
+            }
+            else if (i == 1 || i == 2)
+            {
+                _tilt[i] = (degrees(atan2f(_virutal_thrust[2 * i + 1], _virutal_thrust[2 * i]))) / 360.0f;
+            }
+        }
     }
 
     // calculate left and right throttle outputs
