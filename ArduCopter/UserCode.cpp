@@ -19,13 +19,13 @@ void Copter::userhook_FastLoop()
     {
         if (aim_roll < 70.0f)
         {
-            aim_roll += 0.1f;
-            delta_roll = 0.1f;
+            aim_roll += 0.02f;
+            delta_roll = 0.05f;
         }
         else if (aim_roll < 80.0f)
         {
-            aim_roll += 0.05f;
-            delta_roll = 0.05f;
+            aim_roll += 0.02f;
+            delta_roll = 0.02f;
         }
         else if (aim_roll < 90.0f)
         {
@@ -64,7 +64,9 @@ void Copter::userhook_FastLoop()
         delta_roll = 0.0f;
     }
 
-    printf("pitch=%f\r\n", aim_roll);
+    
+
+    // printf("pitch=%f\r\n", aim_roll);
 }
 #endif
 

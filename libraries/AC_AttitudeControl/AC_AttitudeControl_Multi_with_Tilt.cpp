@@ -68,10 +68,12 @@ void AC_AttitudeControl_Multi_with_Tilt::input_thrust_vector_heading(const Vecto
 
 void AC_AttitudeControl_Multi_with_Tilt::set_forward_lateral(float &euler_pitch_angle_cd, float &euler_roll_angle_cd)
 {
+    extern float aim_roll;
+    
     // pitch/forward
     if (forward_enable) {
         _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
-        euler_pitch_angle_cd = pitch_offset_deg * 100.0f;
+        euler_pitch_angle_cd = aim_roll * 100.0f;
     } else {
         _motors.set_forward(0.0f);
         euler_pitch_angle_cd += pitch_offset_deg * 100.0f;

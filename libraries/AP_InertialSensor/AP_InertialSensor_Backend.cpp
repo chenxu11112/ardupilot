@@ -14,8 +14,8 @@
 
 const extern AP_HAL::HAL& hal;
 
-extern float aim_roll;
-extern float delta_roll;
+// extern float aim_roll;
+// extern float delta_roll;
 
 AP_InertialSensor_Backend::AP_InertialSensor_Backend(AP_InertialSensor &imu) :
     _imu(imu)
@@ -131,9 +131,9 @@ void AP_InertialSensor_Backend::_rotate_and_correct_accel(uint8_t instance, Vect
     // rotate to body frame
     accel.rotate(_imu._board_orientation);
 
-    Quaternion quat;
-    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_roll));
-    accel = quat * accel;
+    // Quaternion quat;
+    // quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_roll));
+    // accel = quat * accel;
 }
 
 void AP_InertialSensor_Backend::_rotate_and_correct_gyro(uint8_t instance, Vector3f &gyro) 
@@ -160,11 +160,11 @@ void AP_InertialSensor_Backend::_rotate_and_correct_gyro(uint8_t instance, Vecto
 
     gyro.rotate(_imu._board_orientation);
 
-    Quaternion quat;
-    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_roll));
-    gyro = quat * gyro;
+    // Quaternion quat;
+    // quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_roll));
+    // gyro = quat * gyro;
 
-    gyro.y -= radians(delta_roll) / 10 / 0.001f;
+    // gyro.y -= radians(delta_roll) / 10 / 0.001f;
 }
 
 /*
