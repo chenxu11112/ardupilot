@@ -68,7 +68,7 @@ void Copter::userhook_FastLoop()
 
     ahrs_pitch_deg = degrees(ahrs.get_pitch());
 
-    printf("pitch=%f\r\n", aim_pitch_deg);
+    // printf("pitch=%f\r\n", aim_pitch_deg);
 }
 #endif
 
