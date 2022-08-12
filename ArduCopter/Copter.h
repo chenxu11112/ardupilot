@@ -69,6 +69,7 @@
 #include <AC_Sprayer/AC_Sprayer.h>          // Crop sprayer library
 #include <AP_ADSB/AP_ADSB.h>                // ADS-B RF based collision avoidance module library
 #include <AP_Proximity/AP_Proximity.h>      // ArduPilot proximity sensor library
+#include <AP_Claw/AP_Claw.h>
 
 // Configuration
 #include "defines.h"
@@ -239,6 +240,8 @@ private:
     RC_Channel *channel_yaw;
 
     AP_Logger logger;
+
+    AP_Claw claw;
 
     // flight modes convenience array
     AP_Int8 *flight_modes;
