@@ -199,3 +199,6 @@ define HAL_STORAGE_SIZE 16384
 # use last 2 pages for flash storage
 # H743 has 16 pages of 128k each
 STORAGE_FLASH_PAGE 14
+
+define CAMERA                DISABLED 
+define RANGEFINDER_ENABLED   DISABLED
