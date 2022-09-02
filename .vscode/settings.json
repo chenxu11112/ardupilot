@@ -3,6 +3,7 @@
     "astyle.astylerc": "${workspaceFolder}/Tools/CodeStyle/astylerc",
     "files.associations": {
         "*.dat": "cmake",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "fstream": "cpp"
     }
 }

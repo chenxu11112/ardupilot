@@ -19,16 +19,10 @@ public:
     // update flight control mode. The control mode is vehicle type specific
     void update(void);
 
-    uint8_t cx;
-    uint8_t cy;
+    uint8_t data_to_send[50];
 
-    uint32_t last_frame_ms;
+    void send_switch(uint8_t is_open);
 
 private:
     AP_HAL::UARTDriver *_port; // UART used to send data to receiver
-
-    uint8_t _step;
-
-    uint8_t _cx_temp;
-    uint8_t _cy_temp;
 };

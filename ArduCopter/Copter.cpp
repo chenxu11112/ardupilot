@@ -606,6 +606,8 @@ void Copter::one_hz_loop()
     adsb.set_is_flying(!ap.land_complete);
 #endif
 
+    claw.update();
+
     AP_Notify::flags.flying = !ap.land_complete;
 }
 

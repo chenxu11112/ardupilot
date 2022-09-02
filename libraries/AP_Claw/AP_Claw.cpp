@@ -1,5 +1,7 @@
 #include "AP_Claw.h"
 
+#include <stdio.h> // for sprintf
+
 #define AP_SERIALMANAGER_CLAW_BAUD 115200
 #define AP_SERIALMANAGER_CLAW_BUFSIZE_RX 64
 #define AP_SERIALMANAGER_CLAW_BUFSIZE_TX 64
@@ -10,7 +12,6 @@ extern const AP_HAL::HAL &hal;
 AP_Claw::AP_Claw(void)
 {
     _port = NULL;
-    _step = 0;
 }
 
 // init - perform require initialisation including detecting which protocol to use
@@ -30,52 +31,35 @@ void AP_Claw::update()
     if (_port == NULL)
         return;
 
-    int16_t numc = _port->available();
-    uint8_t data;
-    uint8_t checksum = 0;
+    uint16_t chan_value = hal.rcin->read(CH_7);
 
-    for (int16_t i = 0; i < numc; i++)
+    if (chan_value > 1700)
     {
-        data = _port->read();
-
-        switch (_step)
-        {
-        case 0:
-            if (data == 0xA5)
-                _step = 1;
-            break;
-
-        case 1:
-            if (data == 0x5A)
-                _step = 2;
-            else
-                _step = 0;
-            break;
-
-        case 2:
-            _cx_temp = data;
-            _step = 3;
-            break;
-
-        case 3:
-            _cy_temp = data;
-            _step = 4;
-            break;
-
-        case 4:
-            checksum = _cx_temp + _cy_temp;
-            if (checksum == data)
-            {
-                cx = _cx_temp;
-                cy = _cy_temp;
-                last_frame_ms = AP_HAL::millis();
-            }
-
-            _step = 0;
-            break;
-
-        default:
-            _step = 0;
-        }
+        send_switch(1);
     }
+    else
+    {
+        send_switch(0);
+    }
+}
+
+void AP_Claw::send_switch(uint8_t is_close)
+{
+    uint8_t _cnt = 0;
+
+    data_to_send[_cnt++] = 0xAA;
+    data_to_send[_cnt++] = 0xAA;
+    data_to_send[_cnt++] = 0x01;
+    data_to_send[_cnt++] = 0;
+    data_to_send[_cnt++] = is_close;
+
+    data_to_send[3] = _cnt - 4;
+
+    uint8_t sum = 0;
+    for (uint8_t i = 0; i < _cnt; i++)
+        sum += data_to_send[i];
+
+    data_to_send[_cnt++] = sum;
+
+    _port->write(data_to_send, _cnt);
 }
