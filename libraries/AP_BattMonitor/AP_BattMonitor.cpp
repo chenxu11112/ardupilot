@@ -16,6 +16,8 @@
 #include "AP_BattMonitor_INA2xx.h"
 #include "AP_BattMonitor_LTC2946.h"
 #include "AP_BattMonitor_Torqeedo.h"
+#include "AP_BattMonitor_FuelLevel_Analog.h"
+#include "AP_BattMonitor_APC.h"
 
 #include <AP_HAL/AP_HAL.h>
 
