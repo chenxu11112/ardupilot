@@ -149,8 +149,8 @@ int16_t GCS_MAVLINK_Rover::vfr_hud_throttle() const
 
 void GCS_MAVLINK_Rover::send_rangefinder() const
 {
-    float distance;
-    float voltage;
+    float distance = 0;
+    float voltage = 0;
     bool got_one = false;
 
     // report smaller distance of all rangefinders
@@ -388,13 +388,6 @@ bool GCS_MAVLINK_Rover::try_send_message(enum ap_message id)
         break;
     }
 
-    case MSG_AIS_VESSEL: {
-#if HAL_AIS_ENABLED
-        rover.g2.ais.send(chan);
-#endif
-        break;
-    }
-
     default:
         return GCS_MAVLINK::try_send_message(id);
     }
@@ -567,7 +560,7 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
     MSG_SYSTEM_TIME,
     MSG_BATTERY2,
     MSG_BATTERY_STATUS,
-    MSG_MOUNT_STATUS,
+    MSG_GIMBAL_DEVICE_ATTITUDE_STATUS,
     MSG_MAG_CAL_REPORT,
     MSG_MAG_CAL_PROGRESS,
     MSG_EKF_STATUS_REPORT,
@@ -1079,6 +1072,15 @@ void GCS_MAVLINK_Rover::handle_radio(const mavlink_message_t &msg)
     handle_radio_status(msg, rover.should_log(MASK_LOG_PM));
 }
 
+/*
+  handle a LANDING_TARGET command. The timestamp has been jitter corrected
+*/
+void GCS_MAVLINK_Rover::handle_landing_target(const mavlink_landing_target_t &packet, uint32_t timestamp_ms)
+{
+#if PRECISION_LANDING == ENABLED
+    rover.precland.handle_msg(packet, timestamp_ms);
+#endif
+}
 
 uint64_t GCS_MAVLINK_Rover::capabilities() const
 {

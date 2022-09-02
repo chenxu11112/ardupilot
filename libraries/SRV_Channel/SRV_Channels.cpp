@@ -21,6 +21,7 @@
 #include <AP_Math/AP_Math.h>
 #include <AP_Vehicle/AP_Vehicle.h>
 #include "SRV_Channel.h"
+#include <AP_Logger/AP_Logger.h>
 
 #if HAL_MAX_CAN_PROTOCOL_DRIVERS
   #include <AP_CANManager/AP_CANManager.h>
@@ -30,7 +31,6 @@
   #if APM_BUILD_COPTER_OR_HELI || APM_BUILD_TYPE(APM_BUILD_ArduPlane) || APM_BUILD_TYPE(APM_BUILD_ArduSub)
     #include <AP_KDECAN/AP_KDECAN.h>
   #endif
-  #include <AP_ToshibaCAN/AP_ToshibaCAN.h>
   #include <AP_PiccoloCAN/AP_PiccoloCAN.h>
 #endif
 
@@ -231,7 +231,7 @@ const AP_Param::GroupInfo SRV_Channels::var_info[] = {
     // @Param: _DSHOT_ESC
     // @DisplayName: Servo DShot ESC type
     // @Description: This sets the DShot ESC type for all outputs. The ESC type affects the range of DShot commands available. None means that no dshot commands will be executed.
-    // @Values: 0:None,1:BLHeli32/BLHeli_S/Kiss
+    // @Values: 0:None,1:BLHeli32/Kiss,2:BLHeli_S
     // @User: Advanced
     AP_GROUPINFO("_DSHOT_ESC",  24, SRV_Channels, dshot_esc_type, 0),
 
@@ -556,14 +556,6 @@ void SRV_Channels::push()
 #endif
                 break;
             }
-            case AP_CANManager::Driver_Type_ToshibaCAN: {
-                AP_ToshibaCAN *ap_tcan = AP_ToshibaCAN::get_tcan(i);
-                if (ap_tcan == nullptr) {
-                    continue;
-                }
-                ap_tcan->update();
-                break;
-            }
 #if HAL_PICCOLO_CAN_ENABLE
             case AP_CANManager::Driver_Type_PiccoloCAN: {
                 AP_PiccoloCAN *ap_pcan = AP_PiccoloCAN::get_pcan(i);
@@ -610,4 +602,17 @@ bool SRV_Channels::is_GPIO(uint8_t channel)
         return true;
     }
     return false;
+}
+
+// Set E - stop
+void SRV_Channels::set_emergency_stop(bool state) {
+#if HAL_LOGGING_ENABLED
+    if (state != emergency_stop) {
+        AP_Logger *logger = AP_Logger::get_singleton();
+        if (logger && logger->logging_enabled()) {
+            logger->Write_Event(state ? LogEvent::MOTORS_EMERGENCY_STOPPED : LogEvent::MOTORS_EMERGENCY_STOP_CLEARED);
+        }
+    }
+#endif
+    emergency_stop = state;
 }

@@ -88,8 +88,8 @@ public:
     // set and save trim if changed
     void       set_and_save_radio_trim(int16_t val) { radio_trim.set_and_save_ifchanged(val);}
 
-    // check if any of the trim/min/max param are configured in storage, this would indicate that the user has done a calibration at somepoint
-    bool       configured_in_storage() { return radio_min.configured_in_storage() || radio_max.configured_in_storage() || radio_trim.configured_in_storage(); }
+    // check if any of the trim/min/max param are configured, this would indicate that the user has done a calibration at somepoint
+    bool       configured() { return radio_min.configured() || radio_max.configured() || radio_trim.configured(); }
 
     ControlType get_type(void) const { return type_in; }
 
@@ -209,13 +209,14 @@ public:
         DISABLE_AIRSPEED_USE = 106, // equivalent to AIRSPEED_USE 0
         FW_AUTOTUNE =          107, // fixed wing auto tune
         QRTL =               108, // QRTL mode
+        CUSTOM_CONTROLLER =  109,
         // if you add something here, make sure to update the documentation of the parameter in RC_Channel.cpp!
         // also, if you add an option >255, you will need to fix duplicate_options_exist
 
         // options 150-199 continue user rc switch options
         CRUISE =             150,  // CRUISE mode
         TURTLE =             151,  // Turtle mode - flip over after crash
-        SIMPLE_HEADING_RESET = 152, // reset simple mode refernce heading to current
+        SIMPLE_HEADING_RESET = 152, // reset simple mode reference heading to current
         ARMDISARM =          153, // arm or disarm vehicle
         ARMDISARM_AIRMODE =  154, // arm or disarm vehicle enabling airmode
         TRIM_TO_CURRENT_SERVO_RC = 155, // trim to current servo and RC
@@ -226,6 +227,9 @@ public:
         WEATHER_VANE_ENABLE = 160, // enable/disable weathervaning
         TURBINE_START =      161, // initialize turbine start sequence
         FFT_NOTCH_TUNE =     162, // FFT notch tuning function
+        MOUNT_LOCK =         163, // Mount yaw lock vs follow
+        LOG_PAUSE =          164, // Pauses logging if under logging rate control
+        ARM_EMERGENCY_STOP = 165, // ARM on high, MOTOR_ESTOP on low
 
         // inputs from 200 will eventually used to replace RCMAP
         ROLL =               201, // roll input
@@ -237,6 +241,9 @@ public:
         FWD_THR =            209, // VTOL manual forward throttle
         AIRBRAKE =           210, // manual airbrake control
         WALKING_HEIGHT =     211, // walking robot height input
+
+        // inputs 248-249 are reserved for the Skybrush fork at
+        // https://github.com/skybrush-io/ardupilot
 
         // inputs for the use of onboard lua scripting
         SCRIPTING_1 =        300,

@@ -91,7 +91,6 @@ const AP_Scheduler::Task Blimp::scheduler_tasks[] = {
 #endif
     SCHED_TASK_CLASS(AP_InertialSensor,    &blimp.ins,                 periodic,       400,  50,  66),
     SCHED_TASK_CLASS(AP_Scheduler,         &blimp.scheduler,           update_logging, 0.1,  75,  69),
-    SCHED_TASK_CLASS(Compass,              &blimp.compass,             cal_update,     100, 100,  72),
 #if STATS_ENABLED == ENABLED
     SCHED_TASK_CLASS(AP_Stats,             &blimp.g2.stats,            update,           1, 100,  75),
 #endif
@@ -202,11 +201,6 @@ void Blimp::one_hz_loop()
 {
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::AP_STATE, ap.value);
-    }
-
-    if (!motors->armed()) {
-        // make it possible to change ahrs orientation at runtime during initial config
-        ahrs.update_orientation();
     }
 
     // update assigned functions and enable auxiliary servos

@@ -15,7 +15,7 @@ if sys.version_info[0] < 3:
 else:
     running_python3 = True
 
-FIRMWARE_TYPES = ["AntennaTracker", "Copter", "Plane", "Rover", "Sub", "AP_Periph"]
+FIRMWARE_TYPES = ["AntennaTracker", "Copter", "Plane", "Rover", "Sub", "AP_Periph", "Blimp"]
 RELEASE_TYPES = ["beta", "latest", "stable", "stable-*", "dirty"]
 
 # mapping for board names to brand name and manufacturer
@@ -31,8 +31,10 @@ brand_map = {
     'KakuteF7Mini' : ('KakuteF7Mini', 'Holybro'),
     'KakuteF4Mini' : ('KakuteF4Mini', 'Holybro'),
     'KakuteH7Mini' : ('KakuteH7Mini', 'Holybro'),
+    'KakuteH7Mini-Nand' : ('KakuteH7Mini-Nand', 'Holybro'),
     'KakuteH7' : ('KakuteH7', 'Holybro'),
     'KakuteH7-bdshot' : ('KakuteH7', 'Holybro'),
+    'KakuteH7v2' : ('KakuteH7v2', 'Holybro'),
     'CubeBlack' : ('CubeBlack', 'Hex/ProfiCNC'),
     'CubeYellow' : ('CubeYellow', 'Hex/ProfiCNC'),
     'CubeOrange' : ('CubeOrange', 'Hex/ProfiCNC'),
@@ -82,6 +84,8 @@ brand_map = {
     'BeastF7' : ('Beast F7 45A AIO', 'iFlight'),
     'BeastF7v2' : ('Beast F7 v2 55A AIO', 'iFlight'),
     'MambaF405US-I2C' : ('Diatone Mamba Basic F405 MK3/MK3.5', 'Diatone'),
+    'MambaF405-2022' : ('Diatone Mamba Basic F405 MK4', 'Diatone'),
+    'MambaH743v4' : ('Diatone Mamba H743 MK4', 'Diatone'),
     "FlywooF745" : ('Flywoo Goku GN 745 AIO', 'Flywoo'),
     "FlywooF745Nano" : ('Flywoo Goku Hex F745', 'Flywoo'),
     "modalai_fc-v1" : ('ModalAI FlightCore v1', 'ModalAI'),
@@ -276,6 +280,16 @@ class ManifestGenerator():
             firmware['bootloader_str'].append('MindPX BL FMU v2.x')
             firmware['USBID'].append('0x26AC/0x0030')
 
+        if board_id == 53:
+            # special case for 6X, they always get the px4 bootloader IDs as an option
+            firmware['bootloader_str'].append('PX4 BL FMU v6X.x')
+            firmware['USBID'].append('0x3185/0x0035')
+
+        if board_id == 56:
+            # special case for 6C, they always get the px4 bootloader IDs as an option
+            firmware['bootloader_str'].append('PX4 BL FMU v6C.x')
+            firmware['USBID'].append('0x3185/0x0038')
+            
         if platform in brand_map:
             (brand_name, manufacturer) = brand_map[platform]
             firmware['brand_name'] = brand_name
@@ -399,7 +413,7 @@ class ManifestGenerator():
 
                 filepath = os.path.join(some_dir, filename)
                 firmware_format = self.firmware_format_for_filepath(filepath)
-                if firmware_format not in [ "ELF", "abin", "apj", "hex", "px4", "bin" ]:
+                if firmware_format not in [ "elf", "ELF", "abin", "apj", "hex", "px4", "bin" ]:
                     print("Unknown firmware format (%s)" % firmware_format)
 
                 firmware = Firmware()

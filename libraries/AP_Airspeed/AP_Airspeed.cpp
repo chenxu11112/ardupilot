@@ -48,6 +48,7 @@
 #include "AP_Airspeed_UAVCAN.h"
 #include "AP_Airspeed_NMEA.h"
 #include "AP_Airspeed_MSP.h"
+#include "AP_Airspeed_SITL.h"
 extern const AP_HAL::HAL &hal;
 
 #ifdef HAL_AIRSPEED_TYPE_DEFAULT
@@ -94,7 +95,7 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: Airspeed type
     // @Description: Type of airspeed sensor
-    // @Values: 0:None,1:I2C-MS4525D0,2:Analog,3:I2C-MS5525,4:I2C-MS5525 (0x76),5:I2C-MS5525 (0x77),6:I2C-SDP3X,7:I2C-DLVR-5in,8:DroneCAN,9:I2C-DLVR-10in,10:I2C-DLVR-20in,11:I2C-DLVR-30in,12:I2C-DLVR-60in,13:NMEA water speed,14:MSP,15:ASP5033
+    // @Values: 0:None,1:I2C-MS4525D0,2:Analog,3:I2C-MS5525,4:I2C-MS5525 (0x76),5:I2C-MS5525 (0x77),6:I2C-SDP3X,7:I2C-DLVR-5in,8:DroneCAN,9:I2C-DLVR-10in,10:I2C-DLVR-20in,11:I2C-DLVR-30in,12:I2C-DLVR-60in,13:NMEA water speed,14:MSP,15:ASP5033,100:SITL
     // @User: Standard
     AP_GROUPINFO_FLAGS("_TYPE", 0, AP_Airspeed, param[0].type, ARSPD_DEFAULT_TYPE, AP_PARAM_FLAG_ENABLE),     // NOTE: Index 0 is actually used as index 63 here
 
@@ -108,7 +109,7 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 #ifndef HAL_BUILD_AP_PERIPH
     // @Param: _USE
     // @DisplayName: Airspeed use
-    // @Description{Plane}: Enables airspeed use for automatic throttle modes and replaces control from THR_TRIM. Continues to display and log airspeed if set to 0. Uses airspeed for control if set to 1. Only uses airspeed when throttle = 0 if set to 2 (useful for gliders with airspeed sensors behind propellers).
+    // @Description: Enables airspeed use for automatic throttle modes and replaces control from THR_TRIM. Continues to display and log airspeed if set to 0. Uses airspeed for control if set to 1. Only uses airspeed when throttle = 0 if set to 2 (useful for gliders with airspeed sensors behind propellers).
     // @Description{Copter, Blimp, Rover, Sub}: This parameter is not used by this vehicle. Always set to 0.
     // @Values: 0:DoNotUse,1:Use,2:UseWhenZeroThrottle
     // @User: Standard
@@ -137,8 +138,8 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 
 #if AP_AIRSPEED_AUTOCAL_ENABLE
     // @Param: _AUTOCAL
-    // @DisplayName{Plane}: Automatic airspeed ratio calibration
-    // @Description{Copter, Blimp, Rover, Sub}: This parameter and function is not used by this vehicle. Always set to 0.
+    // @DisplayName: Automatic airspeed ratio calibration
+    // @DisplayName{Copter, Blimp, Rover, Sub}: This parameter and function is not used by this vehicle. Always set to 0.
     // @Description: Enables automatic adjustment of ARSPD_RATIO during a calibration flight based on estimation of ground speed and true airspeed. New ratio saved every 2 minutes if change is > 5%. Should not be left enabled.
     // @User: Advanced
     AP_GROUPINFO("_AUTOCAL",  5, AP_Airspeed, param[0].autocal, 0),
@@ -162,7 +163,7 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 
     // @Param: _PSI_RANGE
     // @DisplayName: The PSI range of the device
-    // @Description: This parameter allows you to to set the PSI (pounds per square inch) range for your sensor. You should not change this unless you examine the datasheet for your device
+    // @Description: This parameter allows you to set the PSI (pounds per square inch) range for your sensor. You should not change this unless you examine the datasheet for your device
     // @User: Advanced
     AP_GROUPINFO("_PSI_RANGE",  8, AP_Airspeed, param[0].psi_range, PSI_RANGE_DEFAULT),
 
@@ -187,7 +188,7 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 #ifndef HAL_BUILD_AP_PERIPH
     // @Param: _OPTIONS
     // @DisplayName: Airspeed options bitmask
-    // @Description{Plane}: Bitmask of options to use with airspeed. 0:Disable use based on airspeed/groundspeed mismatch (see ARSPD_WIND_MAX), 1:Automatically reenable use based on airspeed/groundspeed mismatch recovery (see ARSPD_WIND_MAX) 2:Disable voltage correction
+    // @Description: Bitmask of options to use with airspeed. 0:Disable use based on airspeed/groundspeed mismatch (see ARSPD_WIND_MAX), 1:Automatically reenable use based on airspeed/groundspeed mismatch recovery (see ARSPD_WIND_MAX) 2:Disable voltage correction
     // @Description{Copter, Blimp, Rover, Sub}: This parameter and function is not used by this vehicle. Always set to 0.
     // @Bitmask: 0:SpeedMismatchDisable, 1:AllowSpeedMismatchRecovery, 2:DisableVoltageCorrection
     // @User: Advanced
@@ -220,7 +221,7 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 
     // @Param: 2_USE
     // @DisplayName: Enable use of 2nd airspeed sensor
-    // @Description{Plane}: use airspeed for flight control. When set to 0 airspeed sensor can be logged and displayed on a GCS but won't be used for flight. When set to 1 it will be logged and used. When set to 2 it will be only used when the throttle is zero, which can be useful in gliders with airspeed sensors behind a propeller
+    // @Description: use airspeed for flight control. When set to 0 airspeed sensor can be logged and displayed on a GCS but won't be used for flight. When set to 1 it will be logged and used. When set to 2 it will be only used when the throttle is zero, which can be useful in gliders with airspeed sensors behind a propeller
     // @Description{Copter, Blimp, Rover, Sub}: This parameter and function is not used by this vehicle. Always set to 0.
     // @Values: 0:Don't Use,1:use,2:UseWhenZeroThrottle
     // @User: Standard
@@ -248,7 +249,7 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 
     // @Param: 2_AUTOCAL
     // @DisplayName: Automatic airspeed ratio calibration for 2nd airspeed sensor
-    // @Description{Plane}: If this is enabled then the autopilot will automatically adjust the ARSPD_RATIO during flight, based upon an estimation filter using ground speed and true airspeed. The automatic calibration will save the new ratio to EEPROM every 2 minutes if it changes by more than 5%. This option should be enabled for a calibration flight then disabled again when calibration is complete. Leaving it enabled all the time is not recommended.
+    // @Description: If this is enabled then the autopilot will automatically adjust the ARSPD_RATIO during flight, based upon an estimation filter using ground speed and true airspeed. The automatic calibration will save the new ratio to EEPROM every 2 minutes if it changes by more than 5%. This option should be enabled for a calibration flight then disabled again when calibration is complete. Leaving it enabled all the time is not recommended.
     // @Description{Copter, Blimp, Rover, Sub}: This parameter and function is not used by this vehicle. Always set to 0.
     // @User: Advanced
     AP_GROUPINFO("2_AUTOCAL",  16, AP_Airspeed, param[1].autocal, 0),
@@ -269,7 +270,7 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 
     // @Param: 2_PSI_RANGE
     // @DisplayName: The PSI range of the device for 2nd sensor
-    // @Description: This parameter allows you to to set the PSI (pounds per square inch) range for your sensor. You should not change this unless you examine the datasheet for your device
+    // @Description: This parameter allows you to set the PSI (pounds per square inch) range for your sensor. You should not change this unless you examine the datasheet for your device
     // @User: Advanced
     AP_GROUPINFO("2_PSI_RANGE",  19, AP_Airspeed, param[1].psi_range, PSI_RANGE_DEFAULT),
 
@@ -390,6 +391,11 @@ void AP_Airspeed::init()
         case TYPE_I2C_MS4525:
 #if AP_AIRSPEED_MS4525_ENABLED
             sensor[i] = new AP_Airspeed_MS4525(*this, i);
+#endif
+            break;
+        case TYPE_SITL:
+#if AP_AIRSPEED_SITL_ENABLED
+            sensor[i] = new AP_Airspeed_SITL(*this, i);
 #endif
             break;
         case TYPE_ANALOG:

@@ -24,6 +24,9 @@
 #include <AP_Filesystem/AP_Filesystem_Available.h>
 #include <AP_GPS/AP_GPS.h>
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
+#include <AP_OpenDroneID/AP_OpenDroneID.h>
+#include <AP_Mount/AP_Mount.h>
+#include <AC_Fence/AC_Fence.h>
 
 #include "ap_message.h"
 
@@ -39,7 +42,7 @@
 
 // macros used to determine if a message will fit in the space available.
 
-void gcs_out_of_space_to_send_count(mavlink_channel_t chan);
+void gcs_out_of_space_to_send(mavlink_channel_t chan);
 
 // important note: despite the names, these messages do NOT check to
 // see if the payload will fit in the buffer.  They check to see if
@@ -56,14 +59,14 @@ void gcs_out_of_space_to_send_count(mavlink_channel_t chan);
 // anywhere in the code to determine if the mavlink message with ID id
 // can currently fit in the output of _chan.  Note the use of the ","
 // operator here to increment a counter.
-#define HAVE_PAYLOAD_SPACE(_chan, id) (comm_get_txspace(_chan) >= PAYLOAD_SIZE(_chan, id) ? true : (gcs_out_of_space_to_send_count(_chan), false))
+#define HAVE_PAYLOAD_SPACE(_chan, id) (comm_get_txspace(_chan) >= PAYLOAD_SIZE(_chan, id) ? true : (gcs_out_of_space_to_send(_chan), false))
 
 // CHECK_PAYLOAD_SIZE - macro which may only be used within a
 // GCS_MAVLink object's methods.  It inserts code which will
 // immediately return false from the current function if there is no
 // room to fit the mavlink message with id id on the current object's
 // output
-#define CHECK_PAYLOAD_SIZE(id) if (txspace() < unsigned(packet_overhead()+MAVLINK_MSG_ID_ ## id ## _LEN)) { gcs_out_of_space_to_send_count(chan); return false; }
+#define CHECK_PAYLOAD_SIZE(id) if (txspace() < unsigned(packet_overhead()+MAVLINK_MSG_ID_ ## id ## _LEN)) { gcs_out_of_space_to_send(chan); return false; }
 
 // CHECK_PAYLOAD_SIZE2 - macro which inserts code which will
 // immediately return false from the current function if there is no
@@ -296,9 +299,8 @@ public:
     void send_local_position() const;
     void send_vfr_hud();
     void send_vibration() const;
-    void send_mount_status() const;
+    void send_gimbal_device_attitude_status() const;
     void send_named_float(const char *name, float value) const;
-    void send_gimbal_report() const;
     void send_home_position() const;
     void send_gps_global_origin() const;
     virtual void send_attitude_target() {};
@@ -319,6 +321,7 @@ public:
     void send_high_latency2() const;
 #endif // HAL_HIGH_LATENCY2_ENABLED
     void send_uavionix_adsb_out_status() const;
+    void send_autopilot_state_for_gimbal_device() const;
 
     // lock a channel, preventing use by MAVLink
     void lock(bool _lock) {
@@ -475,7 +478,9 @@ protected:
     void handle_common_rally_message(const mavlink_message_t &msg);
     void handle_rally_fetch_point(const mavlink_message_t &msg);
     void handle_rally_point(const mavlink_message_t &msg) const;
+#if HAL_MOUNT_ENABLED
     virtual void handle_mount_message(const mavlink_message_t &msg);
+#endif
     void handle_fence_message(const mavlink_message_t &msg);
     void handle_param_value(const mavlink_message_t &msg);
     void handle_radio_status(const mavlink_message_t &msg, bool log_radio);
@@ -635,6 +640,8 @@ protected:
     bool location_from_command_t(const mavlink_command_int_t &in, Location &out);
 
 private:
+
+    const AP_SerialManager::UARTState *uartstate;
 
     // last time we got a non-zero RSSI from RADIO_STATUS
     static struct LastRadioStatus {
@@ -1058,7 +1065,9 @@ public:
 
     static class MissionItemProtocol_Waypoints *_missionitemprotocol_waypoints;
     static class MissionItemProtocol_Rally *_missionitemprotocol_rally;
+#if AP_FENCE_ENABLED
     static class MissionItemProtocol_Fence *_missionitemprotocol_fence;
+#endif
     class MissionItemProtocol *get_prot_for_mission_type(const MAV_MISSION_TYPE mission_type) const;
     void try_send_queued_message_for_type(MAV_MISSION_TYPE type) const;
 
@@ -1082,7 +1091,7 @@ public:
     // frsky backend
     class AP_Frsky_Telem *frsky;
 
-#if !HAL_MINIMIZE_FEATURES
+#if AP_LTM_TELEM_ENABLED
     // LTM backend
     AP_LTM_Telem ltm_telemetry;
 #endif

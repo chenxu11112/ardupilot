@@ -26,6 +26,10 @@
 #define AP_RANGEFINDER_ENABLED 1
 #endif
 
+#ifndef AP_RANGEFINDER_BACKEND_DEFAULT_ENABLED
+#define AP_RANGEFINDER_BACKEND_DEFAULT_ENABLED AP_RANGEFINDER_ENABLED
+#endif
+
 // Maximum number of range finder instances available on this platform
 #ifndef RANGEFINDER_MAX_INSTANCES 
   #if AP_RANGEFINDER_ENABLED
@@ -98,6 +102,7 @@ public:
         MSP = 32,
         USD1_CAN = 33,
         Benewake_CAN = 34,
+        TeraRanger_Serial = 35,
         SIM = 100,
     };
 

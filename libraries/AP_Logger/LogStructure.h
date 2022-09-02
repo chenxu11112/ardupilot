@@ -139,6 +139,7 @@ const struct MultiplierStructure log_Multipliers[] = {
 #include <AP_AIS/LogStructure.h>
 #include <AP_HAL_ChibiOS/LogStructure.h>
 #include <AP_RPM/LogStructure.h>
+#include <AC_Fence/LogStructure.h>
 
 // structure used to define logging format
 // It is packed on ChibiOS to save flash space; however, this causes problems
@@ -205,6 +206,7 @@ struct PACKED log_Parameter {
     uint64_t time_us;
     char name[16];
     float value;
+    float default_value;
 };
 
 struct PACKED log_DSF {
@@ -708,7 +710,7 @@ struct PACKED log_VER {
 #define PID_MULTS  "F----------"
 
 // @LoggerMessage: ADSB
-// @Description: Automatic Dependant Serveillance - Broadcast detected vehicle information
+// @Description: Automatic Dependent Serveillance - Broadcast detected vehicle information
 // @Field: TimeUS: Time since system startup
 // @Field: ICAO_address: Transponder address
 // @Field: Lat: Vehicle latitude
@@ -920,6 +922,7 @@ struct PACKED log_VER {
 // @Field: TimeUS: Time since system startup
 // @Field: Name: parameter name
 // @Field: Value: parameter value
+// @Field: Default: default parameter value for this board and config
 
 // @LoggerMessage: PIDR,PIDP,PIDY,PIDA,PIDS,PIDN,PIDE
 // @Description: Proportional/Integral/Derivative gain values for Roll/Pitch/Yaw/Altitude/Steering
@@ -1190,16 +1193,16 @@ struct PACKED log_VER {
 // @Field: TimeUS: Time since system startup
 // @Field: Name: script name
 // @Field: Runtime: run time
-// @Field: Total_mem: total memory useage
+// @Field: Total_mem: total memory usage
 // @Field: Run_mem: run memory usage
 
 // @LoggerMessage: MOTB
 // @Description: Motor mixer information
 // @Field: TimeUS: Time since system startup
 // @Field: LiftMax: Maximum motor compensation gain
-// @Field: BatVolt: Ratio betwen detected battery voltage and maximum battery voltage
+// @Field: BatVolt: Ratio between detected battery voltage and maximum battery voltage
 // @Field: ThLimit: Throttle limit set due to battery current limitations
-// @Field: ThrAvMx: Maximum average throttle that can be used to maintain attitude controll, derived from throttle mix params
+// @Field: ThrAvMx: Maximum average throttle that can be used to maintain attitude control, derived from throttle mix params
 // @Field: FailFlags: bit 0 motor failed, bit 1 motors balanced, should be 2 in normal flight
 
 // messages for all boards
@@ -1213,7 +1216,7 @@ struct PACKED log_VER {
     { LOG_MULT_MSG, sizeof(log_Format_Multiplier), \
       "MULT", "Qbd",      "TimeUS,Id,Mult", "s--","F--" },   \
     { LOG_PARAMETER_MSG, sizeof(log_Parameter), \
-     "PARM", "QNf",        "TimeUS,Name,Value", "s--", "F--"  },       \
+     "PARM", "QNff",        "TimeUS,Name,Value,Default", "s---", "F---"  },       \
 LOG_STRUCTURE_FROM_GPS \
     { LOG_MESSAGE_MSG, sizeof(log_Message), \
       "MSG",  "QZ",     "TimeUS,Message", "s-", "F-"}, \
@@ -1288,6 +1291,7 @@ LOG_STRUCTURE_FROM_NAVEKF \
 LOG_STRUCTURE_FROM_AHRS \
 LOG_STRUCTURE_FROM_HAL_CHIBIOS \
 LOG_STRUCTURE_FROM_RPM \
+LOG_STRUCTURE_FROM_FENCE \
     { LOG_DF_FILE_STATS, sizeof(log_DSF), \
       "DSF", "QIHIIII", "TimeUS,Dp,Blk,Bytes,FMn,FMx,FAv", "s--b---", "F--0---" }, \
     { LOG_RALLY_MSG, sizeof(log_Rally), \
@@ -1319,7 +1323,7 @@ LOG_STRUCTURE_FROM_VISUALODOM \
       "STAK", "QBBHHN", "TimeUS,Id,Pri,Total,Free,Name", "s#----", "F-----", true }, \
     { LOG_FILE_MSG, sizeof(log_File), \
       "FILE",   "NIBZ",       "FileName,Offset,Length,Data", "----", "----" }, \
-LOG_STRUCTURE_FROM_AIS, \
+LOG_STRUCTURE_FROM_AIS \
     { LOG_SCRIPTING_MSG, sizeof(log_Scripting), \
       "SCR",   "QNIii", "TimeUS,Name,Runtime,Total_mem,Run_mem", "s-sbb", "F-F--", true }, \
     { LOG_VER_MSG, sizeof(log_VER), \
@@ -1410,6 +1414,7 @@ enum LogMessages : uint8_t {
     LOG_VER_MSG,
     LOG_RCOUT2_MSG,
     LOG_RCOUT3_MSG,
+    LOG_IDS_FROM_FENCE,
 
     _LOG_LAST_MSG_
 };

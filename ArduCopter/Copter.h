@@ -46,6 +46,7 @@
 #include <AC_AttitudeControl/AC_AttitudeControl_Heli.h>         // Attitude control library for traditional helicopter
 #include <AC_AttitudeControl/AC_AttitudeControl_Multi_with_Tilt.h>   // Multi_with_Tilt Attitude control library
 #include <AC_AttitudeControl/AC_PosControl.h>                   // Position control library
+#include <AC_AttitudeControl/AC_CommandModel.h>                 // Command model library
 #include <AP_Motors/AP_Motors.h>            // AP Motors library
 #include <AP_Stats/AP_Stats.h>              // statistics library
 #include <Filter/Filter.h>                  // Filter library
@@ -120,9 +121,6 @@
 #if MODE_FOLLOW_ENABLED == ENABLED
  # include <AP_Follow/AP_Follow.h>
 #endif
-#if AC_FENCE == ENABLED
- # include <AC_Fence/AC_Fence.h>
-#endif
 #if AP_TERRAIN_AVAILABLE
  # include <AP_Terrain/AP_Terrain.h>
 #endif
@@ -159,6 +157,18 @@
 
 #if AP_SCRIPTING_ENABLED
 #include <AP_Scripting/AP_Scripting.h>
+#endif
+
+#if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
+#include <AC_CustomControl/AC_CustomControl.h>                  // Custom control library
+#endif
+
+#if AC_AVOID_ENABLED && !AP_FENCE_ENABLED
+  #error AC_Avoidance relies on AP_FENCE_ENABLED which is disabled
+#endif
+
+#if AC_OAPATHPLANNER_ENABLED && !AP_FENCE_ENABLED
+  #error AP_OAPathPlanner relies on AP_FENCE_ENABLED which is disabled
 #endif
 
 // Local modules
@@ -259,10 +269,8 @@ private:
         uint32_t glitch_cleared_ms; // system time glitch cleared
     } rangefinder_state, rangefinder_up_state;
 
-    /*
-      return rangefinder height interpolated using inertial altitude
-     */
-    bool get_rangefinder_height_interpolated_cm(int32_t& ret);
+    // return rangefinder height interpolated using inertial altitude
+    bool get_rangefinder_height_interpolated_cm(int32_t& ret) const;
 
     class SurfaceTracking {
     public:
@@ -310,7 +318,7 @@ private:
 
     // Optical flow sensor
 #if AP_OPTICALFLOW_ENABLED
-    OpticalFlow optflow;
+    AP_OpticalFlow optflow;
 #endif
 
     // system time in milliseconds of last recorded yaw reset from ekf
@@ -395,11 +403,19 @@ private:
         uint8_t ekf                 : 1; // true if ekf failsafe has occurred
         uint8_t terrain             : 1; // true if the missing terrain data failsafe has occurred
         uint8_t adsb                : 1; // true if an adsb related failsafe has occurred
+        uint8_t deadreckon          : 1; // true if a dead reckoning failsafe has triggered
     } failsafe;
 
     bool any_failsafe_triggered() const {
-        return failsafe.radio || battery.has_failsafed() || failsafe.gcs || failsafe.ekf || failsafe.terrain || failsafe.adsb;
+        return failsafe.radio || battery.has_failsafed() || failsafe.gcs || failsafe.ekf || failsafe.terrain || failsafe.adsb || failsafe.deadreckon;
     }
+
+    // dead reckoning state
+    struct {
+        bool active;        // true if dead reckoning (position estimate using estimated airspeed, no position or velocity source)
+        bool timeout;       // true if dead reckoning has timedout and EKF's position and velocity estimate should no longer be trusted
+        uint32_t start_ms;  // system time that EKF began deadreckoning
+    } dead_reckoning;
 
     // Motor Output
     MOTOR_CLASS *motors;
@@ -456,6 +472,10 @@ private:
     AC_WPNav *wp_nav;
     AC_Loiter *loiter_nav;
 
+#if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
+    AC_CustomControl custom_control{ahrs_view, attitude_control, motors, scheduler.get_loop_period_s()};
+#endif
+
 #if MODE_CIRCLE_ENABLED == ENABLED
     AC_Circle *circle_nav;
 #endif
@@ -477,11 +497,6 @@ private:
     // Camera/Antenna mount tracking and stabilisation stuff
 #if HAL_MOUNT_ENABLED
     AP_Mount camera_mount;
-#endif
-
-    // AC_Fence library to reduce fly-aways
-#if AC_FENCE == ENABLED
-    AC_Fence fence;
 #endif
 
 #if AC_AVOID_ENABLED == ENABLED
@@ -649,6 +664,7 @@ private:
     bool set_target_angle_and_climbrate(float roll_deg, float pitch_deg, float yaw_deg, float climb_rate_ms, bool use_yaw_rate, float yaw_rate_degs) override;
     bool get_circle_radius(float &radius_m) override;
     bool set_circle_rate(float rate_dps) override;
+    bool set_desired_speed(float speed) override;
     bool nav_scripting_enable(uint8_t mode) override;
     bool nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2) override;
     void nav_script_time_done(uint16_t id) override;
@@ -659,7 +675,7 @@ private:
     void rc_loop();
     void throttle_loop();
     void update_batt_compass(void);
-    void fourhundred_hz_logging();
+    void loop_rate_logging();
     void ten_hz_logging_loop();
     void twentyfive_hz_logging();
     void three_hz_loop();
@@ -669,6 +685,10 @@ private:
     void update_super_simple_bearing(bool force_update);
     void read_AHRS(void);
     void update_altitude();
+    bool get_wp_distance_m(float &distance) const override;
+    bool get_wp_bearing_deg(float &bearing) const override;
+    bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
+    bool get_rate_bf_targets(Vector3f& rate_bf_targets) const override;
 
     // Attitude.cpp
     void update_throttle_hover();
@@ -678,6 +698,10 @@ private:
     void rotate_body_frame_to_NE(float &x, float &y);
     uint16_t get_pilot_speed_dn() const;
     void run_rate_controller() { attitude_control->rate_controller_run(); }
+
+#if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
+    void run_custom_controller() { custom_control.update(); }
+#endif
 
     // avoidance.cpp
     void low_alt_avoidance();
@@ -716,6 +740,7 @@ private:
     bool ekf_over_threshold();
     void failsafe_ekf_event();
     void failsafe_ekf_off_event(void);
+    void failsafe_ekf_recheck();
     void check_ekf_reset();
     void check_vibration();
 
@@ -738,6 +763,7 @@ private:
     void failsafe_terrain_set_status(bool data_ok);
     void failsafe_terrain_on_event();
     void gpsglitch_check();
+    void failsafe_deadreckon_check();
     void set_mode_RTL_or_land_with_pause(ModeReason reason);
     void set_mode_SmartRTL_or_RTL(ModeReason reason);
     void set_mode_SmartRTL_or_land_with_pause(ModeReason reason);
@@ -754,7 +780,7 @@ private:
 #endif
 
     // fence.cpp
-#if AC_FENCE == ENABLED
+#if AP_FENCE_ENABLED
     void fence_check();
 #endif
 
@@ -793,6 +819,7 @@ private:
     void Log_Write_Control_Tuning();
     void Log_Write_Attitude();
     void Log_Write_EKF_POS();
+    void Log_Write_PIDS();
     void Log_Write_Data(LogDataID id, int32_t value);
     void Log_Write_Data(LogDataID id, uint32_t value);
     void Log_Write_Data(LogDataID id, int16_t value);
@@ -844,6 +871,9 @@ private:
     // Parameters.cpp
     void load_parameters(void) override;
     void convert_pid_parameters(void);
+#if HAL_PROXIMITY_ENABLED
+    void convert_prx_parameters();
+#endif
     void convert_lgr_parameters(void);
     void convert_tradheli_parameters(void) const;
     void convert_fs_options_params(void) const;
@@ -870,7 +900,6 @@ private:
     bool rangefinder_alt_ok() const;
     bool rangefinder_up_ok() const;
     void update_optical_flow(void);
-    void compass_cal_update(void);
 
     // RC_Channel.cpp
     void save_trim();
@@ -907,11 +936,6 @@ private:
     void userhook_auxSwitch1(const RC_Channel::AuxSwitchPos ch_flag);
     void userhook_auxSwitch2(const RC_Channel::AuxSwitchPos ch_flag);
     void userhook_auxSwitch3(const RC_Channel::AuxSwitchPos ch_flag);
-
-    // vehicle specific waypoint info helpers
-    bool get_wp_distance_m(float &distance) const override;
-    bool get_wp_bearing_deg(float &bearing) const override;
-    bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
 
 #if MODE_ACRO_ENABLED == ENABLED
 #if FRAME_CONFIG == HELI_FRAME
@@ -978,7 +1002,7 @@ private:
 #if MODE_SMARTRTL_ENABLED == ENABLED
     ModeSmartRTL mode_smartrtl;
 #endif
-#if !HAL_MINIMIZE_FEATURES && AP_OPTICALFLOW_ENABLED
+#if MODE_FLOWHOLD_ENABLED == ENABLED
     ModeFlowHold mode_flowhold;
 #endif
 #if MODE_ZIGZAG_ENABLED == ENABLED

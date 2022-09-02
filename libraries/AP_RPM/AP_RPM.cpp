@@ -17,6 +17,7 @@
 #include "RPM_Pin.h"
 #include "RPM_SITL.h"
 #include "RPM_EFI.h"
+#include "RPM_Generator.h"
 #include "RPM_HarmonicNotch.h"
 #include "RPM_ESC_Telem.h"
 
@@ -80,6 +81,11 @@ void AP_RPM::init(void)
             drivers[i] = new AP_RPM_EFI(*this, i, state[i]);
             break;
 #endif
+#if HAL_GENERATOR_ENABLED
+        case RPM_TYPE_GENERATOR:
+            drivers[i] = new AP_RPM_Generator(*this, i, state[i]);
+            break;
+#endif
         // include harmonic notch last
         // this makes whatever process is driving the dynamic notch appear as an RPM value
         case RPM_TYPE_HNTCH:
@@ -104,8 +110,8 @@ PARAMETER_CONVERSION - Added: Aug-2021
 */
 void AP_RPM::convert_params(void)
 {
-    if (_params[0].type.configured_in_storage()) {
-        // _params[0].type will always be configured in storage after conversion is done the first time
+    if (_params[0].type.configured()) {
+        // _params[0].type will always be configured after conversion is done the first time
         return;
     }
 

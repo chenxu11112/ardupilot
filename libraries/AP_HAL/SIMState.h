@@ -6,10 +6,6 @@
 
 #include <AP_HAL/AP_HAL.h>
 
-#include <AP_Baro/AP_Baro.h>
-#include <AP_InertialSensor/AP_InertialSensor.h>
-#include <AP_Compass/AP_Compass.h>
-#include <AP_Terrain/AP_Terrain.h>
 #include <SITL/SITL_Input.h>
 #include <SITL/SIM_Gimbal.h>
 #include <SITL/SIM_ADSB.h>
@@ -17,6 +13,7 @@
 #include <SITL/SIM_RF_Benewake_TF02.h>
 #include <SITL/SIM_RF_Benewake_TF03.h>
 #include <SITL/SIM_RF_Benewake_TFmini.h>
+#include <SITL/SIM_RF_TeraRanger_Serial.h>
 #include <SITL/SIM_RF_LightWareSerial.h>
 #include <SITL/SIM_RF_LightWareSerialBinary.h>
 #include <SITL/SIM_RF_Lanbao.h>
@@ -63,7 +60,7 @@ public:
     void set_gps0(SITL::GPS *_gps) { gps[0] = _gps; }
 #endif
 
-    uint16_t pwm_output[16];  // was SITL_NUM_CHANNELS
+    uint16_t pwm_output[32];  // was SITL_NUM_CHANNELS
 
 private:
     void _set_param_default(const char *parm);
@@ -90,7 +87,7 @@ private:
     pid_t _parent_pid;
     uint32_t _update_count;
 
-    AP_Baro *_barometer;
+    class AP_Baro *_barometer;
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     SocketAPM _sitl_rc_in{true};
@@ -131,6 +128,8 @@ private:
     SITL::RF_Benewake_TF03 *benewake_tf03;
     // simulated Benewake tfmini rangefinder:
     SITL::RF_Benewake_TFmini *benewake_tfmini;
+    // simulated TeraRangerSerial rangefinder:
+    SITL::RF_TeraRanger_Serial *teraranger_serial;
 
     // simulated LightWareSerial rangefinder - legacy protocol::
     SITL::RF_LightWareSerial *lightwareserial;
@@ -211,6 +210,8 @@ private:
     const char *defaults_path = HAL_PARAM_DEFAULTS_PATH;
 
     const char *_home_str;
+
+    uint32_t wind_start_delay_micros;
 
 #if HAL_SIM_GPS_ENABLED
     // simulated GPS devices

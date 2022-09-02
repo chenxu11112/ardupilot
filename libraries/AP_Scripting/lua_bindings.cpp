@@ -12,24 +12,9 @@
 
 extern const AP_HAL::HAL& hal;
 
-int check_arguments(lua_State *L, int expected_arguments, const char *fn_name);
-int check_arguments(lua_State *L, int expected_arguments, const char *fn_name) {
-#if defined(AP_SCRIPTING_CHECKS) && AP_SCRIPTING_CHECKS >= 1
-    if (expected_arguments < 0) {
-       AP_HAL::panic("Lua: Attempted to check for negative arguments");
-    }
-#endif
-
-    const int args = lua_gettop(L);
-    if (args != expected_arguments) {
-        return luaL_error(L, "%s expected %d arguments got %d", fn_name, expected_arguments, args);
-    }
-    return 0;
-}
-
 // millis
 int lua_millis(lua_State *L) {
-    check_arguments(L, 0, "millis");
+    binding_argcheck(L, 0);
 
     new_uint32_t(L);
     *check_uint32_t(L, -1) = AP_HAL::millis();
@@ -39,7 +24,7 @@ int lua_millis(lua_State *L) {
 
 // micros
 int lua_micros(lua_State *L) {
-    check_arguments(L, 0, "micros");
+    binding_argcheck(L, 0);
 
     new_uint32_t(L);
     *check_uint32_t(L, -1) = AP_HAL::micros();
@@ -48,7 +33,7 @@ int lua_micros(lua_State *L) {
 }
 
 int lua_mission_receive(lua_State *L) {
-    check_arguments(L, 0, "mission_receive");
+    binding_argcheck(L, 0);
 
     ObjectBuffer<struct AP_Scripting::scripting_mission_cmd> *input = AP::scripting()->mission_data;
 
@@ -331,14 +316,14 @@ int lua_get_i2c_device(lua_State *L) {
 #if HAL_MAX_CAN_PROTOCOL_DRIVERS
 int lua_get_CAN_device(lua_State *L) {
 
-    check_arguments(L, 1, "CAN:get_device");
+    binding_argcheck(L, 1);
 
     const uint32_t raw_buffer_len = coerce_to_uint32_t(L, 1);
     luaL_argcheck(L, ((raw_buffer_len >= 1U) && (raw_buffer_len <= 25U)), 1, "argument out of range");
     const uint32_t buffer_len = static_cast<uint32_t>(raw_buffer_len);
 
     if (AP::scripting()->_CAN_dev == nullptr) {
-        AP::scripting()->_CAN_dev = new ScriptingCANSensor();
+        AP::scripting()->_CAN_dev = new ScriptingCANSensor(AP_CANManager::Driver_Type::Driver_Type_Scripting);
         if (AP::scripting()->_CAN_dev == nullptr) {
             return luaL_argerror(L, 1, "CAN device nullptr");
         }
@@ -346,6 +331,27 @@ int lua_get_CAN_device(lua_State *L) {
 
     new_ScriptingCANBuffer(L);
     *check_ScriptingCANBuffer(L, -1) = AP::scripting()->_CAN_dev->add_buffer(buffer_len);
+
+    return 1;
+}
+
+int lua_get_CAN_device2(lua_State *L) {
+
+    binding_argcheck(L, 1);
+
+    const uint32_t raw_buffer_len = coerce_to_uint32_t(L, 1);
+    luaL_argcheck(L, ((raw_buffer_len >= 1U) && (raw_buffer_len <= 25U)), 1, "argument out of range");
+    const uint32_t buffer_len = static_cast<uint32_t>(raw_buffer_len);
+
+    if (AP::scripting()->_CAN_dev2 == nullptr) {
+        AP::scripting()->_CAN_dev2 = new ScriptingCANSensor(AP_CANManager::Driver_Type::Driver_Type_Scripting2);
+        if (AP::scripting()->_CAN_dev2 == nullptr) {
+            return luaL_argerror(L, 1, "CAN device nullptr");
+        }
+    }
+
+    new_ScriptingCANBuffer(L);
+    *check_ScriptingCANBuffer(L, -1) = AP::scripting()->_CAN_dev2->add_buffer(buffer_len);
 
     return 1;
 }

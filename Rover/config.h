@@ -14,11 +14,6 @@
 // FrSky telemetry support
 //
 
-#ifndef FRSKY_TELEM_ENABLED
-  #define FRSKY_TELEM_ENABLED ENABLED
-#endif
-
-
 #ifndef CH7_OPTION
   #define CH7_OPTION CH7_SAVE_WP
 #endif
@@ -55,6 +50,12 @@
 //
 #ifndef AP_RALLY
  #define AP_RALLY ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+// Precision Landing with companion computer or IRLock sensor
+#ifndef PRECISION_LANDING
+ # define PRECISION_LANDING ENABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////

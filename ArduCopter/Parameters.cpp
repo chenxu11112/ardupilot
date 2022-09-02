@@ -321,8 +321,8 @@ const AP_Param::Info Copter::var_info[] = {
 
     // @Param: LOG_BITMASK
     // @DisplayName: Log bitmask
-    // @Description: 4 byte bitmap of log types to enable
-    // @Bitmask: 0:ATTITUDE_FAST,1:ATTITUDE_MED,2:GPS,3:PM,4:CTUN,5:NTUN,6:RCIN,7:IMU,8:CMD,9:CURRENT,10:RCOUT,11:OPTFLOW,12:PID,13:COMPASS,14:INAV,15:CAMERA,17:MOTBATT,18:IMU_FAST,19:IMU_RAW,20:VideoStabilization
+    // @Description: Bitmap of what on-board log types to enable. This value is made up of the sum of each of the log types you want to be saved. It is usually best just to enable all basiclog types by setting this to 65535. 
+    // @Bitmask: 0:Fast Attitude,1:Medium Attitude,2:GPS,3:System Performance,4:Control Tuning,5:Navigation Tuning,6:RC input,7:IMU,8:Mission Commands,9:Battery Monitor,10:RC output,11:Optical Flow,12:PID,13:Compass,15:Camera,17:Motors,18:Fast IMU,19:Raw IMU,20:Video Stabilization,21:Fast harmonic notch logging
     // @User: Standard
     GSCALAR(log_bitmask,    "LOG_BITMASK",          DEFAULT_LOG_BITMASK),
 
@@ -354,7 +354,7 @@ const AP_Param::Info Copter::var_info[] = {
 
     // @Param: DISARM_DELAY
     // @DisplayName: Disarm delay
-    // @Description: Delay before automatic disarm in seconds. A value of zero disables auto disarm.
+    // @Description: Delay before automatic disarm in seconds after landing touchdown detection. A value of zero disables auto disarm. If Emergency Motor stop active, delay time is half this value.
     // @Units: s
     // @Range: 0 127
     // @User: Advanced
@@ -404,7 +404,7 @@ const AP_Param::Info Copter::var_info[] = {
 
     // @Param: FS_EKF_THRESH
     // @DisplayName: EKF failsafe variance threshold
-    // @Description: Allows setting the maximum acceptable compass and velocity variance
+    // @Description: Allows setting the maximum acceptable compass, velocity, position and height variances. Used in arming check and EKF failsafe.
     // @Values: 0.6:Strict, 0.8:Default, 1.0:Relaxed
     // @User: Advanced
     GSCALAR(fs_ekf_thresh, "FS_EKF_THRESH",    FS_EKF_THRESHOLD_DEFAULT),
@@ -425,18 +425,6 @@ const AP_Param::Info Copter::var_info[] = {
     // @User: Advanced
     GSCALAR(rc_speed, "RC_SPEED",              RC_FAST_SPEED),
 
-    // @Param: ACRO_RP_P
-    // @DisplayName: Acro Roll and Pitch P gain
-    // @Description: Converts pilot roll and pitch into a desired rate of rotation in ACRO and SPORT mode.  Higher values mean faster rate of rotation.
-    // @Range: 1 10
-    // @User: Standard
-
-    // @Param: ACRO_YAW_P
-    // @DisplayName: Acro Yaw P gain
-    // @Description: Converts pilot yaw input into a desired rate of rotation.  Higher values mean faster rate of rotation.
-    // @Range: 1 10
-    // @User: Standard
-
 #if MODE_ACRO_ENABLED == ENABLED || MODE_SPORT_ENABLED == ENABLED
     // @Param: ACRO_BAL_ROLL
     // @DisplayName: Acro Balance Roll
@@ -455,6 +443,8 @@ const AP_Param::Info Copter::var_info[] = {
     GSCALAR(acro_balance_pitch,     "ACRO_BAL_PITCH",   ACRO_BALANCE_PITCH),
 #endif
 
+    // ACRO_RP_EXPO moved to Command Model class
+
 #if MODE_ACRO_ENABLED == ENABLED
     // @Param: ACRO_TRAINER
     // @DisplayName: Acro Trainer
@@ -462,14 +452,6 @@ const AP_Param::Info Copter::var_info[] = {
     // @Values: 0:Disabled,1:Leveling,2:Leveling and Limited
     // @User: Advanced
     GSCALAR(acro_trainer,   "ACRO_TRAINER",     (uint8_t)ModeAcro::Trainer::LIMITED),
-
-    // @Param: ACRO_RP_EXPO
-    // @DisplayName: Acro Roll/Pitch Expo
-    // @Description: Acro roll/pitch Expo to allow faster rotation when stick at edges
-    // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
-    // @Range: -0.5 0.95
-    // @User: Advanced
-    GSCALAR(acro_rp_expo,  "ACRO_RP_EXPO",    ACRO_RP_EXPO_DEFAULT),
 #endif
 
     // variables not in the g class which contain EEPROM saved variables
@@ -629,12 +611,6 @@ const AP_Param::Info Copter::var_info[] = {
     // @Path: ../libraries/AP_Scheduler/AP_Scheduler.cpp
     GOBJECT(scheduler, "SCHED_", AP_Scheduler),
 
-#if AC_FENCE == ENABLED
-    // @Group: FENCE_
-    // @Path: ../libraries/AC_Fence/AC_Fence.cpp
-    GOBJECT(fence,      "FENCE_",   AC_Fence),
-#endif
-
     // @Group: AVOID_
     // @Path: ../libraries/AC_Avoidance/AC_Avoid.cpp
 #if AC_AVOID_ENABLED == ENABLED
@@ -698,7 +674,7 @@ const AP_Param::Info Copter::var_info[] = {
 #if AP_OPTICALFLOW_ENABLED
     // @Group: FLOW
     // @Path: ../libraries/AP_OpticalFlow/AP_OpticalFlow.cpp
-    GOBJECT(optflow,   "FLOW", OpticalFlow),
+    GOBJECT(optflow,   "FLOW", AP_OpticalFlow),
 #endif
 
 #if PRECISION_LANDING == ENABLED
@@ -740,6 +716,12 @@ const AP_Param::Info Copter::var_info[] = {
     // @Group: OSD
     // @Path: ../libraries/AP_OSD/AP_OSD.cpp
     GOBJECT(osd, "OSD", AP_OSD),
+#endif
+
+#if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
+    // @Group: CC
+    // @Path: ../libraries/AC_CustomControl/AC_CustomControl.cpp
+    GOBJECT(custom_control, "CC", AC_CustomControl),
 #endif
 
     // @Group:
@@ -819,13 +801,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(proximity, "PRX", 8, ParametersG2, AP_Proximity),
 #endif
 
-    // @Param: ACRO_Y_EXPO
-    // @DisplayName: Acro Yaw Expo
-    // @Description: Acro yaw expo to allow faster rotation when stick at edges
-    // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
-    // @Range: -1.0 0.95
-    // @User: Advanced
-    AP_GROUPINFO("ACRO_Y_EXPO", 9, ParametersG2, acro_y_expo, ACRO_Y_EXPO_DEFAULT),
+    // ACRO_Y_EXPO (9) moved to Command Model Class
 
 #if MODE_ACRO_ENABLED == ENABLED
     // @Param: ACRO_THR_MID
@@ -915,7 +891,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("LAND_ALT_LOW", 25, ParametersG2, land_alt_low, 1000),
 
-#if !HAL_MINIMIZE_FEATURES && AP_OPTICALFLOW_ENABLED
+#if MODE_FLOWHOLD_ENABLED == ENABLED
     // @Group: FHLD
     // @Path: mode_flowhold.cpp
     AP_SUBGROUPPTR(mode_flowhold_ptr, "FHLD", 26, ParametersG2, ModeFlowHold),
@@ -1068,6 +1044,29 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_GROUPINFO("GUID_TIMEOUT", 46, ParametersG2, guided_timeout, 3.0),
 #endif
 
+    // ACRO_PR_RATE (47), ACRO_Y_RATE (48), PILOT_Y_RATE (49) and PILOT_Y_EXPO (50) moved to command model class
+
+    // @Param: SURFTRAK_MODE
+    // @DisplayName: Surface Tracking Mode
+    // @Description: set which surface to track in surface tracking
+    // @Values: 0:Do not track, 1:Ground, 2:Ceiling
+    // @User: Advanced
+    AP_GROUPINFO("SURFTRAK_MODE", 51, ParametersG2, surftrak_mode, (uint8_t)Copter::SurfaceTracking::Surface::GROUND),
+
+    // @Param: FS_DR_ENABLE
+    // @DisplayName: DeadReckon Failsafe Action
+    // @Description: Failsafe action taken immediately as deadreckoning starts. Deadreckoning starts when EKF loses position and velocity source and relies only on wind estimates
+    // @Values: 0:Disabled/NoAction,1:Land, 2:RTL, 3:SmartRTL or RTL, 4:SmartRTL or Land, 6:Auto DO_LAND_START or RTL
+    // @User: Standard
+    AP_GROUPINFO("FS_DR_ENABLE", 52, ParametersG2, failsafe_dr_enable, (uint8_t)Copter::FailsafeAction::RTL),
+
+    // @Param: FS_DR_TIMEOUT
+    // @DisplayName: DeadReckon Failsafe Timeout
+    // @Description: DeadReckoning is available for this many seconds after losing position and/or velocity source.  After this timeout elapses the EKF failsafe will trigger in modes requiring a position estimate
+    // @Range: 0 120
+    // @User: Standard
+    AP_GROUPINFO("FS_DR_TIMEOUT", 53, ParametersG2, failsafe_dr_timeout, 30),
+
 #if MODE_ACRO_ENABLED == ENABLED || MODE_SPORT_ENABLED == ENABLED
     // @Param: ACRO_RP_RATE
     // @DisplayName: Acro Roll and Pitch Rate
@@ -1075,7 +1074,23 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Units: deg/s
     // @Range: 1 1080
     // @User: Standard
-    AP_GROUPINFO("ACRO_RP_RATE", 47, ParametersG2, acro_rp_rate, ACRO_RP_RATE_DEFAULT),
+
+    // @Param: ACRO_RP_EXPO
+    // @DisplayName: Acro Roll/Pitch Expo
+    // @Description: Acro roll/pitch Expo to allow faster rotation when stick at edges
+    // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
+    // @Range: -0.5 0.95
+    // @User: Advanced
+
+    // @Param: ACRO_RP_RATE_TC
+    // @DisplayName: Acro roll/pitch rate control input time constant
+    // @Description: Acro roll and pitch rate control input time constant.  Low numbers lead to sharper response, higher numbers to softer response
+    // @Units: s
+    // @Range: 0 1
+    // @Increment: 0.01
+    // @Values: 0.5:Very Soft, 0.2:Soft, 0.15:Medium, 0.1:Crisp, 0.05:Very Crisp
+    // @User: Standard
+    AP_SUBGROUPINFO(command_model_acro_rp, "ACRO_RP_", 54, ParametersG2, AC_CommandModel),
 #endif
 
 #if MODE_ACRO_ENABLED == ENABLED || MODE_DRIFT_ENABLED == ENABLED
@@ -1085,7 +1100,23 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Units: deg/s
     // @Range: 1 360
     // @User: Standard
-    AP_GROUPINFO("ACRO_Y_RATE", 48, ParametersG2, acro_y_rate, ACRO_Y_RATE_DEFAULT),
+
+    // @Param: ACRO_Y_EXPO
+    // @DisplayName: Acro Yaw Expo
+    // @Description: Acro yaw expo to allow faster rotation when stick at edges
+    // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
+    // @Range: -1.0 0.95
+    // @User: Advanced
+
+    // @Param: ACRO_Y_RATE_TC
+    // @DisplayName: Acro yaw rate control input time constant
+    // @Description: Acro yaw rate control input time constant.  Low numbers lead to sharper response, higher numbers to softer response
+    // @Units: s
+    // @Range: 0 1
+    // @Increment: 0.01
+    // @Values: 0.5:Very Soft, 0.2:Soft, 0.15:Medium, 0.1:Crisp, 0.05:Very Crisp
+    // @User: Standard
+    AP_SUBGROUPINFO(command_model_acro_y, "ACRO_Y_", 55, ParametersG2, AC_CommandModel),
 #endif
 
     // @Param: PILOT_Y_RATE
@@ -1094,7 +1125,6 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Units: deg/s
     // @Range: 1 360
     // @User: Standard
-    AP_GROUPINFO("PILOT_Y_RATE", 49, ParametersG2, pilot_y_rate, PILOT_Y_RATE_DEFAULT),
 
     // @Param: PILOT_Y_EXPO
     // @DisplayName: Pilot controlled yaw expo
@@ -1102,14 +1132,27 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
     // @Range: -0.5 1.0
     // @User: Advanced
-    AP_GROUPINFO("PILOT_Y_EXPO", 50, ParametersG2, pilot_y_expo, PILOT_Y_EXPO_DEFAULT),
 
-    // @Param: SURFTRAK_MODE
-    // @DisplayName: Surface Tracking Mode
-    // @Description: set which surface to track in surface tracking
-    // @Values: 0:Do not track, 1:Ground, 2:Ceiling
-    // @User: Advanced
-    AP_GROUPINFO("SURFTRAK_MODE", 51, ParametersG2, surftrak_mode, (uint8_t)Copter::SurfaceTracking::Surface::GROUND),
+    // @Param: PILOT_Y_RATE_TC
+    // @DisplayName: Pilot yaw rate control input time constant
+    // @Description: Pilot yaw rate control input time constant.  Low numbers lead to sharper response, higher numbers to softer response
+    // @Units: s
+    // @Range: 0 1
+    // @Increment: 0.01
+    // @Values: 0.5:Very Soft, 0.2:Soft, 0.15:Medium, 0.1:Crisp, 0.05:Very Crisp
+    // @User: Standard
+    AP_SUBGROUPINFO(command_model_pilot, "PILOT_Y_", 56, ParametersG2, AC_CommandModel),
+
+    // @Param: TKOFF_SLEW_TIME
+    // @DisplayName: Slew time of throttle during take-off
+    // @Description: Time to slew the throttle from minimum to maximum while checking for a succsessful takeoff.
+    // @Units: s
+    // @Range: 0.25 5.0
+    // @User: Standard
+    AP_GROUPINFO("TKOFF_SLEW_TIME", 57, ParametersG2, takeoff_throttle_slew_time, 2.0),
+
+    // ID 62 is reserved for the SHOW_... parameters from the Skybrush fork at
+    // https://github.com/skybrush-io/ardupilot
 
     AP_GROUPEND
 };
@@ -1120,7 +1163,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 ParametersG2::ParametersG2(void)
     : temp_calibration() // this doesn't actually need constructing, but removing it here is problematic syntax-wise
 #if BEACON_ENABLED == ENABLED
-    , beacon(copter.serial_manager)
+    , beacon()
 #endif
 #if HAL_PROXIMITY_ENABLED
     , proximity()
@@ -1131,7 +1174,7 @@ ParametersG2::ParametersG2(void)
 #if MODE_SMARTRTL_ENABLED == ENABLED
     ,smart_rtl()
 #endif
-#if !HAL_MINIMIZE_FEATURES && AP_OPTICALFLOW_ENABLED
+#if MODE_FLOWHOLD_ENABLED == ENABLED
     ,mode_flowhold_ptr(&copter.mode_flowhold)
 #endif
 #if MODE_FOLLOW_ENABLED == ENABLED
@@ -1155,6 +1198,16 @@ ParametersG2::ParametersG2(void)
 #if MODE_ZIGZAG_ENABLED == ENABLED
     ,mode_zigzag_ptr(&copter.mode_zigzag)
 #endif
+
+#if MODE_ACRO_ENABLED == ENABLED || MODE_SPORT_ENABLED == ENABLED
+    ,command_model_acro_rp(ACRO_RP_RATE_DEFAULT, ACRO_RP_EXPO_DEFAULT, 0.0f)
+#endif
+
+#if MODE_ACRO_ENABLED == ENABLED || MODE_DRIFT_ENABLED == ENABLED
+    ,command_model_acro_y(ACRO_Y_RATE_DEFAULT, ACRO_Y_EXPO_DEFAULT, 0.0f)
+#endif
+
+    ,command_model_pilot(PILOT_Y_RATE_DEFAULT, PILOT_Y_EXPO_DEFAULT, 0.0f)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }
@@ -1221,6 +1274,7 @@ void Copter::load_parameters(void)
         g.format_version.set_and_save(Parameters::k_format_version);
         DEV_PRINTF("done.\n");
     }
+    g.format_version.set_default(Parameters::k_format_version);
 
     uint32_t before = micros();
     // Load all auto-loaded EEPROM variables
@@ -1240,6 +1294,11 @@ void Copter::load_parameters(void)
 #if MODE_RTL_ENABLED == ENABLED
     // PARAMETER_CONVERSION - Added: Sep-2021
     g.rtl_altitude.convert_parameter_width(AP_PARAM_INT16);
+#endif
+
+    // PARAMETER_CONVERSION - Added: Mar-2022
+#if AP_FENCE_ENABLED
+    AP_Param::convert_class(g.k_param_fence_old, &fence, fence.var_info, 0, 0, true);
 #endif
 
     hal.console->printf("load_all took %uus\n", (unsigned)(micros() - before));
@@ -1451,9 +1510,49 @@ void Copter::convert_pid_parameters(void)
         AP_Param::convert_old_parameter(&info, 45.0);
     }
 
+    // convert rate and expo command model parameters for Copter-4.3
+    // PARAMETER_CONVERSION - Added: June-2022
+    const AP_Param::ConversionInfo cmd_mdl_conversion_info[] = {
+        { Parameters::k_param_g2, 47, AP_PARAM_FLOAT, "ACRO_RP_RATE" },
+        { Parameters::k_param_acro_rp_expo,  0, AP_PARAM_FLOAT, "ACRO_RP_EXPO" },
+        { Parameters::k_param_g2,  48, AP_PARAM_FLOAT, "ACRO_Y_RATE" },
+        { Parameters::k_param_g2,  9, AP_PARAM_FLOAT, "ACRO_Y_EXPO" },
+        { Parameters::k_param_g2,  49, AP_PARAM_FLOAT, "PILOT_Y_RATE" },
+        { Parameters::k_param_g2,  50, AP_PARAM_FLOAT, "PILOT_Y_EXPO" },
+    };
+    for (const auto &info : cmd_mdl_conversion_info) {
+        AP_Param::convert_old_parameter(&info, 1.0);
+    }
+
     // make any SRV_Channel upgrades needed
     SRV_Channels::upgrade_parameters();
 }
+
+#if HAL_PROXIMITY_ENABLED
+void Copter::convert_prx_parameters()
+{
+    // convert PRX to PRX1_ parameters for Copter-4.3
+    // PARAMETER_CONVERSION - Added: Aug-2022
+    const AP_Param::ConversionInfo prx_conversion_info[] = {
+        { Parameters::k_param_g2, 72, AP_PARAM_INT8, "PRX1_TYPE" },
+        { Parameters::k_param_g2, 136, AP_PARAM_INT8, "PRX1_ORIENT" },
+        { Parameters::k_param_g2, 200, AP_PARAM_INT16, "PRX1_YAW_CORR" },
+        { Parameters::k_param_g2, 264, AP_PARAM_INT16, "PRX1_IGN_ANG1" },
+        { Parameters::k_param_g2, 328, AP_PARAM_INT8, "PRX1_IGN_WID1" },
+        { Parameters::k_param_g2, 392, AP_PARAM_INT16, "PRX1_IGN_ANG2" },
+        { Parameters::k_param_g2, 456, AP_PARAM_INT8, "PRX1_IGN_WID2" },
+        { Parameters::k_param_g2, 520, AP_PARAM_INT16, "PRX1_IGN_ANG3" },
+        { Parameters::k_param_g2, 584, AP_PARAM_INT8, "PRX1_IGN_WID3" },
+        { Parameters::k_param_g2, 648, AP_PARAM_INT16, "PRX1_IGN_ANG4" },
+        { Parameters::k_param_g2, 712, AP_PARAM_INT8, "PRX1_IGN_WID4" },
+        { Parameters::k_param_g2, 1224, AP_PARAM_FLOAT, "PRX1_MIN" },
+        { Parameters::k_param_g2, 1288, AP_PARAM_FLOAT, "PRX1_MAX" },
+    };
+    for (const auto &info : prx_conversion_info) {
+        AP_Param::convert_old_parameter(&info, 1.0);
+    }
+}
+#endif
 
 #if LANDING_GEAR_ENABLED == ENABLED
 /*
@@ -1493,10 +1592,10 @@ void Copter::convert_lgr_parameters(void)
         // this shouldn't happen
         return;
     }
-    if (servo_min->configured_in_storage() ||
-        servo_max->configured_in_storage() ||
-        servo_trim->configured_in_storage() ||
-        servo_reversed->configured_in_storage()) {
+    if (servo_min->configured() ||
+        servo_max->configured() ||
+        servo_trim->configured() ||
+        servo_reversed->configured()) {
         // has been previously saved, don't upgrade
         return;
     }
@@ -1587,7 +1686,7 @@ void Copter::convert_tradheli_parameters(void) const
                 // make sure the pointer is valid
                 if (ap2 != nullptr) {
                     // see if we can load it from EEPROM
-                    if (!ap2->configured_in_storage()) {
+                    if (!ap2->configured()) {
                         // the new parameter is not in storage so set generic swash
                         AP_Param::set_and_save_by_name("H_SW_TYPE", SwashPlateType::SWASHPLATE_TYPE_H3);            
                     }
@@ -1645,7 +1744,7 @@ void Copter::convert_tradheli_parameters(void) const
             // make sure the pointer is valid
             if (ap2 != nullptr) {
                 // see if we can load it from EEPROM
-                if (!ap2->configured_in_storage()) {
+                if (!ap2->configured()) {
                     // the new parameter is not in storage so set generic swash
                     AP_Param::set_and_save_by_name("H_SW_TYPE", SwashPlateType::SWASHPLATE_TYPE_H3);            
                 }
@@ -1662,7 +1761,7 @@ void Copter::convert_tradheli_parameters(void) const
             // make sure the pointer is valid
             if (ap2 != nullptr) {
                 // see if we can load it from EEPROM
-                if (!ap2->configured_in_storage()) {
+                if (!ap2->configured()) {
                     // the new parameter is not in storage so set generic swash
                     AP_Param::set_and_save_by_name("H_SW2_TYPE", SwashPlateType::SWASHPLATE_TYPE_H3);            
                 }
@@ -1735,7 +1834,7 @@ void Copter::convert_fs_options_params(void) const
     enum ap_var_type ptype;
     AP_Int32 *fs_opt = (AP_Int32 *)AP_Param::find("FS_OPTIONS", &ptype);
 
-    if (fs_opt == nullptr || fs_opt->configured_in_storage() || ptype != AP_PARAM_INT32) {
+    if (fs_opt == nullptr || fs_opt->configured() || ptype != AP_PARAM_INT32) {
         return;
     }
 

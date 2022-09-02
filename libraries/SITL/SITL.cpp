@@ -171,12 +171,16 @@ const AP_Param::GroupInfo SIM::var_info2[] = {
 
     AP_GROUPINFO("SAFETY_STATE",    59, SIM,  _safety_switch_state, 0),
 
+    // motor harmonics
+    AP_GROUPINFO("VIB_MOT_HMNC", 60, SIM,  vibe_motor_harmonics, 1),
+
     // max motor vibration frequency
     AP_GROUPINFO("VIB_MOT_MAX", 61, SIM,  vibe_motor, 0.0f),
     // minimum throttle for simulated ins noise
     AP_GROUPINFO("INS_THR_MIN", 62, SIM,  ins_noise_throttle_min, 0.1f),
     // amplitude scaling of motor noise relative to gyro/accel noise
     AP_GROUPINFO("VIB_MOT_MULT", 63, SIM,  vibe_motor_scale, 1.0f),
+
 
     AP_GROUPEND
 
@@ -497,6 +501,11 @@ const AP_Param::GroupInfo SIM::var_ins[] = {
     // @DisplayName: JSON master instance
     // @Description: the instance number to  take servos from
     AP_GROUPINFO("JSON_MASTER",     27, SIM, ride_along_master, 0),
+
+    // @Param: OH_MASK
+    // @DisplayName: SIM-on_hardware Output Enable Mask
+    // @Description: channels which are passed through to actual hardware when running on actual hardware
+    AP_GROUPINFO("OH_MASK",     28, SIM, on_hardware_output_enable_mask, 0),
 
     // the IMUT parameters must be last due to the enable parameters
 #if HAL_INS_TEMPERATURE_CAL_ENABLE

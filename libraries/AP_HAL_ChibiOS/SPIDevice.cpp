@@ -126,6 +126,7 @@ SPIDevice::SPIDevice(SPIBus &_bus, SPIDesc &_device_desc)
              device_desc.name,
              (unsigned)bus.bus, (unsigned)device_desc.device);
     AP_HAL::SPIDevice::setup_bankselect_callback(device_desc.bank_select_cb);
+    AP_HAL::SPIDevice::set_register_rw_callback(device_desc.register_rw_cb);
     //printf("SPI device %s on %u:%u at speed %u mode %u\n",
     //       device_desc.name,
     //       (unsigned)bus.bus, (unsigned)device_desc.device,
@@ -441,6 +442,24 @@ SPIDeviceManager::get_device(const char *name)
     return AP_HAL::OwnPtr<AP_HAL::SPIDevice>(new SPIDevice(*busp, desc));
 }
 
+void SPIDeviceManager::set_register_rw_callback(const char* name, AP_HAL::Device::RegisterRWCb cb)
+{
+    /* Find the bus description in the table */
+    uint8_t i;
+    for (i = 0; i<ARRAY_SIZE(device_table); i++) {
+        if (strcmp(device_table[i].name, name) == 0) {
+            break;
+        }
+    }
+    if (i == ARRAY_SIZE(device_table)) {
+        return;
+    }
+
+    device_table[i].register_rw_cb = cb;
+
+}
+
+
 #ifdef HAL_SPI_CHECK_CLOCK_FREQ
 
 /*
@@ -481,7 +500,7 @@ void SPIDevice::test_clock_freq(void)
         uint32_t t0 = AP_HAL::micros();
         spiStartExchange(spi_devices[i].driver, len, buf1, buf2);
         chSysLock();
-        msg_t msg = osalThreadSuspendTimeoutS(&spi_devices[i].driver->thread, TIME_MS2I(100));
+        msg_t msg = osalThreadSuspendTimeoutS(&spi_devices[i].driver->thread, chTimeMS2I(100));
         chSysUnlock();
         if (msg == MSG_TIMEOUT) {
             spiAbort(spi_devices[i].driver);

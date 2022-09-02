@@ -17,6 +17,11 @@ are:
 
 this must be set to 1 to enable the script
 
+## QUIK_RC_FUNC
+
+The RCz_OPTIONS scripting function binding to be used for this script.
+Default RCz_OPTIONS binding is 300 (scripting1).
+
 ## QUIK_AXES
 
 This is the set of axes that the tune will run on. The default is 7,
@@ -86,6 +91,14 @@ changed at all when P is changed.
 This enables automatic setting of the PID filters based on the
 INS_GYRO_FILTER value. Set to zero to disable this feature.
 
+## QUIK_AUTO_SAVE
+
+This enables automatic saving of the tune if this number of seconds
+pass after the end of the tune without reverting the tune. Setting
+this to a non-zero value allows you to use quicktune with a 2-position
+switch, with the switch settings as low and mid positions. A zero
+value disables auto-save and you need to have a 3 position switch.
+
 # Operation
 
 First you should setup harmonic notch filtering using the guide in the
@@ -98,16 +111,20 @@ controllers microSD card, then set SCR_ENABLE to 1. Reboot, and
 refresh parameters. Then set QUIK_ENABLE to 1.
 
 You will then need to setup a 3 position switch on an available RC
-input channel for controlling the tune. If for example channel 6 is
-available with a 3 position switch then you should set RC6_OPTION=300
-to association the tuning control with that switch.
+input channel for controlling the tune (or 2 position if you set
+QUIK_AUTO_SAVE). If for example channel 6 is available with a 3
+position switch then you should set RC6_OPTION=300 (scripting1) to associate the
+tuning control with that switch.
+
+If needed, the QUIK_RC_FUNC option can be used to associate the tuning switch
+with a different scripting binding such as RCz_OPTION = 302 (scripting3).
 
 You should then takeoff and put the vehicle into QLOITER mode (for
 quadplanes) or LOITER mode (for multicopters) and have it in a steady
 hover in low wind.
 
-Then move the control switch you setup with option 300 to the middle
-position. This will start the tuning process. You will see text
+Then move the control switch you setup with option 300 (or via QUIK_RC_FUNC)
+to the middle position. This will start the tuning process. You will see text
 messages on the ground station showing the progress of the tune. As
 the aircraft reaches the oscillation limit of each parameter it will
 start a small oscillation, then it will reduce that gain by the
@@ -130,12 +147,11 @@ The script will also adjust filter settings using the following rules:
  - if no SMAX is set for a rate controller than the SMAX will be set to 50Hz
 
 Once the tuning is finished you will see a "Tuning: done" message. You
-can save the tune by moving the switch to the high position. You
-should do this to save before you land and disarm.
+can save the tune by moving the switch to the high position (Tune Save). You
+should do this to save before you land and disarm. If you save before the tune is completed the tune will pause, and any parameters completed will be saved and the current value of the one being actively tuned will remain active. You can resume tuning by returning the switch again to the middle position, or if moved to the low position, the parameter currently being tuned will be reverted but any previously saved parameters will remain.
 
-If you move the switch to the low position at any time in the tune
-then all parameters will be reverted to their original
-values. Parameters will also be reverted if you disarm.
+If you move the switch to the low position at any time in the tune before using the Tune Save switch position, then all parameters will be reverted to their original
+values. Parameters will also be reverted if you disarm before saving.
 
 If the pilot gives roll, pitch or yaw input while tuning then the tune
 is paused until 4 seconds after the pilot input stops.

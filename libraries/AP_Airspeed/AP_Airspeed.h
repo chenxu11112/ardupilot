@@ -3,7 +3,6 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_HAL/AP_HAL_Boards.h>
 #include <AP_Param/AP_Param.h>
-#include <GCS_MAVLink/GCS_MAVLink.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_MSP/msp.h>
 
@@ -156,6 +155,7 @@ public:
         TYPE_NMEA_WATER=13,
         TYPE_MSP=14,
         TYPE_I2C_ASP5033=15,
+        TYPE_SITL=100,
     };
 
     // get current primary sensor

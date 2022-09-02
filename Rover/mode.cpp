@@ -1,4 +1,3 @@
-#include "mode.h"
 #include "Rover.h"
 
 Mode::Mode() :
@@ -471,7 +470,7 @@ void Mode::calc_steering_from_turn_rate(float turn_rate)
                                                                       g2.motors.limit.steer_left,
                                                                       g2.motors.limit.steer_right,
                                                                       rover.G_Dt);
-    g2.motors.set_steering(steering_out * 4500.0f);
+    set_steering(steering_out * 4500.0f);
 }
 
 /*
