@@ -6,6 +6,10 @@
 #define AP_SERIALMANAGER_CLAW_BUFSIZE_RX 64
 #define AP_SERIALMANAGER_CLAW_BUFSIZE_TX 64
 
+#define CLAW_CLOSE 0xAE
+#define CLAW_OPEN 0xBE
+#define CLAW_STOP 0xCE
+
 extern const AP_HAL::HAL &hal;
 
 // constructor
@@ -33,13 +37,17 @@ void AP_Claw::update()
 
     uint16_t chan_value = hal.rcin->read(CH_7);
 
-    if (chan_value > 1700)
+    if (chan_value < 2050 && chan_value > 1800)
     {
-        send_switch(1);
+        send_switch(CLAW_CLOSE);
     }
-    else
+    else if (chan_value > 1400 && chan_value<1600)
     {
-        send_switch(0);
+        send_switch(CLAW_STOP);
+    }
+    else if (chan_value > 990 && chan_value<1100)
+    {
+        send_switch(CLAW_OPEN);
     }
 }
 

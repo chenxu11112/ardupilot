@@ -17,7 +17,7 @@ void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
     uint16_t value = hal.rcin->read(CH_6);
-    if (value == 1500)
+    if (value < 1600 && value >1400)
     {
         if (aim_pitch_deg < 70.0f)
         {
@@ -39,7 +39,7 @@ void Copter::userhook_FastLoop()
             delta_pitch_deg_s = 0.0f;
         }
     }
-    else if (value == 2000)
+    else if (value < 2050 && value >1850)
     {
         if (aim_pitch_deg > 20.0f)
         {

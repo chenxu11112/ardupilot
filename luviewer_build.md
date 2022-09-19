@@ -1,4 +1,6 @@
 
+./waf configure --board=TSDH743-FCU
+
 ./waf --targets bin/arducopter --upload
 
 cd ardupilot/ArduCopter

@@ -57,6 +57,11 @@ void AP_MotorsMatrix_with_Tilt::init(motor_frame_class frame_class, motor_frame_
     // throttle defaults to motor output 4
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_motor8, CH_8);
 
+    SRV_Channels::set_output_min_max(SRV_Channel::k_motor5, 600, 2400);
+    SRV_Channels::set_output_min_max(SRV_Channel::k_motor6, 600, 2400);
+    SRV_Channels::set_output_min_max(SRV_Channel::k_motor7, 600, 2400);
+    SRV_Channels::set_output_min_max(SRV_Channel::k_motor8, 600, 2400);
+
     _mav_type = MAV_TYPE_OCTOROTOR;
 
     // record successful initialisation if what we setup was the desired frame_class
@@ -97,10 +102,10 @@ void AP_MotorsMatrix_with_Tilt::output_to_motors()
         _actuator[2] = 0.0f;
         _actuator[3] = 0.0f;
 
-        _actuator[4] = 0.5f;
-        _actuator[5] = 0.5f;
-        _actuator[6] = 0.5f;
-        _actuator[7] = 0.5f;
+        _tilt[0] = 0.0f;
+        _tilt[1] = 0.0f;
+        _tilt[2] = 0.0f;
+        _tilt[3] = 0.0f;
 
         _external_min_throttle = 0.0;
         break;
@@ -109,6 +114,12 @@ void AP_MotorsMatrix_with_Tilt::output_to_motors()
         set_actuator_with_slew(_actuator[1], actuator_spin_up_to_ground_idle());
         set_actuator_with_slew(_actuator[2], actuator_spin_up_to_ground_idle());
         set_actuator_with_slew(_actuator[3], actuator_spin_up_to_ground_idle());
+
+        _tilt[0] = 0.0f;
+        _tilt[1] = 0.0f;
+        _tilt[2] = 0.0f;
+        _tilt[3] = 0.0f;
+
         _external_min_throttle = 0.0;
         break;
     case SpoolState::SPOOLING_UP:
@@ -258,14 +269,17 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
     Vector3f force_nav{forward_thrust, 0, -throttle_thrust};
     Vector3f force_body = quat * force_nav;
 
-    _virutal_thrust[0] = mx * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) - fz * (cosrad + armz * sinrad * sqrt2) - fx * (sinrad - armz * cosrad * sqrt2) + mz * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) + my * sqrt2;
-    _virutal_thrust[1] = mx * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) - cosrad * fx - mz * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) + fz * sinrad;
-    _virutal_thrust[2] = mx * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) - fz * (cosrad - armz * sinrad * sqrt2) - fx * (sinrad + armz * cosrad * sqrt2) + mz * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) - my * sqrt2;
-    _virutal_thrust[3] = cosrad * fx - mx * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) + mz * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) - fz * sinrad;
-    _virutal_thrust[4] = my * sqrt2 - fz * (cosrad + armz * sinrad * sqrt2) - mx * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) - mz * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) - fx * (sinrad - armz * cosrad * sqrt2);
-    _virutal_thrust[5] = cosrad * fx + mx * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) - mz * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) - fz * sinrad;
-    _virutal_thrust[6] = -fx * (sinrad + armz * cosrad * sqrt2) - fz * (cosrad - armz * sinrad * sqrt2) - mx * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) - mz * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) - my * sqrt2;
-    _virutal_thrust[7] = mz * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) - mx * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) - cosrad * fx + fz * sinrad;
+    float mx_factor = 0.5f;
+    float mz_factor = 0.5f;
+
+    _virutal_thrust[0] = mx_factor * mx * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) - fz * (cosrad + armz * sinrad * sqrt2) - fx * (sinrad - armz * cosrad * sqrt2) + mz * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) + my * sqrt2;
+    _virutal_thrust[1] = mx_factor * mx * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) - cosrad * fx - mz * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) * mz_factor + fz * sinrad;
+    _virutal_thrust[2] = mx_factor * mx * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) - fz * (cosrad - armz * sinrad * sqrt2) - fx * (sinrad + armz * cosrad * sqrt2) + mz * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) - my * sqrt2;
+    _virutal_thrust[3] = cosrad * fx - mx_factor * mx * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) + mz * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) * mz_factor - fz * sinrad;
+    _virutal_thrust[4] = my * sqrt2 - fz * (cosrad + armz * sinrad * sqrt2) - mx_factor * mx * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) - mz * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) - fx * (sinrad - armz * cosrad * sqrt2);
+    _virutal_thrust[5] = cosrad * fx + mx_factor * mx * ((4 * cosrad) / 9 + (sinrad * sqrt2) / 9) - mz * ((4 * sinrad) / 9 - (cosrad * sqrt2) / 9) * mz_factor - fz * sinrad;
+    _virutal_thrust[6] = -fx * (sinrad + armz * cosrad * sqrt2) - fz * (cosrad - armz * sinrad * sqrt2) - mx_factor * mx * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) - mz * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) - my * sqrt2;
+    _virutal_thrust[7] = mz * ((4 * sinrad) / 9 + (cosrad * sqrt2) / 9) * mz_factor - mx_factor * mx * ((4 * cosrad) / 9 - (sinrad * sqrt2) / 9) - cosrad * fx + fz * sinrad;
 
     for (i = 0; i < 4; i++)
     {
@@ -274,12 +288,16 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
         {
             if (i == 0 || i == 3)
             {
-                _tilt[i] = (degrees(atan2f(_virutal_thrust[2 * i + 1], _virutal_thrust[2 * i]))) / 360.0f;
+                _tilt[i] = (degrees(atan2f(_virutal_thrust[2 * i + 1], _virutal_thrust[2 * i]))) / 180.0f;
             }
             else if (i == 1 || i == 2)
             {
-                _tilt[i] = (degrees(atan2f(_virutal_thrust[2 * i + 1], _virutal_thrust[2 * i]))) / 360.0f;
+                _tilt[i] = (degrees(atan2f(_virutal_thrust[2 * i + 1], _virutal_thrust[2 * i]))) / 180.0f;
             }
+        }
+        else
+        {
+            _tilt[i] = 0.0f;
         }
     }
 
@@ -352,19 +370,19 @@ void AP_MotorsMatrix_with_Tilt::_output_test_seq(uint8_t motor_seq, int16_t pwm)
         break;
     case 5:
         // right throttle
-        SRV_Channels::set_output_pwm(SRV_Channel::k_motor5, pwm);
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor5, 500 + (pwm - 1000) * 2);
         break;
     case 6:
         // right tilt servo
-        SRV_Channels::set_output_pwm(SRV_Channel::k_motor6, pwm);
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor6, 500 + (pwm - 1000) * 2);
         break;
     case 7:
         // left throttle
-        SRV_Channels::set_output_pwm(SRV_Channel::k_motor7, pwm);
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor7, 500 + (pwm - 1000) * 2);
         break;
     case 8:
         // left tilt servo
-        SRV_Channels::set_output_pwm(SRV_Channel::k_motor8, pwm);
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor8, 500 + (pwm - 1000) * 2);
         break;
     default:
         // do nothing
