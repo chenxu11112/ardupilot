@@ -670,6 +670,9 @@ public:
 
     // ramp time of throttle during take-off
     AP_Float takeoff_throttle_slew_time;
+#if HAL_WITH_ESC_TELEM && FRAME_CONFIG != HELI_FRAME
+    AP_Int16 takeoff_rpm_min;
+#endif
 };
 
 extern const AP_Param::Info        var_info[];

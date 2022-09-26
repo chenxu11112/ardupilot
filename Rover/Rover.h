@@ -90,6 +90,9 @@ public:
     friend class ModeSmartRTL;
     friend class ModeFollow;
     friend class ModeSimple;
+#if MODE_DOCK_ENABLED == ENABLED
+    friend class ModeDock;
+#endif
 
     friend class RC_Channel_Rover;
     friend class RC_Channels_Rover;
@@ -126,8 +129,10 @@ private:
     AP_Int8 *modes;
     const uint8_t num_modes = 6;
 
+#if AP_RPM_ENABLED
     // AP_RPM Module
     AP_RPM rpm_sensor;
+#endif
 
     // Arming/Disarming management class
     AP_Arming_Rover arming;
@@ -153,7 +158,7 @@ private:
     struct Location current_loc;
 
     // Camera
-#if CAMERA == ENABLED
+#if AP_CAMERA_ENABLED
     AP_Camera camera{MASK_LOG_CAMERA};
 #endif
 
@@ -230,6 +235,9 @@ private:
     ModeSmartRTL mode_smartrtl;
     ModeFollow mode_follow;
     ModeSimple mode_simple;
+#if MODE_DOCK_ENABLED == ENABLED
+    ModeDock mode_dock;
+#endif
 
     // cruise throttle and speed learning
     typedef struct {

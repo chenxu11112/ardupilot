@@ -55,10 +55,16 @@ class ExtractFeatures(object):
 
             ('AP_RANGEFINDER_ENABLED', 'RangeFinder::RangeFinder',),
             ('AP_RANGEFINDER_{type}_ENABLED', r'AP_RangeFinder_(?P<type>.*)::update\b',),
+            ('AP_RANGEFINDER_{type}_ENABLED', r'AP_RangeFinder_(?P<type>.*)::get_reading\b',),
+            ('AP_RANGEFINDER_{type}_ENABLED', r'AP_RangeFinder_(?P<type>.*)::model_dist_max_cm\b',),
+            ('AP_RANGEFINDER_LIGHTWARE_SERIAL_ENABLED', r'AP_RangeFinder_LightWareSerial::get_reading\b',),
+            ('AP_RANGEFINDER_LWI2C_ENABLED', r'AP_RangeFinder_LightWareI2C::update\b',),
+            ('AP_RANGEFINDER_MAXBOTIX_SERIAL_ENABLED', r'AP_RangeFinder_MaxsonarSerialLV::get_reading\b',),
+            ('AP_RANGEFINDER_TRI2C_ENABLED', r'AP_RangeFinder_TeraRangerI2C::update\b',),
 
             ('AP_GPS_{type}_ENABLED', r'AP_GPS_(?P<type>.*)::read\b',),
 
-            ('AP_OPTICALFLOW_ENABLED', 'OpticalFlow::OpticalFlow',),
+            ('AP_OPTICALFLOW_ENABLED', 'AP_OpticalFlow::AP_OpticalFlow',),
             ('AP_OPTICALFLOW_{type}_ENABLED', r'AP_OpticalFlow_(?P<type>.*)::update\b',),
 
             ('AP_BARO_{type}_ENABLED', r'AP_Baro_(?P<type>.*)::update\b',),
@@ -85,7 +91,8 @@ class ExtractFeatures(object):
             ('AP_LTM_TELEM_ENABLED', 'AP_LTM_Telem::init',),
             ('HAL_HIGH_LATENCY2_ENABLED', 'GCS_MAVLINK::handle_control_high_latency',),
 
-            ('MODE_{type}_ENABLED', r'Mode(?P<type>.*)::init',),
+            ('MODE_{type}_ENABLED', r'Mode(?P<type>.+)::init',),
+            ('MODE_GUIDED_NOGPS_ENABLED', r'ModeGuidedNoGPS::init',),
 
             ('HAL_RUNCAM_ENABLED', 'AP_RunCam::AP_RunCam',),
 
@@ -121,7 +128,7 @@ class ExtractFeatures(object):
             ('AP_ROBOTISSERVO_ENABLED', r'AP_RobotisServo::init\b',),
             ('AP_FETTEC_ONEWIRE_ENABLED', r'AP_FETtecOneWire::init\b',),
 
-            ('RPM_ENABLED', 'AP_RPM::AP_RPM',),
+            ('AP_RPM_ENABLED', 'AP_RPM::AP_RPM',),
 
             ('GPS_MOVING_BASELINE', r'AP_GPS_Backend::calculate_moving_base_yaw\b',),
 
@@ -130,6 +137,8 @@ class ExtractFeatures(object):
             ('HAL_NMEA_OUTPUT_ENABLED', r'AP_NMEA_Output::update\b',),
             ('HAL_BARO_WIND_COMP_ENABLED', r'AP_Baro::wind_pressure_correction\b',),
 
+            ('HAL_PICCOLO_CAN_ENABLE', r'AP_PiccoloCAN::update',),
+            ('EK3_FEATURE_EXTERNAL_NAV', r'NavEKF3::writeExtNavVelData'),
         ]
 
     def progress(self, string):
@@ -227,12 +236,16 @@ class ExtractFeatures(object):
 
         return ret
 
-    def run(self):
+    def create_string(self):
+
+        ret = ""
 
         build_options_defines = set([x.define for x in build_options.BUILD_OPTIONS])
 
-        symbols = self.extract_symbols_from_elf(filename)
+        symbols = self.extract_symbols_from_elf(self.filename)
 
+        remaining_build_options_defines = build_options_defines
+        compiled_in_feature_defines = []
         for (feature_define, symbol) in self.features:
             some_dict = symbols.dict_for_symbol(symbol)
             # look for symbols without arguments
@@ -252,7 +265,18 @@ class ExtractFeatures(object):
                 some_define = feature_define.format(**d)
                 if some_define not in build_options_defines:
                     continue
-                print(some_define)
+                compiled_in_feature_defines.append(some_define)
+                remaining_build_options_defines.discard(some_define)
+
+        for compiled_in_feature_define in sorted(compiled_in_feature_defines):
+            ret += compiled_in_feature_define + "\n"
+        for remaining in sorted(remaining_build_options_defines):
+            ret += "!" + remaining + "\n"
+
+        return ret
+
+    def run(self):
+        print(self.create_string())
 
 
 if __name__ == '__main__':

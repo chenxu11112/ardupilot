@@ -124,7 +124,7 @@ public:
         MISSION_RESET =       24, // Reset auto mission to start from first command
         ATTCON_FEEDFWD =      25, // enable/disable the roll and pitch rate feed forward
         ATTCON_ACCEL_LIM =    26, // enable/disable the roll, pitch and yaw accel limiting
-        RETRACT_MOUNT =       27, // Retract Mount
+        RETRACT_MOUNT1 =      27, // Retract Mount1
         RELAY =               28, // Relay pin on/off (only supports first relay)
         LANDING_GEAR =        29, // Landing gear controller
         LOST_VEHICLE_SOUND =  30, // Play lost vehicle sound
@@ -241,6 +241,12 @@ public:
         FWD_THR =            209, // VTOL manual forward throttle
         AIRBRAKE =           210, // manual airbrake control
         WALKING_HEIGHT =     211, // walking robot height input
+        MOUNT1_ROLL =        212, // mount1 roll input
+        MOUNT1_PITCH =       213, // mount1 pitch input
+        MOUNT1_YAW =         214, // mount1 yaw input
+        MOUNT2_ROLL =        215, // mount2 roll input
+        MOUNT2_PITCH =       216, // mount3 pitch input
+        MOUNT2_YAW =         217, // mount4 yaw input
 
         // inputs 248-249 are reserved for the Skybrush fork at
         // https://github.com/skybrush-io/ardupilot

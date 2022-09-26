@@ -494,6 +494,7 @@ unsigned int parse_access_flags(struct type * type) {
         }
       }
     } else {
+      error(ERROR_UNKNOWN_KEYWORD, "Unknown access provided: %s", state.token);
       break;
     }
     next_token();
@@ -608,6 +609,19 @@ int parse_type(struct type *type, const uint32_t restrictions, enum range_check_
     sanatize_name(&(type->data.ud.sanatized_name), type->data.ud.name);
   }
 
+  // only allow no range check on float, int32 and uint32
+  if (type->flags & TYPE_FLAGS_NO_RANGE_CHECK) {
+    switch (type->type) {
+      case TYPE_FLOAT:
+      case TYPE_INT32_T:
+      case TYPE_UINT32_T:
+        break;
+      default:
+        error(ERROR_USERDATA, "%s types cannot skip range check", data_type);
+        break;
+    }
+  }
+
   // sanity check that only supported types are nullable
   if (type->flags & (TYPE_FLAGS_NULLABLE | TYPE_FLAGS_REFERNCE)) {
     // a switch is a very verbose way to do this, but forces users to consider new types added
@@ -717,11 +731,11 @@ void handle_userdata_field(struct userdata *data) {
   char *attribute = strchr(token, '\'');
   if (attribute != NULL) {
     if (strcmp(attribute, keyword_attr_array) != 0) {
-      error(ERROR_USERDATA, "Unknown feild attribute %s for userdata %s feild %s", attribute, data->name, field_name);
+      error(ERROR_USERDATA, "Unknown field attribute %s for userdata %s field %s", attribute, data->name, field_name);
     }
     char * token = next_token();
     string_copy(&(field->array_len), token);
-    trace(TRACE_USERDATA, "userdata %s feild %s array length %s", data->name, field->name, field->array_len);
+    trace(TRACE_USERDATA, "userdata %s field %s array length %s", data->name, field->name, field->array_len);
   }
 
   parse_type(&(field->type), TYPE_RESTRICTION_NOT_NULLABLE, RANGE_CHECK_NONE);
@@ -1111,8 +1125,11 @@ void handle_ap_object(void) {
       }
       string_copy(&(node->dependency), depends);
 
+  } else if (strcmp(type, keyword_manual) == 0) {
+    handle_manual(node, ALIAS_TYPE_MANUAL);
+
   } else {
-    error(ERROR_SINGLETON, "AP_Objects only support renames, methods or semaphore keyowrds (got %s)", type);
+    error(ERROR_SINGLETON, "AP_Objects only support renames, methods, semaphore or manual keywords (got %s)", type);
   }
 
   // check that we didn't just add 2 singleton flags
@@ -2499,7 +2516,7 @@ void emit_docs(struct userdata *node, int is_userdata, int emit_creation) {
       struct userdata_field *field = node->fields;
       while(field) {
           if (field->array_len == NULL) {
-            // single value feild
+            // single value field
             if (field->access_flags & ACCESS_FLAG_READ) {
               fprintf(docs, "-- get field\n");
               emit_docs_type(field->type, "---@return", "\n");
@@ -2511,7 +2528,7 @@ void emit_docs(struct userdata *node, int is_userdata, int emit_creation) {
               fprintf(docs, "function %s:%s(value) end\n\n", name, field->rename ? field->rename : field->name);
             }
           } else {
-            // array feild
+            // array field
             if (field->access_flags & ACCESS_FLAG_READ) {
               fprintf(docs, "-- get array field\n");
               fprintf(docs, "---@param index integer\n");
