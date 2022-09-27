@@ -13,6 +13,12 @@ float aim_pitch_deg;
 float delta_pitch_deg_s;
 float ahrs_pitch_deg;
 
+const float norm_pitch=4.5;
+const float tilt_pitch=1.5;
+
+const float norm_rate_pitch=0.15;
+const float tilt_rate_pitch=0.05;
+
 void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
@@ -68,7 +74,15 @@ void Copter::userhook_FastLoop()
 
     ahrs_pitch_deg = degrees(ahrs.get_pitch());
 
-    // printf("pitch=%f\r\n", aim_pitch_deg);
+    float k1 = (tilt_pitch - norm_pitch) / (90.0f - 0.0f);
+    float pitch_kp = norm_pitch + k1 * (aim_pitch_deg - 0.0f);
+    copter.attitude_control->get_angle_pitch_p().kP(pitch_kp);
+
+    float k2 = (tilt_rate_pitch - norm_rate_pitch) / (90.0f - 0.0f);
+    float pitch_rate_kp = norm_rate_pitch + k2 * (aim_pitch_deg - 0.0f);
+    copter.attitude_control->get_rate_pitch_pid().kP(pitch_rate_kp);
+
+    printf("pitch_rate_kp=%f, pitch_kp=%f\r\n", pitch_rate_kp, pitch_kp);
 }
 #endif
 

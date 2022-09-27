@@ -222,13 +222,6 @@ void AP_MotorsMatrix_with_Tilt::output_to_motors()
                 }
             }
 
-            float norm_angle= aim_pitch_deg /180.0f;
-
-            _tilt[0] = -norm_angle;   
-            _tilt[1] = norm_angle;   
-            _tilt[2] = norm_angle;   
-            _tilt[3] = -norm_angle;   
-
             break;
     }
 
@@ -283,10 +276,20 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
     // apply voltage and air pressure compensation
     const float compensation_gain = get_compensation_gain(); // compensation for battery voltage and altitude
     roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;
-    pitch_thrust = (_pitch_in + _pitch_in_ff) * compensation_gain;
+    pitch_thrust = (_pitch_in + _pitch_in_ff) * compensation_gain * (1.0f - fabsf(aim_pitch_deg) / 90.0f);
     yaw_thrust = (_yaw_in + _yaw_in_ff) * compensation_gain;
     throttle_thrust = get_throttle() * compensation_gain;
     throttle_avg_max = _throttle_avg_max * compensation_gain;
+
+    float pitch_servo = (_pitch_in + _pitch_in_ff) * compensation_gain * fabsf(aim_pitch_deg) / 90.0f * 1.0f;
+    float norm_angle = aim_pitch_deg / 180.0f;
+
+    printf("pitch_servo=%f\r\n",pitch_servo);
+
+    _tilt[0] = -norm_angle + pitch_servo;   
+    _tilt[1] = norm_angle + pitch_servo;   
+    _tilt[2] = norm_angle - pitch_servo;   
+    _tilt[3] = -norm_angle - pitch_servo;   
 
     // If thrust boost is active then do not limit maximum thrust
     throttle_thrust_max = _thrust_boost_ratio + (1.0f - _thrust_boost_ratio) * _throttle_thrust_max * compensation_gain;
