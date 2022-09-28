@@ -284,12 +284,14 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
     float pitch_servo = (_pitch_in + _pitch_in_ff) * compensation_gain * fabsf(aim_pitch_deg) / 90.0f * 1.0f;
     float norm_angle = aim_pitch_deg / 180.0f;
 
-    printf("pitch_servo=%f\r\n",pitch_servo);
+    // printf("pitch_servo=%f\r\n",pitch_servo);
 
-    _tilt[0] = -norm_angle + pitch_servo;   
-    _tilt[1] = norm_angle + pitch_servo;   
-    _tilt[2] = norm_angle - pitch_servo;   
-    _tilt[3] = -norm_angle - pitch_servo;   
+    float forward = -get_forward();
+
+    _tilt[0] = -norm_angle + pitch_servo + forward * 0.2f;   
+    _tilt[1] = norm_angle + pitch_servo - forward * 0.2f;   
+    _tilt[2] = norm_angle - pitch_servo - forward * 0.2f;      
+    _tilt[3] = -norm_angle - pitch_servo + forward * 0.2f;      
 
     // If thrust boost is active then do not limit maximum thrust
     throttle_thrust_max = _thrust_boost_ratio + (1.0f - _thrust_boost_ratio) * _throttle_thrust_max * compensation_gain;

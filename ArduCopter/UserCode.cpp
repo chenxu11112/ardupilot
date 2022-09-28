@@ -82,7 +82,7 @@ void Copter::userhook_FastLoop()
     float pitch_rate_kp = norm_rate_pitch + k2 * (aim_pitch_deg - 0.0f);
     copter.attitude_control->get_rate_pitch_pid().kP(pitch_rate_kp);
 
-    printf("pitch_rate_kp=%f, pitch_kp=%f\r\n", pitch_rate_kp, pitch_kp);
+    // printf("pitch_rate_kp=%f, pitch_kp=%f\r\n", pitch_rate_kp, pitch_kp);
 }
 #endif
 
