@@ -538,6 +538,29 @@ void AP_MotorsMatrix_with_Tilt::_output_test_seq(uint8_t motor_seq, int16_t pwm)
             rc_write(i, pwm);
         }
     }
+
+    switch (motor_seq)
+    {
+    case 5:
+        // right throttle
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor5, 500 + (pwm - 1000) * 2);
+        break;
+    case 6:
+        // right tilt servo
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor6, 500 + (pwm - 1000) * 2);
+        break;
+    case 7:
+        // left throttle
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor7, 500 + (pwm - 1000) * 2);
+        break;
+    case 8:
+        // left tilt servo
+        SRV_Channels::set_output_pwm(SRV_Channel::k_motor8, 500 + (pwm - 1000) * 2);
+        break;
+    default:
+        // do nothing
+        break;
+    }
 }
 
 // output_test_num - spin a motor connected to the specified output channel
