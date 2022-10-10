@@ -22,13 +22,13 @@ const float tilt_rate_pitch=0.05;
 #define default_angle 60.0f
 #define default_angle_speed 0.04f
 
-// #define secend_degree 80.0f
-// #define secend_angle_speed 0.02f
+#define secend_degree 80.0f
+#define secend_angle_speed 0.02f
 
-// #define third_degree 90.0f
-// #define third_angle_speed 0.01f
+#define third_degree 90.0f
+#define third_angle_speed 0.01f
 
-// #define use_adjust_pid
+#define use_adjust_pid
 
 void Copter::userhook_FastLoop()
 {

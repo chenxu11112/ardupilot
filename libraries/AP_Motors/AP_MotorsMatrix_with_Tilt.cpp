@@ -205,7 +205,6 @@ void AP_MotorsMatrix_with_Tilt::output_to_motors()
                 }
             }
 
-
             _tilt[0] = 0.0f;
             _tilt[1] = 0.0f;
             _tilt[2] = 0.0f;
@@ -256,7 +255,8 @@ uint32_t AP_MotorsMatrix_with_Tilt::get_motor_mask()
     return mask;
 }
 
-
+const float max_angle = 270.0f;
+const float half_max_angle = max_angle / 2.0f;
 // output_armed - sends commands to the motors
 // includes new scaling stability patch
 void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
@@ -282,16 +282,17 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
     throttle_avg_max = _throttle_avg_max * compensation_gain;
 
     float pitch_servo = (_pitch_in + _pitch_in_ff) * compensation_gain * fabsf(aim_pitch_deg) / 90.0f * 1.0f;
-    float norm_angle = aim_pitch_deg / 180.0f;
-
-    // printf("pitch_servo=%f\r\n",pitch_servo);
+    float norm_angle = aim_pitch_deg / half_max_angle;
 
     float forward = -get_forward();
 
     _tilt[0] = -norm_angle + pitch_servo + forward * 0.2f;   
     _tilt[1] = norm_angle + pitch_servo - forward * 0.2f;   
     _tilt[2] = norm_angle - pitch_servo - forward * 0.2f;      
-    _tilt[3] = -norm_angle - pitch_servo + forward * 0.2f;      
+    _tilt[3] = -norm_angle - pitch_servo + forward * 0.2f;
+
+    for (i = 0; i < 4; i++)
+        printf("_tilt[%d]=%f\r\n", i, (_tilt[i]) * 135.0f);
 
     // If thrust boost is active then do not limit maximum thrust
     throttle_thrust_max = _thrust_boost_ratio + (1.0f - _thrust_boost_ratio) * _throttle_thrust_max * compensation_gain;
