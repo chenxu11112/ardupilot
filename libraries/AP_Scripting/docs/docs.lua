@@ -67,6 +67,117 @@ i2c = {}
 ---@return AP_HAL__I2CDevice_ud
 function i2c:get_device(bus, address, clock, smbus) end
 
+-- EFI state structure
+---@class EFI_State_ud
+local EFI_State_ud = {}
+
+---@return EFI_State_ud
+function EFI_State() end
+
+-- set field
+---@param value Cylinder_Status_ud
+function EFI_State_ud:cylinder_status(value) end
+
+-- set field
+---@param value integer
+function EFI_State_ud:ecu_index(value) end
+
+-- set field
+---@param value integer
+function EFI_State_ud:throttle_position_percent(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:estimated_consumed_fuel_volume_cm3(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:fuel_consumption_rate_cm3pm(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:fuel_pressure(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:oil_temperature(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:oil_pressure(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:coolant_temperature(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:intake_manifold_temperature(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:intake_manifold_pressure_kpa(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:atmospheric_pressure_kpa(value) end
+
+-- set field
+---@param value number
+function EFI_State_ud:spark_dwell_time_ms(value) end
+
+-- set field
+---@param value uint32_t_ud
+function EFI_State_ud:engine_speed_rpm(value) end
+
+-- set field
+---@param value integer
+function EFI_State_ud:engine_load_percent(value) end
+
+-- set field
+---@param value boolean
+function EFI_State_ud:general_error(value) end
+
+-- set field
+---@param value uint32_t_ud
+function EFI_State_ud:last_updated_ms(value) end
+
+
+-- EFI Cylinder_Status structure
+---@class Cylinder_Status_ud
+local Cylinder_Status_ud = {}
+
+---@return Cylinder_Status_ud
+function Cylinder_Status() end
+
+-- set field
+---@param value number
+function Cylinder_Status_ud:lambda_coefficient(value) end
+
+-- set field
+---@param value number
+function Cylinder_Status_ud:exhaust_gas_temperature(value) end
+
+-- set field
+---@param value number
+function Cylinder_Status_ud:cylinder_head_temperature(value) end
+
+-- set field
+---@param value number
+function Cylinder_Status_ud:injection_time_ms(value) end
+
+-- set field
+---@param value number
+function Cylinder_Status_ud:ignition_timing_deg(value) end
+
+-- desc
+---@class efi
+efi = {}
+
+-- EFI handle scripting update
+---@param efi_state EFI_State_ud
+function efi:handle_scripting(efi_state) end
+
 
 -- CAN bus interaction
 ---@class CAN
@@ -662,6 +773,12 @@ function Location_ud:get_vector_from_origin_NEU() end
 function Location_ud:offset_bearing(bearing_deg, distance) end
 
 -- desc
+---@param bearing_deg number
+---@param pitch_deg number
+---@param distance number
+function Location_ud:offset_bearing_and_pitch(bearing_deg, pitch_deg, distance) end
+
+-- desc
 ---@param ofs_north number
 ---@param ofs_east number
 function Location_ud:offset(ofs_north, ofs_east) end
@@ -788,6 +905,28 @@ function RC_Channel_ud:norm_input() end
 ---@return number
 function RC_Channel_ud:norm_input_dz() end
 
+-- desc
+---@class winch
+winch = {}
+
+-- desc
+---@return number
+function winch:get_rate_max() end
+
+-- desc
+---@param param1 number
+function winch:set_desired_rate(param1) end
+
+-- desc
+---@param param1 number
+function winch:release_length(param1) end
+
+-- desc
+function winch:relax() end
+
+-- desc
+---@return boolean
+function winch:healthy() end
 
 -- desc
 ---@class mount
@@ -824,6 +963,12 @@ function mount:set_mode(instance, mode) end
 ---@return integer
 function mount:get_mode(instance) end
 
+-- desc
+---@param instance integer
+---@return number|nil
+---@return number|nil
+---@return number|nil
+function mount:get_attitude_euler(instance, roll_deg, pitch_deg, yaw_bf_deg) end
 
 -- desc
 ---@class motors
@@ -1276,6 +1421,11 @@ function rc:get_channel(chan_num) end
 ---@return boolean
 function rc:has_valid_input() end
 
+-- return cached level of aux function
+---@param aux_fn integer
+---@return integer|nil
+function rc:get_aux_cached(aux_fn) end
+
 -- desc
 ---@param aux_fun integer
 ---@param ch_flag integer
@@ -1628,6 +1778,11 @@ function relay:toggle(instance) end
 ---@param instance integer
 ---@return boolean
 function relay:enabled(instance) end
+
+-- return state of a relay
+---@param instance integer
+---@return uint8_t
+function relay:get(instance) end
 
 -- desc
 ---@param instance integer

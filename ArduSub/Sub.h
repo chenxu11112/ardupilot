@@ -62,7 +62,6 @@
 #include <AP_Terrain/AP_Terrain.h>
 #include <AP_JSButton/AP_JSButton.h>   // Joystick/gamepad button function assignment
 #include <AP_LeakDetector/AP_LeakDetector.h> // Leak detector
-#include <AP_TemperatureSensor/TSYS01.h>
 #include <AP_Proximity/AP_Proximity.h>
 
 // Local modules
@@ -87,16 +86,13 @@
 #include <AP_RPM/AP_RPM.h>
 #endif
 
-#if GRIPPER_ENABLED == ENABLED
+#include <AP_Gripper/AP_Gripper_config.h>
+#if AP_GRIPPER_ENABLED
 #include <AP_Gripper/AP_Gripper.h>             // gripper stuff
 #endif
 
 #if AVOIDANCE_ENABLED == ENABLED
 #include <AC_Avoidance/AC_Avoid.h>           // Stop at fence library
-#endif
-
-#if AC_RALLY == ENABLED
-#include <AP_Rally/AP_Rally.h>           // Rally point library
 #endif
 
 #include <AP_Camera/AP_Camera.h>          // Photo or video camera
@@ -140,8 +136,6 @@ private:
     AP_Logger logger;
 
     AP_LeakDetector leak_detector;
-
-    TSYS01 celsius;
 
     struct {
         bool enabled:1;
@@ -348,7 +342,7 @@ private:
 #endif
 
     // Rally library
-#if AC_RALLY == ENABLED
+#if HAL_RALLY_ENABLED
     AP_Rally rally;
 #endif
 
