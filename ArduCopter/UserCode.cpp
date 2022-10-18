@@ -132,12 +132,12 @@ void Copter::userhook_SlowLoop()
 void Copter::userhook_SuperSlowLoop()
 {
     // put your 1Hz code here
-    gcs().send_text(MAV_SEVERITY_NOTICE, "aim_pitch_deg=%.3f", aim_pitch_deg);
+//     gcs().send_text(MAV_SEVERITY_NOTICE, "aim_pitch_deg=%.3f", aim_pitch_deg);
 
-#ifdef use_adjust_pid
-    gcs().send_text(MAV_SEVERITY_NOTICE, "rate_p=%.3f", (float)copter.attitude_control->get_rate_pitch_pid().kP());
-    gcs().send_text(MAV_SEVERITY_NOTICE, "rate_p=%.3f", (float)copter.attitude_control->get_angle_pitch_p().kP());
-#endif
+// #ifdef use_adjust_pid
+//     gcs().send_text(MAV_SEVERITY_NOTICE, "rate_p=%.3f", (float)copter.attitude_control->get_rate_pitch_pid().kP());
+//     gcs().send_text(MAV_SEVERITY_NOTICE, "rate_p=%.3f", (float)copter.attitude_control->get_angle_pitch_p().kP());
+// #endif
 }
 #endif
 

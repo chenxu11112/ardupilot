@@ -291,8 +291,8 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
     _tilt[2] = norm_angle - pitch_servo - forward * 0.2f;      
     _tilt[3] = -norm_angle - pitch_servo + forward * 0.2f;
 
-    for (i = 0; i < 4; i++)
-        printf("_tilt[%d]=%f\r\n", i, (_tilt[i]) * 135.0f);
+    // for (i = 0; i < 4; i++)
+    //     printf("_tilt[%d]=%f\r\n", i, (_tilt[i]) * 135.0f);
 
     // If thrust boost is active then do not limit maximum thrust
     throttle_thrust_max = _thrust_boost_ratio + (1.0f - _thrust_boost_ratio) * _throttle_thrust_max * compensation_gain;
