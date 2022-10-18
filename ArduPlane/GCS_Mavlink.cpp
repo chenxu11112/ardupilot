@@ -589,7 +589,6 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
 #if AP_TERRAIN_AVAILABLE
     MSG_TERRAIN,
 #endif
-    MSG_BATTERY2,
     MSG_BATTERY_STATUS,
     MSG_GIMBAL_DEVICE_ATTITUDE_STATUS,
     MSG_OPTICAL_FLOW,
@@ -724,6 +723,11 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_int_do_reposition(const mavlink_com
         }
 
         plane.set_guided_WP(requested_position);
+
+        // Loiter radius for planes. Positive radius in meters, direction is controlled by Yaw (param4) value, parsed above
+        if (!isnan(packet.param3) && packet.param3 > 0) {
+            plane.mode_guided.set_radius_and_direction(packet.param3, requested_position.loiter_ccw);
+        }
 
         return MAV_RESULT_ACCEPTED;
     }

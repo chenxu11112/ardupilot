@@ -933,7 +933,9 @@ ap_message GCS_MAVLINK::mavlink_id_to_ap_message_id(const uint32_t mavlink_id) c
         { MAVLINK_MSG_ID_DISTANCE_SENSOR,       MSG_DISTANCE_SENSOR},
             // request also does report:
         { MAVLINK_MSG_ID_TERRAIN_REQUEST,       MSG_TERRAIN},
+#if AP_MAVLINK_BATTERY2_ENABLED
         { MAVLINK_MSG_ID_BATTERY2,              MSG_BATTERY2},
+#endif
         { MAVLINK_MSG_ID_CAMERA_FEEDBACK,       MSG_CAMERA_FEEDBACK},
 #if HAL_MOUNT_ENABLED
         { MAVLINK_MSG_ID_GIMBAL_DEVICE_ATTITUDE_STATUS, MSG_GIMBAL_DEVICE_ATTITUDE_STATUS},
@@ -2325,6 +2327,7 @@ void GCS::setup_uarts()
 #endif
 }
 
+#if AP_MAVLINK_BATTERY2_ENABLED
 // report battery2 state
 void GCS_MAVLINK::send_battery2()
 {
@@ -2342,6 +2345,7 @@ void GCS_MAVLINK::send_battery2()
     }
 #endif
 }
+#endif  // AP_MAVLINK_BATTERY2_ENABLED
 
 /*
   handle a SET_MODE MAVLink message
@@ -2659,11 +2663,24 @@ MAV_RESULT GCS_MAVLINK::handle_command_set_message_interval(const mavlink_comman
 
 MAV_RESULT GCS_MAVLINK::set_message_interval(uint32_t msg_id, int32_t interval_us)
 {
+    const ap_message id = mavlink_id_to_ap_message_id(msg_id);
+    if (id == MSG_LAST) {
+        gcs().send_text(MAV_SEVERITY_INFO, "No ap_message for mavlink id (%u)", (unsigned int)msg_id);
+        return MAV_RESULT_DENIED;
+    }
+
     uint16_t interval_ms;
     if (interval_us == 0) {
         // zero is "reset to default rate"
-        if (!get_default_interval_for_mavlink_message_id(msg_id, interval_ms)) {
-            return MAV_RESULT_FAILED;
+        if (!get_default_interval_for_ap_message(id, interval_ms)) {
+            // if we don't have a default interval then we assume that
+            // we do not send that message by default.  That may not
+            // be strictly true if some random piece of code has set a
+            // rate as part of its initialisation - in which case that
+            // piece of code should probably be adding something into
+            // whatever get_default_interval_for_ap_message is looking
+            // at.
+            interval_ms = 0;
         }
     } else if (interval_us == -1) {
         // minus-one is "stop sending"
@@ -2676,7 +2693,7 @@ MAV_RESULT GCS_MAVLINK::set_message_interval(uint32_t msg_id, int32_t interval_u
     } else {
         interval_ms = interval_us / 1000;
     }
-    if (set_mavlink_message_id_interval(msg_id, interval_ms)) {
+    if (set_ap_message_interval(id, interval_ms)) {
         return MAV_RESULT_ACCEPTED;
     }
 
@@ -5455,10 +5472,12 @@ bool GCS_MAVLINK::try_send_message(const enum ap_message id)
         send_battery_status();
         break;
 
+#if AP_MAVLINK_BATTERY2_ENABLED
     case MSG_BATTERY2:
         CHECK_PAYLOAD_SIZE(BATTERY2);
         send_battery2();
         break;
+#endif
 
     case MSG_EKF_STATUS_REPORT:
         CHECK_PAYLOAD_SIZE(EKF_STATUS_REPORT);
@@ -6015,16 +6034,6 @@ bool GCS_MAVLINK::get_default_interval_for_ap_message(const ap_message id, uint1
         }
     }
     return false;
-}
-
-bool GCS_MAVLINK::get_default_interval_for_mavlink_message_id(const uint32_t mavlink_message_id, uint16_t &interval) const
-{
-    const ap_message id = mavlink_id_to_ap_message_id(mavlink_message_id);
-    if (id == MSG_LAST) {
-        return false;
-    }
-
-    return get_default_interval_for_ap_message(id, interval);
 }
 
 /*

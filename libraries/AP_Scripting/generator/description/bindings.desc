@@ -209,6 +209,7 @@ singleton AP_Relay method on void uint8_t 0 AP_RELAY_NUM_RELAYS
 singleton AP_Relay method off void uint8_t 0 AP_RELAY_NUM_RELAYS
 singleton AP_Relay method enabled boolean uint8_t 0 AP_RELAY_NUM_RELAYS
 singleton AP_Relay method toggle void uint8_t 0 AP_RELAY_NUM_RELAYS
+singleton AP_Relay method get uint8_t uint8_t 0 AP_RELAY_NUM_RELAYS
 
 include GCS_MAVLink/GCS.h
 singleton GCS rename gcs
@@ -294,6 +295,7 @@ singleton RC_Channels method run_aux_function boolean RC_Channel::AUX_FUNC'enum 
 singleton RC_Channels method has_valid_input boolean
 singleton RC_Channels method lua_rc_channel RC_Channel uint8_t 1 NUM_RC_CHANNELS
 singleton RC_Channels method lua_rc_channel rename get_channel
+singleton RC_Channels method get_aux_cached boolean RC_Channel::AUX_FUNC'enum 0 UINT16_MAX uint8_t'Null
 
 include AP_SerialManager/AP_SerialManager.h
 
