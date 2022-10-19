@@ -357,7 +357,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     AP_GROUPINFO("EXTERN3",23, Compass, _state._priv_instance[2].external, 0),
 #endif // COMPASS_MAX_INSTANCES
 
-#ifndef HAL_BUILD_AP_PERIPH
+#if AP_COMPASS_DIAGONALS_ENABLED
     // @Param: DIA_X
     // @DisplayName: Compass soft-iron diagonal X component
     // @Description: DIA_X in the compass soft-iron calibration matrix: [[DIA_X, ODI_X, ODI_Y], [ODI_X, DIA_Y, ODI_Z], [ODI_Y, ODI_Z, DIA_Z]]
@@ -393,7 +393,6 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @Description: ODI_Z in the compass soft-iron calibration matrix: [[DIA_X, ODI_X, ODI_Y], [ODI_X, DIA_Y, ODI_Z], [ODI_Y, ODI_Z, DIA_Z]]
     // @User: Advanced
     AP_GROUPINFO("ODI",    25, Compass, _state._priv_instance[0].offdiagonals, 0),
-#endif // HAL_BUILD_AP_PERIPH
 
 #if COMPASS_MAX_INSTANCES > 1
     // @Param: DIA2_X
@@ -470,6 +469,7 @@ const AP_Param::GroupInfo Compass::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("ODI3",    29, Compass, _state._priv_instance[2].offdiagonals, 0),
 #endif // COMPASS_MAX_INSTANCES
+#endif // AP_COMPASS_DIAGONALS_ENABLED
 
 #if COMPASS_CAL_ENABLED
     // @Param: CAL_FIT
@@ -888,8 +888,10 @@ void Compass::mag_state::copy_from(const Compass::mag_state& state)
     external.set_and_save_ifchanged(state.external);
     orientation.set_and_save_ifchanged(state.orientation);
     offset.set_and_save_ifchanged(state.offset);
+#ifndef HAL_BUILD_AP_PERIPH
     diagonals.set_and_save_ifchanged(state.diagonals);
     offdiagonals.set_and_save_ifchanged(state.offdiagonals);
+#endif
     scale_factor.set_and_save_ifchanged(state.scale_factor);
     dev_id.set_and_save_ifchanged(state.dev_id);
     motor_compensation.set_and_save_ifchanged(state.motor_compensation);
@@ -1676,6 +1678,7 @@ Compass::set_and_save_offsets(uint8_t i, const Vector3f &offsets)
     }
 }
 
+#if AP_COMPASS_DIAGONALS_ENABLED
 void
 Compass::set_and_save_diagonals(uint8_t i, const Vector3f &diagonals)
 {
@@ -1695,6 +1698,7 @@ Compass::set_and_save_offdiagonals(uint8_t i, const Vector3f &offdiagonals)
         _state[id].offdiagonals.set_and_save(offdiagonals);
     }
 }
+#endif // AP_COMPASS_DIAGONALS_ENABLED
 
 void
 Compass::set_and_save_scale_factor(uint8_t i, float scale_factor)

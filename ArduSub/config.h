@@ -92,12 +92,6 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-//  gripper
-#ifndef GRIPPER_ENABLED
-# define GRIPPER_ENABLED DISABLED
-#endif
-
-//////////////////////////////////////////////////////////////////////////////
 // Nav-Guided - allows external nav computer to control vehicle
 #ifndef NAV_GUIDED
 # define NAV_GUIDED    ENABLED
@@ -213,8 +207,4 @@
     MASK_LOG_COMPASS | \
     MASK_LOG_CAMERA | \
     MASK_LOG_MOTBATT
-#endif
-
-#ifndef AC_RALLY
-#define AC_RALLY   DISABLED
 #endif

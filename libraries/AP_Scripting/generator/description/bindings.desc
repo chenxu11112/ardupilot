@@ -13,6 +13,7 @@ userdata Location field loiter_xtrack boolean read write
 userdata Location method get_distance float Location
 userdata Location method offset void float'skip_check float'skip_check
 userdata Location method offset_bearing void float'skip_check float'skip_check
+userdata Location method offset_bearing_and_pitch void float'skip_check float'skip_check float'skip_check
 userdata Location method get_vector_from_origin_NEU boolean Vector3f'Null
 userdata Location method get_bearing float Location
 userdata Location method get_distance_NED Vector3f Location
@@ -208,6 +209,7 @@ singleton AP_Relay method on void uint8_t 0 AP_RELAY_NUM_RELAYS
 singleton AP_Relay method off void uint8_t 0 AP_RELAY_NUM_RELAYS
 singleton AP_Relay method enabled boolean uint8_t 0 AP_RELAY_NUM_RELAYS
 singleton AP_Relay method toggle void uint8_t 0 AP_RELAY_NUM_RELAYS
+singleton AP_Relay method get uint8_t uint8_t 0 AP_RELAY_NUM_RELAYS
 
 include GCS_MAVLink/GCS.h
 singleton GCS rename gcs
@@ -293,6 +295,7 @@ singleton RC_Channels method run_aux_function boolean RC_Channel::AUX_FUNC'enum 
 singleton RC_Channels method has_valid_input boolean
 singleton RC_Channels method lua_rc_channel RC_Channel uint8_t 1 NUM_RC_CHANNELS
 singleton RC_Channels method lua_rc_channel rename get_channel
+singleton RC_Channels method get_aux_cached boolean RC_Channel::AUX_FUNC'enum 0 UINT16_MAX uint8_t'Null
 
 include AP_SerialManager/AP_SerialManager.h
 
@@ -490,6 +493,7 @@ userdata AP_HAL::CANFrame rename CANFrame
 userdata AP_HAL::CANFrame field id uint32_t'skip_check read write
 userdata AP_HAL::CANFrame field data'array int(ARRAY_SIZE(ud->data)) uint8_t read write 0 UINT8_MAX
 userdata AP_HAL::CANFrame field dlc uint8_t read write 0 int(ARRAY_SIZE(ud->data))
+userdata AP_HAL::CANFrame method id_signed int32_t
 userdata AP_HAL::CANFrame method isExtended boolean
 userdata AP_HAL::CANFrame method isRemoteTransmissionRequest boolean
 userdata AP_HAL::CANFrame method isErrorFrame boolean
@@ -547,6 +551,59 @@ singleton AP_Mount method set_mode void uint8_t 0 UINT8_MAX MAV_MOUNT_MODE'enum 
 singleton AP_Mount method set_angle_target void uint8_t 0 UINT8_MAX float'skip_check float'skip_check float'skip_check boolean
 singleton AP_Mount method set_rate_target void uint8_t 0 UINT8_MAX float'skip_check float'skip_check float'skip_check boolean
 singleton AP_Mount method set_roi_target void uint8_t 0 UINT8_MAX Location
+singleton AP_Mount method get_attitude_euler boolean uint8_t 0 UINT8_MAX float'Null float'Null float'Null
+
+include AP_Winch/AP_Winch.h depends APM_BUILD_COPTER_OR_HELI
+singleton AP_Winch depends APM_BUILD_COPTER_OR_HELI
+singleton AP_Winch rename winch
+singleton AP_Winch method healthy boolean
+singleton AP_Winch method relax void
+singleton AP_Winch method release_length void float'skip_check
+singleton AP_Winch method set_desired_rate void float'skip_check
+singleton AP_Winch method get_rate_max float
+
+-- ----EFI Library----
+include AP_EFI/AP_EFI.h depends HAL_EFI_ENABLED
+include AP_EFI/AP_EFI_Scripting.h depends HAL_EFI_ENABLED
+include AP_EFI/AP_EFI_config.h
+
+userdata Cylinder_Status depends (AP_EFI_SCRIPTING_ENABLED == 1)
+userdata Cylinder_Status field ignition_timing_deg float'skip_check write
+userdata Cylinder_Status field injection_time_ms float'skip_check write
+userdata Cylinder_Status field cylinder_head_temperature float'skip_check write
+userdata Cylinder_Status field exhaust_gas_temperature float'skip_check write
+userdata Cylinder_Status field lambda_coefficient float'skip_check write
+
+userdata EFI_State depends (AP_EFI_SCRIPTING_ENABLED == 1)
+userdata EFI_State field last_updated_ms uint32_t'skip_check write
+userdata EFI_State field general_error boolean write
+userdata EFI_State field engine_load_percent uint8_t write 0 UINT8_MAX
+userdata EFI_State field engine_speed_rpm uint32_t'skip_check write
+userdata EFI_State field spark_dwell_time_ms float'skip_check write
+userdata EFI_State field atmospheric_pressure_kpa float'skip_check write
+userdata EFI_State field intake_manifold_pressure_kpa float'skip_check write
+userdata EFI_State field intake_manifold_temperature float'skip_check write
+userdata EFI_State field coolant_temperature float'skip_check write
+userdata EFI_State field oil_pressure float'skip_check write
+userdata EFI_State field oil_temperature float'skip_check write
+userdata EFI_State field fuel_pressure float'skip_check write
+userdata EFI_State field fuel_consumption_rate_cm3pm float'skip_check write
+userdata EFI_State field estimated_consumed_fuel_volume_cm3 float'skip_check write
+userdata EFI_State field throttle_position_percent uint8_t write 0 UINT8_MAX
+userdata EFI_State field ecu_index uint8_t write 0 UINT8_MAX
+userdata EFI_State field cylinder_status Cylinder_Status write
+userdata EFI_State field ignition_voltage float'skip_check write
+userdata EFI_State field throttle_out float'skip_check write
+userdata EFI_State field pt_compensation float'skip_check write
+
+ap_object AP_EFI_Backend depends (AP_EFI_SCRIPTING_ENABLED == 1)
+ap_object AP_EFI_Backend method handle_scripting boolean EFI_State
+
+singleton AP_EFI depends (AP_EFI_SCRIPTING_ENABLED == 1)
+singleton AP_EFI rename efi
+singleton AP_EFI method get_backend AP_EFI_Backend uint8_t 0 UINT8_MAX
+
+-- ----END EFI Library----
 
 singleton AP_Logger rename logger
 singleton AP_Logger manual write AP_Logger_Write

@@ -182,12 +182,6 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
-// gripper - enabled only on larger firmwares
-#ifndef GRIPPER_ENABLED
- # define GRIPPER_ENABLED !HAL_MINIMIZE_FEATURES
-#endif
-
-//////////////////////////////////////////////////////////////////////////////
 // winch support
 #ifndef WINCH_ENABLED
 # define WINCH_ENABLED !HAL_MINIMIZE_FEATURES
@@ -614,14 +608,6 @@
 //////////////////////////////////////////////////////////////////////////////
 // Fence, Rally and Terrain and AC_Avoidance defaults
 //
-
-#ifndef AC_RALLY
- #define AC_RALLY   ENABLED
-#endif
-
-#if AP_TERRAIN_AVAILABLE && !AC_RALLY
- #error Terrain relies on Rally which is disabled
-#endif
 
 #ifndef AC_AVOID_ENABLED
  #define AC_AVOID_ENABLED   ENABLED
