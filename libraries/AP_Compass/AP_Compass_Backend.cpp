@@ -54,10 +54,6 @@ void AP_Compass_Backend::rotate_field(Vector3f &mag, uint8_t instance)
         // add user selectable orientation
         mag.rotate((enum Rotation)state.orientation.get());
     }
-    
-    Quaternion quat;
-    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
-    mag = quat * mag;
 }
 
 void AP_Compass_Backend::publish_raw_field(const Vector3f &mag, uint8_t instance)
@@ -147,6 +143,10 @@ void AP_Compass_Backend::accumulate_sample(Vector3f &field, uint8_t instance,
 
     /* correct raw_field for known errors */
     correct_field(field, instance);
+
+    Quaternion quat;
+    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
+    field = quat * field;
 
     if (!field_ok(field)) {
         return;

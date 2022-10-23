@@ -286,10 +286,10 @@ void AP_MotorsMatrix_with_Tilt::output_armed_stabilizing()
 
     float forward = -get_forward();
 
-    _tilt[0] = -norm_angle + pitch_servo + forward * 0.2f;   
-    _tilt[1] = norm_angle + pitch_servo - forward * 0.2f;   
-    _tilt[2] = norm_angle - pitch_servo - forward * 0.2f;      
-    _tilt[3] = -norm_angle - pitch_servo + forward * 0.2f;
+    _tilt[0] = -norm_angle + pitch_servo + forward * 0.3f;   
+    _tilt[1] = norm_angle + pitch_servo - forward * 0.3f;   
+    _tilt[2] = norm_angle - pitch_servo - forward * 0.3f;      
+    _tilt[3] = -norm_angle - pitch_servo + forward * 0.3f;
 
     // for (i = 0; i < 4; i++)
     //     printf("_tilt[%d]=%f\r\n", i, (_tilt[i]) * 135.0f);

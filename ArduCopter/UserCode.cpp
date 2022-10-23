@@ -14,16 +14,16 @@ float delta_pitch_deg_s;
 float ahrs_pitch_deg;
 
 const float norm_pitch=4.5;
-const float tilt_pitch=1.5;
+const float tilt_pitch=2.0;
 
 const float norm_rate_pitch=0.15;
-const float tilt_rate_pitch=0.05;
+const float tilt_rate_pitch=0.075;
 
 #define default_angle 60.0f
-#define default_angle_speed 0.04f
+#define default_angle_speed 0.03f
 
 #define secend_degree 80.0f
-#define secend_angle_speed 0.02f
+#define secend_angle_speed 0.015f
 
 #define third_degree 90.0f
 #define third_angle_speed 0.01f
