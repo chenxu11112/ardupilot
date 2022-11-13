@@ -16,9 +16,9 @@
  *   AP_Airspeed.cpp - airspeed (pitot) driver
  */
 
-#include <AP_Vehicle/AP_Vehicle_Type.h>
-
 #include "AP_Airspeed.h"
+
+#include <AP_Vehicle/AP_Vehicle_Type.h>
 
 // Dummy the AP_Airspeed class to allow building Airspeed only for plane, rover, sub, and copter & heli 2MB boards
 // This could be removed once the build system allows for APM_BUILD_TYPE in header files
@@ -37,7 +37,6 @@
 #include <SRV_Channel/SRV_Channel.h>
 #include <AP_Logger/AP_Logger.h>
 #include <utility>
-#include <AP_Vehicle/AP_Vehicle.h>
 #include "AP_Airspeed_MS4525.h"
 #include "AP_Airspeed_MS5525.h"
 #include "AP_Airspeed_SDP3X.h"
@@ -170,8 +169,9 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 #ifndef HAL_BUILD_AP_PERIPH
     // @Param: _BUS
     // @DisplayName: Airspeed I2C bus
-    // @Description: Bus number of the I2C bus where the airspeed sensor is connected
-    // @Values: 0:Bus0(internal),1:Bus1(external),2:Bus2(auxiliary)
+    // @Description: Bus number of the I2C bus where the airspeed sensor is connected. May not correspond to board's I2C bus number labels. Retry another bus and reboot if airspeed sensor fails to initialize.
+    // @Values: 0:Bus0,1:Bus1,2:Bus2
+    // @RebootRequired: True
     // @User: Advanced
     AP_GROUPINFO("_BUS",  9, AP_Airspeed, param[0].bus, HAL_AIRSPEED_BUS_DEFAULT),
 #endif // HAL_BUILD_AP_PERIPH
@@ -285,8 +285,9 @@ const AP_Param::GroupInfo AP_Airspeed::var_info[] = {
 
     // @Param: 2_BUS
     // @DisplayName: Airspeed I2C bus for 2nd sensor
-    // @Description: The bus number of the I2C bus to look for the sensor on
-    // @Values: 0:Bus0(internal),1:Bus1(external),2:Bus2(auxiliary)
+    // @Description: Bus number of the I2C bus where the airspeed sensor is connected. May not correspond to board's I2C bus number labels. Retry another bus and reboot if airspeed sensor fails to initialize.
+    // @Values: 0:Bus0,1:Bus1,2:Bus2
+    // @RebootRequired: True
     // @User: Advanced
     AP_GROUPINFO("2_BUS",  20, AP_Airspeed, param[1].bus, 1),
 
@@ -722,11 +723,18 @@ void AP_Airspeed::handle_msp(const MSP::msp_airspeed_data_message_t &pkt)
 }
 #endif 
 
+// @LoggerMessage: HYGR
+// @Description: Hygrometer data
+// @Field: TimeUS: Time since system startup
+// @Field: Id: sensor ID
+// @Field: Humidity: percentage humidity
+// @Field: Temp: temperature in degrees C
+
 void AP_Airspeed::Log_Airspeed()
 {
     const uint64_t now = AP_HAL::micros64();
     for (uint8_t i=0; i<AIRSPEED_MAX_SENSORS; i++) {
-        if (!enabled(i)) {
+        if (!enabled(i) || sensor[i] == nullptr) {
             continue;
         }
         float temperature;
@@ -749,6 +757,27 @@ void AP_Airspeed::Log_Airspeed()
             primary       : get_primary()
         };
         AP::logger().WriteBlock(&pkt, sizeof(pkt));
+
+#if AP_AIRSPEED_HYGROMETER_ENABLE
+        struct {
+            uint32_t sample_ms;
+            float temperature;
+            float humidity;
+        } hygrometer;
+        if (sensor[i]->get_hygrometer(hygrometer.sample_ms, hygrometer.temperature, hygrometer.humidity) &&
+            hygrometer.sample_ms != state[i].last_hygrometer_log_ms) {
+            AP::logger().WriteStreaming("HYGR",
+                                        "TimeUS,Id,Humidity,Temp",
+                                        "s#%O",
+                                        "F---",
+                                        "QBff",
+                                        AP_HAL::micros64(),
+                                        i,
+                                        hygrometer.humidity,
+                                        hygrometer.temperature);
+            state[i].last_hygrometer_log_ms = hygrometer.sample_ms;
+        }
+#endif
     }
 }
 
@@ -835,6 +864,16 @@ float AP_Airspeed::get_corrected_pressure(uint8_t i) const {
     }
     return state[i].corrected_pressure;
 }
+
+#if AP_AIRSPEED_HYGROMETER_ENABLE
+bool AP_Airspeed::get_hygrometer(uint8_t i, uint32_t &last_sample_ms, float &temperature, float &humidity) const
+{
+    if (!enabled(i) || sensor[i] == nullptr) {
+        return false;
+    }
+    return sensor[i]->get_hygrometer(last_sample_ms, temperature, humidity);
+}
+#endif // AP_AIRSPEED_HYGROMETER_ENABLE
 
 #else  // build type is not appropriate; provide a dummy implementation:
 const AP_Param::GroupInfo AP_Airspeed::var_info[] = { AP_GROUPEND };

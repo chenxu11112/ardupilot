@@ -262,13 +262,13 @@ bool Rover::nav_scripting_enable(uint8_t mode)
 }
 
 // lua scripts use this to retrieve the contents of the active command
-bool Rover::nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2)
+bool Rover::nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2, int16_t &arg3, int16_t &arg4)
 {
     if (control_mode != &mode_auto) {
         return false;
     }
 
-    return mode_auto.nav_script_time(id, cmd, arg1, arg2);
+    return mode_auto.nav_script_time(id, cmd, arg1, arg2, arg3, arg4);
 }
 
 // lua scripts use this to indicate when they have complete the command
@@ -407,6 +407,9 @@ void Rover::update_logging2(void)
 
     if (should_log(MASK_LOG_IMU)) {
         AP::ins().Write_Vibration();
+#if HAL_GYROFFT_ENABLED
+        gyro_fft.write_log_messages();
+#endif
     }
 }
 

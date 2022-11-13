@@ -2021,6 +2021,15 @@ class AutoTest(ABC):
         self.progress("Calling initialise-after-reboot")
         self.initialise_after_reboot_sitl()
 
+    def scripting_restart(self):
+        '''restart scripting subsystem'''
+        self.progress("Restarting Scripting")
+        self.run_cmd_int(
+            mavutil.mavlink.MAV_CMD_SCRIPTING,
+            mavutil.mavlink.SCRIPTING_CMD_STOP_AND_RESTART,
+            0, 0, 0, 0, 0, 0,
+            timeout=5)
+
     def set_streamrate(self, streamrate, timeout=20, stream=mavutil.mavlink.MAV_DATA_STREAM_ALL):
         '''set MAV_DATA_STREAM_ALL; timeout is wallclock time'''
         tstart = time.time()
@@ -2816,6 +2825,7 @@ class AutoTest(ABC):
                 this = mav.recv(1000000)
             except Exception:
                 mav.autoreconnect = old_autoreconnect
+                self.unpause_SITL()
                 raise
             if len(this) == 0:
                 break
@@ -2855,6 +2865,7 @@ class AutoTest(ABC):
                 receive_result = mav.recv_msg()
             except Exception:
                 mav.autoreconnect = True
+                self.unpause_SITL()
                 raise
             if receive_result is None:
                 break
@@ -3856,15 +3867,26 @@ class AutoTest(ABC):
             if self.get_sim_time_cached() - tstart > timeout:
                 return
 
-    def assert_receive_message(self, type, timeout=1, verbose=False, very_verbose=False, mav=None):
+    def assert_receive_message(self,
+                               type,
+                               timeout=1,
+                               verbose=False,
+                               very_verbose=False,
+                               mav=None,
+                               condition=None,
+                               delay_fn=None):
         if mav is None:
             mav = self.mav
         m = None
         tstart = time.time()  # timeout in wallclock
-        while m is None:
-            m = mav.recv_match(type=type, blocking=True, timeout=0.05)
+        while True:
+            m = mav.recv_match(type=type, blocking=True, timeout=0.05, condition=condition)
+            if m is not None:
+                break
             if time.time() - tstart > timeout:
                 raise NotAchievedException("Did not get %s" % type)
+            if delay_fn is not None:
+                delay_fn()
         if verbose:
             self.progress("Received (%s)" % str(m))
         if very_verbose:
@@ -7045,8 +7067,11 @@ Also, ignores heartbeats not from our target system'''
     def script_test_source_path(self, scriptname):
         return os.path.join(self.rootdir(), "libraries", "AP_Scripting", "tests", scriptname)
 
+    def script_applet_source_path(self, scriptname):
+        return os.path.join(self.rootdir(), "libraries", "AP_Scripting", "applets", scriptname)
+
     def installed_script_path(self, scriptname):
-        return os.path.join("scripts", scriptname)
+        return os.path.join("scripts", os.path.basename(scriptname))
 
     def install_script(self, source, scriptname):
         dest = self.installed_script_path(scriptname)
@@ -7064,8 +7089,12 @@ Also, ignores heartbeats not from our target system'''
         source = self.script_test_source_path(scriptname)
         self.install_script(source, scriptname)
 
+    def install_applet_script(self, scriptname):
+        source = self.script_applet_source_path(scriptname)
+        self.install_script(source, scriptname)
+
     def remove_example_script(self, scriptname):
-        dest = self.installed_script_path(scriptname)
+        dest = self.installed_script_path(os.path.basename(scriptname))
         try:
             os.unlink(dest)
         except IOError:
@@ -8032,6 +8061,10 @@ Also, ignores heartbeats not from our target system'''
     # this autotest appears to interfere with FixedYawCalibration, no idea why.
     def SITLCompassCalibration(self, compass_count=3, timeout=1000):
         '''Test Fixed Yaw Calibration"'''
+
+        timeout /= 8
+        timeout *= self.speedup
+
         def reset_pos_and_start_magcal(mavproxy, tmask):
             mavproxy.send("sitl_stop\n")
             mavproxy.send("sitl_attitude 0 0 0\n")
@@ -10701,13 +10734,15 @@ switch value'''
 
     def AdvancedFailsafe(self):
         '''Test Advanced Failsafe'''
-        self.context_push()
         ex = None
         try:
             self.drain_mav()
-            self.assert_no_capability(mavutil.mavlink.MAV_PROTOCOL_CAPABILITY_FLIGHT_TERMINATION)
-            self.set_parameter("AFS_ENABLE", 1)
-            self.set_parameter("SYSID_MYGCS", self.mav.source_system)
+            if self.is_plane():  # other vehicles can always terminate
+                self.assert_no_capability(mavutil.mavlink.MAV_PROTOCOL_CAPABILITY_FLIGHT_TERMINATION)
+            self.set_parameters({
+                "AFS_ENABLE": 1,
+                "SYSID_MYGCS": self.mav.source_system,
+            })
             self.drain_mav()
             self.assert_capability(mavutil.mavlink.MAV_PROTOCOL_CAPABILITY_FLIGHT_TERMINATION)
             self.set_parameter("AFS_TERM_ACTION", 42)
@@ -10715,19 +10750,29 @@ switch value'''
             self.context_collect("STATUSTEXT")
             self.change_mode("AUTO") # must go to auto for AFS to latch on
             self.wait_statustext("AFS State: AFS_AUTO", check_context=True)
-            self.change_mode("MANUAL")
+            if self.is_plane():
+                self.change_mode("MANUAL")
+            elif self.is_copter():
+                self.change_mode("STABILIZE")
+
             self.start_subtest("RC Failure")
-            self.set_parameter("AFS_RC_FAIL_TIME", 1)
-            self.set_parameter("SIM_RC_FAIL", 1)
+            self.context_push()
+            self.context_collect("STATUSTEXT")
+            self.set_parameters({
+                "AFS_RC_FAIL_TIME": 1,
+                "SIM_RC_FAIL": 1,
+            })
             self.wait_statustext("Terminating due to RC failure", check_context=True)
-            self.set_parameter("AFS_RC_FAIL_TIME", 0)
-            self.set_parameter("SIM_RC_FAIL", 0)
+            self.context_pop()
             self.set_parameter("AFS_TERMINATE", 0)
 
             if not self.is_plane():
                 # plane requires a polygon fence...
                 self.start_subtest("Altitude Limit breach")
-                self.set_parameter("AFS_AMSL_LIMIT", 100)
+                self.set_parameters({
+                    "AFS_AMSL_LIMIT": 100,
+                    "AFS_QNH_PRESSURE": 1015.2,
+                })
                 self.do_fence_enable()
                 self.wait_statustext("Terminating due to fence breach", check_context=True)
                 self.set_parameter("AFS_AMSL_LIMIT", 0)
@@ -10735,13 +10780,19 @@ switch value'''
                 self.do_fence_disable()
 
             self.start_subtest("GPS Failure")
-            self.set_parameter("AFS_MAX_GPS_LOSS", 1)
-            self.set_parameter("SIM_GPS_DISABLE", 1)
+            self.context_push()
+            self.context_collect("STATUSTEXT")
+            self.set_parameters({
+                "AFS_MAX_GPS_LOSS": 1,
+                "SIM_GPS_DISABLE": 1,
+            })
             self.wait_statustext("AFS State: GPS_LOSS", check_context=True)
-            self.set_parameter("SIM_GPS_DISABLE", 0)
-            self.set_parameter("AFS_MAX_GPS_LOSS", 0)
+            self.context_pop()
             self.set_parameter("AFS_TERMINATE", 0)
 
+            self.start_subtest("GCS Request")
+            self.context_push()
+            self.context_collect("STATUSTEXT")
             self.run_cmd(
                 mavutil.mavlink.MAV_CMD_DO_FLIGHTTERMINATION,
                 1,  # terminate
@@ -10753,6 +10804,8 @@ switch value'''
                 0,
             )
             self.wait_statustext("Terminating due to GCS request", check_context=True)
+            self.context_pop()
+            self.set_parameter("AFS_TERMINATE", 0)
 
         except Exception as e:
             ex = e
@@ -10761,7 +10814,6 @@ switch value'''
         except ValueError:
             # may not actually be enabled....
             pass
-        self.context_pop()
         if ex is not None:
             raise ex
 

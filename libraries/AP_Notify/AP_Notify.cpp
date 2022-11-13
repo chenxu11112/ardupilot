@@ -295,7 +295,7 @@ void AP_Notify::add_backends(void)
             case Notify_LED_ToshibaLED_I2C_External:
                 ADD_BACKEND(new ToshibaLED_I2C(TOSHIBA_LED_I2C_BUS_EXTERNAL));
                 break;
-#if !HAL_MINIMIZE_FEATURES
+#if AP_NOTIFY_NCP5623_ENABLED
             case Notify_LED_NCP5623_I2C_External:
                 FOREACH_I2C_EXTERNAL(b) {
                     ADD_BACKEND(new NCP5623(b));
@@ -307,9 +307,11 @@ void AP_Notify::add_backends(void)
                 }
                 break;
 #endif
+#if AP_NOTIFY_PCA9685_ENABLED
             case Notify_LED_PCA9685LED_I2C_External:
                 ADD_BACKEND(new PCA9685LED_I2C());
                 break;
+#endif
             case Notify_LED_NeoPixel:
                 ADD_BACKEND(new NeoPixel());
                 break;
@@ -412,6 +414,7 @@ void AP_Notify::update(void)
     memset(&AP_Notify::events, 0, sizeof(AP_Notify::events));
 }
 
+#if AP_NOTIFY_MAVLINK_LED_CONTROL_SUPPORT_ENABLED
 // handle a LED_CONTROL message
 void AP_Notify::handle_led_control(const mavlink_message_t &msg)
 {
@@ -421,6 +424,7 @@ void AP_Notify::handle_led_control(const mavlink_message_t &msg)
         }
     }
 }
+#endif
 
 // handle RGB from Scripting or AP_Periph
 void AP_Notify::handle_rgb(uint8_t r, uint8_t g, uint8_t b, uint8_t rate_hz)
@@ -438,16 +442,6 @@ void AP_Notify::handle_rgb_id(uint8_t r, uint8_t g, uint8_t b, uint8_t id)
     for (uint8_t i = 0; i < _num_devices; i++) {
         if (_devices[i] != nullptr) {
             _devices[i]->rgb_set_id(r, g, b, id);
-        }
-    }
-}
-
-// handle a PLAY_TUNE message
-void AP_Notify::handle_play_tune(const mavlink_message_t &msg)
-{
-    for (uint8_t i = 0; i < _num_devices; i++) {
-        if (_devices[i] != nullptr) {
-            _devices[i]->handle_play_tune(msg);
         }
     }
 }

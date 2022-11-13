@@ -67,6 +67,9 @@ class AutoTestCopter(AutoTest):
     def test_filepath(self):
         return os.path.realpath(__file__)
 
+    def default_speedup(self):
+        return 100
+
     def set_current_test_name(self, name):
         self.current_test_name_directory = "ArduCopter_Tests/" + name + "/"
 
@@ -2110,7 +2113,10 @@ class AutoTestCopter(AutoTest):
             })
 
     def OpticalFlow(self):
-        '''test optical low works'''
+        '''test optical flow works'''
+
+        self.assert_sensor_state(mavutil.mavlink.MAV_SYS_STATUS_SENSOR_OPTICAL_FLOW, False, False, False, verbose=True)
+
         self.start_subtest("Make sure no crash if no rangefinder")
         self.set_parameter("SIM_FLOW_ENABLE", 1)
         self.set_parameter("FLOW_TYPE", 10)
@@ -2118,6 +2124,9 @@ class AutoTestCopter(AutoTest):
         self.configure_EKFs_to_use_optical_flow_instead_of_GPS()
 
         self.reboot_sitl()
+
+        self.wait_sensor_state(mavutil.mavlink.MAV_SYS_STATUS_SENSOR_OPTICAL_FLOW, True, True, True, verbose=True)
+
         self.change_mode('LOITER')
         self.delay_sim_time(5)
         self.wait_statustext("Need Position Estimate", timeout=300)
@@ -9091,9 +9100,9 @@ class AutoTestCopter(AutoTest):
             Test(self.DynamicRpmNotches, attempts=8),
             self.RefindGPS,
             Test(self.GyroFFT, attempts=8),
-            Test(self.GyroFFTHarmonic, attempts=8),
+            Test(self.GyroFFTHarmonic, attempts=16, speedup=8),
             self.GyroFFTAverage,
-            Test(self.GyroFFTContinuousAveraging, attempts=8),
+            Test(self.GyroFFTContinuousAveraging, attempts=8, speedup=8),
             self.CompassReordering,
             self.CRSF,
             self.MotorTest,
