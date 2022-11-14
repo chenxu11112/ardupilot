@@ -21,6 +21,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/crc.h>
 #include "AP_Beacon_LinkPG.h"
+#include <stdio.h>
 
 extern const AP_HAL::HAL &hal;
 
@@ -51,8 +52,9 @@ void AP_Beacon_LinkPG::update(void)
         case ParseState_WaitingForModBusID:
             if (c == 0x01)
             {
-                parse_state = ParseState_WaitingForModBusFunc;
                 linebuf_len = 0;
+                parse_state = ParseState_WaitingForModBusFunc;
+                linebuf[linebuf_len++] = c;
             }
             break;
 
@@ -60,6 +62,7 @@ void AP_Beacon_LinkPG::update(void)
             if (c == 0x03)
             {
                 parse_state = ParseState_WaitingForLen;
+                linebuf[linebuf_len++] = c;
             }
             else
             {
@@ -69,7 +72,7 @@ void AP_Beacon_LinkPG::update(void)
 
         case ParseState_WaitingForLen:
             parse_msg_len = c;
-            linebuf_len++;
+            linebuf[linebuf_len++] = c;
 
             if (parse_msg_len > AP_BEACON_LINKPG_BUF_SIZE)
             {
@@ -83,11 +86,12 @@ void AP_Beacon_LinkPG::update(void)
             break;
 
         case ParseState_WaitingForFlag1:
-            linebuf_len++;
 
             if (c == 0xAC)
             {
                 parse_state = ParseState_WaitingForFlag2;
+
+                linebuf[linebuf_len++] = c;
             }
             else
             {
@@ -96,10 +100,11 @@ void AP_Beacon_LinkPG::update(void)
             break;
 
         case ParseState_WaitingForFlag2:
-            linebuf_len++;
 
             if (c == 0xDA)
             {
+                linebuf[linebuf_len++] = c;
+
                 parse_state = ParseState_WaitingForInfoFlag1;
             }
             else
@@ -109,10 +114,11 @@ void AP_Beacon_LinkPG::update(void)
             break;
 
         case ParseState_WaitingForInfoFlag1:
-            linebuf_len++;
 
             if (c == 0x00)
             {
+                linebuf[linebuf_len++] = c;
+
                 parse_state = ParseState_WaitingForInfoFlag2;
             }
             else
@@ -122,10 +128,10 @@ void AP_Beacon_LinkPG::update(void)
             break;
 
         case ParseState_WaitingForInfoFlag2:
-            linebuf_len++;
-
             if (c == 0x03)
             {
+                linebuf[linebuf_len++] = c;
+
                 parse_state = ParseState_WaitingForContents;
             }
             else
@@ -136,9 +142,12 @@ void AP_Beacon_LinkPG::update(void)
 
         case ParseState_WaitingForContents:
             linebuf[linebuf_len++] = c;
-            if (linebuf_len == parse_msg_len)
+            if (linebuf_len == (parse_msg_len + 3 + 2))
             {
                 // process buffer
+
+                // printf("parse_buffer\r\n");
+
                 parse_buffer();
                 // reset state for next message
                 parse_state = ParseState_WaitingForModBusID;
@@ -151,20 +160,31 @@ void AP_Beacon_LinkPG::update(void)
 // parse buffer
 void AP_Beacon_LinkPG::parse_buffer()
 {
+    // for (int i = 0; i < 47; i++)
+    // {
+    //     printf("%x ", linebuf[i]);
+    // }
+    // printf("\r\n");
+
     // check crc
-    uint16_t crc = crc_crc16_ibm(0, linebuf, linebuf_len - 2); // 2: CRC16
+    uint16_t crc = calc_crc_modbus(linebuf, linebuf_len - 2); // CRC16
 
     uint8_t crc1 = ((uint8_t)(((uint64_t)(crc)) & 0xff));
     uint8_t crc2 = ((uint8_t)((((uint64_t)(crc)) >> 8) & 0xff));
 
-    if ((crc1 != linebuf[45]) || (crc2 != linebuf[46]))
-        return;
+    // printf("crc=0x%x,0x%x\r\n", crc1, crc2);
 
+    if ((crc1 != linebuf[45]) || (crc2 != linebuf[46]))
+    {
+        return;
+    }
     int16_t vehicle_x = (uint16_t)linebuf[39] << 8 | (uint16_t)linebuf[40];
-    int32_t vehicle_y = (uint16_t)linebuf[41] << 8 | (uint16_t)linebuf[42];
-    int32_t vehicle_z = (uint16_t)linebuf[43] << 8 | (uint16_t)linebuf[44];
+    int16_t vehicle_y = (uint16_t)linebuf[41] << 8 | (uint16_t)linebuf[42];
+    int16_t vehicle_z = (uint16_t)linebuf[43] << 8 | (uint16_t)linebuf[44];
 
     Vector3f veh_pos(Vector3f(vehicle_x * 0.01f, vehicle_y * 0.01f, vehicle_z * 0.01f));
+
+    printf("veh_pos:%f,%f,%f\r\n", veh_pos[0], veh_pos[1], veh_pos[2]);
 
     set_vehicle_position(veh_pos, 0.1f);
 
