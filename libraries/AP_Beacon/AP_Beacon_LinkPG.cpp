@@ -157,14 +157,17 @@ void AP_Beacon_LinkPG::update(void)
     }
 }
 
+const float BEACON_SPACING_NORTH = 10.0;
+const float BEACON_SPACING_EAST = 20.0;
+const float BEACON_SPACING_UP = 10.0;
 // parse buffer
 void AP_Beacon_LinkPG::parse_buffer()
 {
-    // for (int i = 0; i < 47; i++)
-    // {
-    //     printf("%x ", linebuf[i]);
-    // }
-    // printf("\r\n");
+    for (int i = 0; i < 47; i++)
+    {
+        printf("%x ", linebuf[i]);
+    }
+    printf("\r\n");
 
     // check crc
     uint16_t crc = calc_crc_modbus(linebuf, linebuf_len - 2); // CRC16
@@ -187,6 +190,42 @@ void AP_Beacon_LinkPG::parse_buffer()
     printf("veh_pos:%f,%f,%f\r\n", veh_pos[0], veh_pos[1], veh_pos[2]);
 
     set_vehicle_position(veh_pos, 0.1f);
+
+    //////////////////////////
+    int16_t distance;
+    distance = (uint16_t)linebuf[7] << 8 | (uint16_t)linebuf[8];
+    set_beacon_distance(0, distance * 0.01f);
+
+    distance = (uint16_t)linebuf[9] << 8 | (uint16_t)linebuf[10];
+    set_beacon_distance(1, distance * 0.01f);
+
+    distance = (uint16_t)linebuf[11] << 8 | (uint16_t)linebuf[12];
+    set_beacon_distance(2, distance * 0.01f);
+
+    distance = (uint16_t)linebuf[13] << 8 | (uint16_t)linebuf[14];
+    set_beacon_distance(3, distance * 0.01f);
+
+    Vector3f pos;
+
+    pos[0] = -BEACON_SPACING_NORTH / 2;
+    pos[1] = -BEACON_SPACING_EAST / 2;
+    pos[2] = -BEACON_SPACING_UP / 2;
+    set_beacon_position(0, pos);
+
+    pos[0] = -BEACON_SPACING_NORTH / 2;
+    pos[1] = BEACON_SPACING_EAST / 2;
+    pos[2] = BEACON_SPACING_UP / 2;
+    set_beacon_position(1, pos);
+
+    pos[0] = BEACON_SPACING_NORTH / 2;
+    pos[1] = BEACON_SPACING_EAST / 2;
+    pos[2] = -BEACON_SPACING_UP / 2;
+    set_beacon_position(2, pos);
+
+    pos[0] = BEACON_SPACING_NORTH / 2;
+    pos[1] = -BEACON_SPACING_EAST / 2;
+    pos[2] = BEACON_SPACING_UP / 2;
+    set_beacon_position(3, pos);
 
     last_update_ms = AP_HAL::millis();
 }
