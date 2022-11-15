@@ -172,7 +172,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if MODE_SMARTRTL_ENABLED == ENABLED
     SCHED_TASK_CLASS(ModeSmartRTL,         &copter.mode_smartrtl,       save_position,    3, 100,  51),
 #endif
-#if SPRAYER_ENABLED == ENABLED
+#if HAL_SPRAYER_ENABLED
     SCHED_TASK_CLASS(AC_Sprayer,           &copter.sprayer,               update,         3,  90,  54),
 #endif
     SCHED_TASK(three_hz_loop,          3,     75, 57),
@@ -411,13 +411,13 @@ bool Copter::nav_scripting_enable(uint8_t mode)
 }
 
 // lua scripts use this to retrieve the contents of the active command
-bool Copter::nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2)
+bool Copter::nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2, int16_t &arg3, int16_t &arg4)
 {
     if (flightmode != &mode_auto) {
         return false;
     }
 
-    return mode_auto.nav_script_time(id, cmd, arg1, arg2);
+    return mode_auto.nav_script_time(id, cmd, arg1, arg2, arg3, arg4);
 }
 
 // lua scripts use this to indicate when they have complete the command

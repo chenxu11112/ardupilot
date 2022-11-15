@@ -502,10 +502,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @DisplayName: BalanceBot Maximum Pitch
     // @Description: Pitch angle in degrees at 100% throttle
     // @Units: deg
-    // @Range: 0 5
+    // @Range: 0 15
     // @Increment: 0.1
     // @User: Standard
-    AP_GROUPINFO("BAL_PITCH_MAX", 21, ParametersG2, bal_pitch_max, 2),
+    AP_GROUPINFO("BAL_PITCH_MAX", 21, ParametersG2, bal_pitch_max, 10),
 
     // @Param: CRASH_ANGLE
     // @DisplayName: Crash Angle
@@ -677,6 +677,14 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Path: mode_dock.cpp
     AP_SUBGROUPPTR(mode_dock_ptr, "DOCK", 54, ParametersG2, ModeDock),
 #endif
+
+    // @Param: MANUAL_STR_EXPO
+    // @DisplayName: Manual Steering Expo
+    // @Description: Manual steering expo to allow faster steering when stick at edges
+    // @Values: 0:Disabled,0.1:Very Low,0.2:Low,0.3:Medium,0.4:High,0.5:Very High
+    // @Range: -0.5 0.95
+    // @User: Advanced
+    AP_GROUPINFO("MANUAL_STR_EXPO", 55, ParametersG2, manual_steering_expo, 0),
 
     AP_GROUPEND
 };

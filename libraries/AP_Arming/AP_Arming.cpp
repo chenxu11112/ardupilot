@@ -49,11 +49,13 @@
 #include <AP_RPM/AP_RPM.h>
 #include <AP_Mount/AP_Mount.h>
 #include <AP_OpenDroneID/AP_OpenDroneID.h>
+#include <AP_SerialManager/AP_SerialManager.h>
+#include <AP_Vehicle/AP_Vehicle_Type.h>
 
 #if HAL_MAX_CAN_PROTOCOL_DRIVERS
   #include <AP_CANManager/AP_CANManager.h>
   #include <AP_Common/AP_Common.h>
-  #include <AP_Vehicle/AP_Vehicle.h>
+  #include <AP_Vehicle/AP_Vehicle_Type.h>
 
   #include <AP_PiccoloCAN/AP_PiccoloCAN.h>
 
@@ -89,8 +91,8 @@ const AP_Param::GroupInfo AP_Arming::var_info[] = {
 
     // @Param{Plane, Rover}: REQUIRE
     // @DisplayName: Require Arming Motors 
-    // @Description: Arming disabled until some requirements are met. If 0, there are no requirements (arm immediately).  If 1, require rudder stick or GCS arming before arming motors and sends the minimum throttle PWM value to the throttle channel when disarmed.  If 2, require rudder stick or GCS arming and send 0 PWM to throttle channel when disarmed. See the ARMING_CHECK_* parameters to see what checks are done before arming. Note, if setting this parameter to 0 a reboot is required to arm the plane.  Also note, even with this parameter at 0, if ARMING_CHECK parameter is not also zero the plane may fail to arm throttle at boot due to a pre-arm check failure.
-    // @Values: 0:Disabled,1:THR_MIN PWM when disarmed,2:0 PWM when disarmed
+    // @Description: Arming disabled until some requirements are met. If 0, there are no requirements (arm immediately).  If 1, require rudder stick or GCS arming before arming motors and sends the minimum throttle PWM value to the throttle channel when disarmed.  If 2, require rudder stick or GCS arming and send 0 PWM to throttle channel when disarmed. See the ARMING_CHECK_* parameters to see what checks are done before arming. Note, if setting this parameter to 0 a reboot is required to arm the plane.  Also note, even with this parameter at 0, if ARMING_CHECK parameter is not also zero the plane may fail to arm throttle at boot due to a pre-arm check failure. On planes with ICE enabled and the throttle while disarmed option set in ICE_OPTIONS the motor will get THR_MIN when disarmed.
+    // @Values: 0:Disabled,1:minimum PWM when disarmed,2:0 PWM when disarmed
     // @User: Advanced
     AP_GROUPINFO_FLAGS_FRAME("REQUIRE",     0,      AP_Arming,  require, float(Required::YES_MIN_PWM),
                              AP_PARAM_FLAG_NO_SHIFT,
@@ -264,8 +266,9 @@ bool AP_Arming::barometer_checks(bool report)
 #endif
     if ((checks_to_perform & ARMING_CHECK_ALL) ||
         (checks_to_perform & ARMING_CHECK_BARO)) {
-        if (!AP::baro().all_healthy()) {
-            check_failed(ARMING_CHECK_BARO, report, "Barometer not healthy");
+        char buffer[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1] {};
+        if (!AP::baro().arming_checks(sizeof(buffer), buffer)) {
+            check_failed(ARMING_CHECK_BARO, report, "Baro: %s", buffer);
             return false;
         }
     }
@@ -875,10 +878,12 @@ bool AP_Arming::servo_checks(bool report) const
             const SRV_Channel::Aux_servo_function_t ch_function = c->get_function();
 
             // motors, e-stoppable functions, neopixels and ProfiLEDs may be digital outputs and thus can be disabled
+            // scripting can use its functions as labels for LED setup
             const bool disabled_ok = SRV_Channel::is_motor(ch_function) ||
                                      SRV_Channel::should_e_stop(ch_function) ||
                                      (ch_function >= SRV_Channel::k_LED_neopixel1 && ch_function <= SRV_Channel::k_LED_neopixel4) ||
-                                     (ch_function >= SRV_Channel::k_ProfiLED_1 && ch_function <= SRV_Channel::k_ProfiLED_Clock);
+                                     (ch_function >= SRV_Channel::k_ProfiLED_1 && ch_function <= SRV_Channel::k_ProfiLED_Clock) ||
+                                     (ch_function >= SRV_Channel::k_scripting1 && ch_function <= SRV_Channel::k_scripting16);
 
             // for all other functions raise a pre-arm failure
             if (!disabled_ok) {
@@ -1411,6 +1416,16 @@ bool AP_Arming::opendroneid_checks(bool display_failure)
     return true;
 }
 
+//Check for multiple RC in serial protocols
+bool AP_Arming::serial_protocol_checks(bool display_failure)
+{
+    if (AP::serialmanager().have_serial(AP_SerialManager::SerialProtocol_RCIN, 1)) {
+       check_failed(display_failure, "Multiple SERIAL ports configured for RC input");
+       return false;
+    }
+    return true;
+}
+
 bool AP_Arming::pre_arm_checks(bool report)
 {
 #if !APM_BUILD_COPTER_OR_HELI
@@ -1449,7 +1464,8 @@ bool AP_Arming::pre_arm_checks(bool report)
         &  aux_auth_checks(report)
         &  disarm_switch_checks(report)
         &  fence_checks(report)
-        &  opendroneid_checks(report);
+        &  opendroneid_checks(report)
+        &  serial_protocol_checks(report);
 }
 
 bool AP_Arming::arm_checks(AP_Arming::Method method)
@@ -1507,6 +1523,7 @@ bool AP_Arming::mandatory_checks(bool report)
     ret &= opendroneid_checks(report);
 #endif
     ret &= rc_in_calibration_check(report);
+    ret &= serial_protocol_checks(report);
     return ret;
 }
 
@@ -1601,7 +1618,7 @@ AP_Arming::Required AP_Arming::arming_required()
 {
 #if AP_OPENDRONEID_ENABLED
     // cannot be disabled if OpenDroneID is present
-    if (AP::opendroneid().enabled()) {
+    if (AP_OpenDroneID::get_singleton() != nullptr && AP::opendroneid().enabled()) {
         if (require != Required::YES_MIN_PWM && require != Required::YES_ZERO_PWM) {
             return Required::YES_MIN_PWM;
         }
