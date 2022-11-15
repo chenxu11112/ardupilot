@@ -44,6 +44,7 @@
 #define AP_BATTMON_FUELLEVEL_ANALOG_ENABLE (BOARD_FLASH_SIZE > 1024)
 #endif
 
+
 // declare backend class
 class AP_BattMonitor_Backend;
 class AP_BattMonitor_Analog;
@@ -58,6 +59,7 @@ class AP_BattMonitor_INA2XX;
 class AP_BattMonitor_LTC2946;
 class AP_BattMonitor_Torqeedo;
 class AP_BattMonitor_FuelLevel_Analog;
+class AP_BattMonitor_APC;
 
 class AP_BattMonitor
 {
@@ -78,6 +80,8 @@ class AP_BattMonitor
 
     friend class AP_BattMonitor_Torqeedo;
     friend class AP_BattMonitor_FuelLevel_Analog;
+
+    friend class AP_BattMonitor_APC;
 
 public:
 
@@ -113,6 +117,7 @@ public:
         LTC2946                    = 22,
         Torqeedo                   = 23,
         FuelLevel_Analog           = 24,
+        APC                        = 25,
     };
 
     FUNCTOR_TYPEDEF(battery_failsafe_handler_fn_t, void, const char *, const int8_t);

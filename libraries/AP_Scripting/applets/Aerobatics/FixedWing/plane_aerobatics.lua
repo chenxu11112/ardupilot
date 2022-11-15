@@ -165,7 +165,7 @@ end
 
 
 -- a PI controller implemented as a Lua object
-local function PI_controller(kP,kI,iMax)
+local function PI_controller(kP,kI,iMax,min,max)
    -- the new instance. You can put public variables inside this self
    -- declaration if you want to
    local self = {}
@@ -175,6 +175,8 @@ local function PI_controller(kP,kI,iMax)
    local _kI = kI or 0.0
    local _kD = kD or 0.0
    local _iMax = iMax
+   local _min = min
+   local _max = max
    local _last_t = nil
    local _I = 0
    local _P = 0
@@ -195,7 +197,9 @@ local function PI_controller(kP,kI,iMax)
       _counter = _counter + 1
 
       local P = _kP * err
-      _I = _I + _kI * err * dt
+      if ((_total < _max and _total > _min) or (_total >= _max and err < 0) or (_total <= _min and err > 0)) then
+         _I = _I + _kI * err * dt
+      end
       if _iMax then
          _I = constrain(_I, -_iMax, iMax)
       end
@@ -235,10 +239,10 @@ local function PI_controller(kP,kI,iMax)
    return self
 end
 
-local function speed_controller(kP_param,kI_param, kFF_pitch_param, Imax)
+local function speed_controller(kP_param,kI_param, kFF_pitch_param, Imax, min, max)
    local self = {}
    local kFF_pitch = kFF_pitch_param
-   local PI = PI_controller(kP_param:get(), kI_param:get(), Imax)
+   local PI = PI_controller(kP_param:get(), kI_param:get(), Imax, min, max)
 
    function self.update(target, anticipated_pitch_rad)
       local current_speed = ahrs:get_velocity_NED():length()
@@ -258,7 +262,7 @@ local function speed_controller(kP_param,kI_param, kFF_pitch_param, Imax)
    return self
 end
 
-local speed_PI = speed_controller(SPD_P, SPD_I, THR_PIT_FF, 100.0)
+local speed_PI = speed_controller(SPD_P, SPD_I, THR_PIT_FF, 100.0, 0.0, 100.0)
 
 function sgn(x)
    local eps = 0.000001
@@ -732,7 +736,7 @@ function path_composer(_name, _subpaths)
       if sp.roll_ref ~= nil then
          local q = Quaternion()
          q:from_axis_angle(makeVector3f(1,0,0), math.rad(sp.roll_ref))
-         orientation = q * orientation
+         orientation = orientation * q
          orientation:normalize()
       end
    end
@@ -940,9 +944,9 @@ function crossbox_humpty(r, h, arg3, arg4)
             { path_straight((h-2*rabs)/3),       roll_angle(0) },
             { path_vertical_arc(-r, 180),        roll_angle(0) },
             { path_straight((h-2*rabs)/3),       roll_angle(0) },
-            { path_straight((h-2*rabs)/3),       roll_angle(-90), roll_ref=-90 },
+            { path_straight((h-2*rabs)/3),       roll_angle(90), roll_ref=-90 },
             { path_straight((h-2*rabs)/3),       roll_angle(0) },
-            { path_vertical_arc(-r, 90),         roll_angle(0) },
+            { path_vertical_arc(r, 90),          roll_angle(0), roll_ref=180 },
    })
 end
 
@@ -952,13 +956,13 @@ function laydown_humpty(r, h, arg3, arg4)
    return make_paths("laydown_humpty", {
             { path_vertical_arc(r, 45),          roll_angle(0) },
             { path_straight((h-2*rabs)/3),       roll_angle(0) },
-            { path_straight((h-2*rabs)/3),       roll_angle(90),  roll_ref=90 },
+            { path_straight((h-2*rabs)/3),       roll_angle(-90), roll_ref=90 },
             { path_straight((h-2*rabs)/3),       roll_angle(0) },
-            { path_vertical_arc(-r, 180),        roll_angle(0) },
+            { path_vertical_arc(r, 180),         roll_angle(0) },
             { path_straight((h-2*rabs)/3),       roll_angle(0) },
-            { path_straight((h-2*rabs)/3),       roll_angle(-90), roll_ref=-90 },
+            { path_straight((h-2*rabs)/3),       roll_angle(90),  roll_ref=-90 },
             { path_straight((h-2*rabs)/3),       roll_angle(0) },
-            { path_vertical_arc(r, 45),          roll_angle(0) },
+            { path_vertical_arc(-r, 45),         roll_angle(0), roll_ref=180},
    })
 end
 
@@ -1151,12 +1155,28 @@ function vertical_aerobatic_box(total_length, total_width, r, bank_angle)
    })
 end
 
+function multi_point_roll(length, N, arg3, arg4)
+   local paths = {}
+   local len_roll = length * (N-1) / (N*4-1)
+   local len_hold = length / (N*4-1)
+   local ang = 360 / N
+   for i = 1, N do
+      paths[#paths+1] = { path_straight(len_roll), roll_angle(ang) }
+      paths[#paths+1] = { path_straight(len_hold), roll_angle(0) }
+   end
+   return make_paths("multi_point_roll", paths)
+end
+
 function two_point_roll(length, arg2, arg3, arg4)
-   return make_paths("two_point_roll", {
-            { path_straight((length*3)/7),         roll_angle(180) },
-            { path_straight(length/7),             roll_angle(0) },
-            { path_straight((length*3)/7),         roll_angle(180) },
-      })
+   return multi_point_roll(length, 2)
+end
+
+function four_point_roll(length, arg2, arg3, arg4)
+   return multi_point_roll(length, 4)
+end
+
+function eight_point_roll(length, arg2, arg3, arg4)
+   return multi_point_roll(length, 8)
 end
 
 function procedure_turn(radius, bank_angle, step_out, arg4)
@@ -1357,9 +1377,9 @@ function p23_13a(radius, height, arg3, arg4)  -- stall turn PLACE HOLDER
             { path_straight((height-2*rabs)/3),       roll_angle(0) },
             { path_vertical_arc(-radius, 180),        roll_angle(0) },
             { path_straight((height-2*rabs)/3),       roll_angle(0) },
-            { path_straight((height-2*rabs)/3),       roll_angle(-90), roll_ref=-90 },
+            { path_straight((height-2*rabs)/3),       roll_angle(90),  roll_ref=-90 },
             { path_straight((height-2*rabs)/3),       roll_angle(0) },
-            { path_vertical_arc(-radius, 90),         roll_angle(0) },
+            { path_vertical_arc(radius, 90),          roll_angle(0), roll_ref=180 },
      })
 end
 
@@ -1368,16 +1388,16 @@ function p23_14(r, h, arg3, arg4)   -- fighter turn
    assert(h >= 2*r)
    local rabs = math.abs(r)
    local angle_length = (h - ((0.2929 * rabs)) / (math.sin(math.rad(45)))) - rabs
-   return make_paths("laydown_humpty", {
-            { path_vertical_arc(-r, 45),             roll_angle(0) },
+   return make_paths("fighter_turn", {
+            { path_vertical_arc(r, 45),              roll_angle(0) },
             { path_straight((angle_length)/3),       roll_angle(0) },
-            { path_straight((angle_length)/3),       roll_angle(90),  roll_ref=90 },
+            { path_straight((angle_length)/3),       roll_angle(-90),  roll_ref=90 },
             { path_straight((angle_length)/3),       roll_angle(0) },
-            { path_vertical_arc(-r, 180),            roll_angle(0) },
+            { path_vertical_arc(r, 180),             roll_angle(0) },
             { path_straight((angle_length)/3),       roll_angle(0) },
-            { path_straight((angle_length)/3),       roll_angle(-90), roll_ref=-90 },
+            { path_straight((angle_length)/3),       roll_angle(90), roll_ref=-90 },
             { path_straight((angle_length)/3),       roll_angle(0) },
-            { path_vertical_arc(-r, 45),             roll_angle(0) },
+            { path_vertical_arc(-r, 45),             roll_angle(0), roll_ref=180 },
    })
 end                            
 
@@ -1391,19 +1411,19 @@ function p23_15(radius, height, arg3, arg4)   -- triangle
    return make_paths("p23_15", {
             { path_straight(base * 1/5),                   roll_angle(180) },
             { path_straight(base * 2/5),                   roll_angle(0) },         
-            { path_vertical_arc(-radius, 135),             roll_angle(0) },
+            { path_vertical_arc(radius, 135) ,             roll_angle(0) },
             { path_straight(side*2/9),                     roll_angle(0) },
             { path_straight(side*2/9),                     roll_angle(90) },
             { path_straight(side*1/9),                     roll_angle(0) },
             { path_straight(side*2/9),                     roll_angle(90) },
             { path_straight(side*2/9),                     roll_angle(0) },
-            { path_vertical_arc(-radius, 90),              roll_angle(0) },
+            { path_vertical_arc(radius, 90),               roll_angle(0) },
             { path_straight(side*2/9),                     roll_angle(0) },
             { path_straight(side*2/9),                     roll_angle(90) },
             { path_straight(side*1/9),                     roll_angle(0) },
             { path_straight(side*2/9),                     roll_angle(90) },
             { path_straight(side*2/9),                     roll_angle(0) },
-            { path_vertical_arc(-radius, 135),             roll_angle(0) },
+            { path_vertical_arc(radius, 135),              roll_angle(0) },
             { path_straight(base * 2/5),                   roll_angle(0) }, 
             { path_straight(base * 1/5),                   roll_angle(180) },
             { path_straight(base * 2/5),                   roll_angle(0) },  
@@ -1414,26 +1434,25 @@ function p23_16(radius, height, arg3, arg4)   -- sharks tooth
    local angle_length = (height - 2 * (radius - (radius * math.cos(math.rad(45))))) / math.cos(math.rad(45))
    local vert_length = height - (2 * radius)
    return make_paths("p23_16", {
-            { path_vertical_arc(-radius, 90),        roll_angle(0) },            
+            { path_vertical_arc(radius, 90),         roll_angle(0) },
             { path_straight((vert_length)/3),        roll_angle(0) },
             { path_straight((vert_length)/3),        roll_angle(180) },
             { path_straight((vert_length)/3),        roll_angle(0) },           
-            { path_vertical_arc(-radius, 135),       roll_angle(0) },
+            { path_vertical_arc(radius, 135),        roll_angle(0) },
             { path_straight(angle_length*2/9),       roll_angle(0) },
             { path_straight(angle_length*2/9),       roll_angle(90) },
             { path_straight(angle_length*1/9),       roll_angle(0) },
             { path_straight(angle_length*2/9),       roll_angle(90) },
             { path_straight(angle_length*2/9),       roll_angle(0) },
-            { path_vertical_arc(radius, 45),         roll_angle(0) },          
+            { path_vertical_arc(-radius, 45),        roll_angle(0), roll_ref=180 },
       })
 end
 
 function p23_17(radius, arg2, arg3, arg4)   -- loop
    return make_paths("p23_17", {
             { path_vertical_arc(radius, 135),      roll_angle(0) },
-            { path_vertical_arc(radius, 90),       roll_angle(180) },          
-            { path_vertical_arc(radius, 135),      roll_angle(0) },
-            
+            { path_vertical_arc(radius, 90),       roll_angle(180) },
+            { path_vertical_arc(radius, 135),      roll_angle(0), roll_ref=180 },
       })
 end
 
@@ -1448,12 +1467,12 @@ function fai_f3a_box_l_r()
    return path_composer("f3a_box_l_r", {     -- positioned for a flight line 150m out. Flight line 520m total length.
                                              -- Script start point is ON CENTER, with the model heading DOWNWIND!
           { straight_roll,              { 150,   0 } },
-          { half_reverse_cuban_eight,   { 60 } },
+          { half_reverse_cuban_eight,   { 95 } },
           { straight_align,             { 0, 0 } },
-          { vertical_aerobatic_box,     { 540, 230, 30,  0 },     message="Starting Box Demo"},
-          { vertical_aerobatic_box,     { 540, 230, 30,  0 } },
-          { vertical_aerobatic_box,     { 540, 230, 30,  0 } },
-          { vertical_aerobatic_box,     { 540, 230, 30,  0 } },
+          { vertical_aerobatic_box,     { 540, 190, 45,  0 },     message="Starting Box Demo"},
+          { vertical_aerobatic_box,     { 540, 190, 45,  0 } },
+          { vertical_aerobatic_box,     { 540, 190, 45,  0 } },
+          { vertical_aerobatic_box,     { 540, 190, 45,  0 } },
           { straight_roll,              { 50, 0 } }
    })
 end
@@ -1472,35 +1491,35 @@ function nz_clubman()                               -- positioned for a flight l
           { straight_roll,            { 150, 0 } },
           --]]
           { straight_roll,            { 150,   0 } },
-          { half_reverse_cuban_eight, { 60 } },
+          { half_reverse_cuban_eight, { 90 } },
           { straight_align,           { 0, 0 } },
-          { cuban_eight,              { 60 },          message="Cuban Eight"},
+          { cuban_eight,              { 90 },          message="Cuban Eight"},
           { straight_align,           { -100, 0 } },
-          { half_reverse_cuban_eight, { 60 } },
+          { half_reverse_cuban_eight, { 90 } },
           { straight_align,           { 40, 0 } },
-          { half_reverse_cuban_eight, { 60 },          message="Half Rev Cuban"},
-          { straight_align,           { -150, 0 } },
-          { half_reverse_cuban_eight, { 60 } },
-          { straight_align,           { -90, 0 } },
-          { two_point_roll,           { 180 },         message="Two Point Roll"},
-          { straight_align,           { 150, 0 } },
-          { half_reverse_cuban_eight, { 60 } },
-          { straight_align,           { 72, 0 } },
-          { upline_45,                { 30, 120 },     message="45 Upline"},
-          { straight_align,           { -180, 0 } },                          -- missing the stall turn
-          { split_s,                  { 60, 90 } },
-          { straight_align,           { -90, 0 } },
-          { straight_roll,            { 180, 1 },      message="Slow Roll"},
-          { straight_align,           { 150, 0 } },
-          { half_cuban_eight,         { 60 } },
-          { straight_align,           { 0, 0 } },
-          { loop,                     { 60, 0, 2 },    message="Two Loops"},
+          { half_reverse_cuban_eight, { 90 },          message="Half Rev Cuban"},
           { straight_align,           { -180, 0 } },
-          { immelmann_turn,           { 60, 90 } },
-          { straight_align,           { -72, 0 } },
-          { downline_45,              { 30, 120 },     message="45 Downline"},
+          { half_reverse_cuban_eight, { 90 } },
+          { straight_align,           { -120, 0 } },
+          { two_point_roll,           { 240 },         message="Two Point Roll"},
           { straight_align,           { 150, 0 } },
-          { half_cuban_eight,         { 60 } },
+          { half_reverse_cuban_eight, { 90 } },
+          { straight_align,           { 106, 0 } },
+          { upline_45,                { 40, 180 },     message="45 Upline"},
+          { straight_align,           { -180, 0 } },                          -- missing the stall turn
+          { split_s,                  { 90, 90 } },
+          { straight_align,           { -120, 0 } },
+          { straight_roll,            { 240, 1 },      message="Slow Roll"},
+          { straight_align,           { 150, 0 } },
+          { half_cuban_eight,         { 90 } },
+          { straight_align,           { 0, 0 } },
+          { loop,                     { 90, 0, 2 },    message="Two Loops"},
+          { straight_align,           { -180, 0 } },
+          { immelmann_turn,           { 90, 90 } },
+          { straight_align,           { -106, 0 } },
+          { downline_45,              { 40, 180 },     message="45 Downline"},
+          { straight_align,           { 150, 0 } },
+          { half_cuban_eight,         { 90 } },
           { straight_roll,            { 100, 0 } },
    })
 end
@@ -1511,40 +1530,40 @@ end
 function f3a_p23_l_r()
    return path_composer("f3a_p23_l_r", {            -- positioned for a flight line 150m out. Flight line 520m total length.
                                                     -- Script start point is ON CENTER, with the model heading DOWNWIND!
-          { straight_roll,              { 80,   0 } },
-          { half_reverse_cuban_eight,   { 60 } },
-          { straight_align,             { 130, 0 } },
-          { p23_1,                      { 30, 200, 200 },  message="Top Hat"}, 
-          { straight_align,             { -230, 0 } },
-          { p23_2,                      { 30, 200 },       message="Half Square Loop"},     
+          { straight_roll,              { 160,   0 } },
+          { half_reverse_cuban_eight,   { 80 } },
+          { straight_align,             { 140, 0 } },
+          { p23_1,                      { 40, 200, 200 },  message="Top Hat"}, 
+          { straight_align,             { -220, 0 } },
+          { p23_2,                      { 40, 200 },       message="Half Square Loop"},     
           { straight_align,             { 0, 0 } },
-          { p23_3,                      { 30, 200 },       message="Humpty"},    
+          { p23_3,                      { 40, 200 },       message="Humpty"},    
           { straight_align,             { 160, 0 } },
-          { p23_4,                      { 30, 200 },       message="Half Square on Corner"},   
-          { straight_align,             { 110, 0 } },
-          { p23_5,                      { 30, 200 },       message="45 Up"},                        -- snap roll
-          { straight_align,             { -191, 0 } },
-          { p23_6,                      { 30, 200 },       message="Half Eight Sided Loop"},  
+          { p23_4,                      { 40, 200 },       message="Half Square on Corner"},   
+          { straight_align,             { 116, 0 } },
+          { p23_5,                      { 40, 200 },       message="45 Up"},                        -- snap roll
+          { straight_align,             { -185, 0 } },
+          { p23_6,                      { 40, 200 },       message="Half Eight Sided Loop"},  
           { straight_align,             { -100, 0 } },    
           { p23_7,                      { 200 },           message="Roll Combination"},      
           { straight_align,             { 160, 0 } },
           { p23_8,                      { 100 },           message="Immelmann Turn"},      
-          { straight_align,             { 30, 0 } },
-          { p23_9,                      { 30, 200 },       message="Should be a Spin"},            -- spin
-          { straight_align,             { -170, 0 } },
-          { p23_10,                     { 30, 200 },       message="Humpty"}, 
+          { straight_align,             { 40, 0 } },
+          { p23_9,                      { 40, 200 },       message="Should be a Spin"},            -- spin
+          { straight_align,             { -140, 0 } },
+          { p23_10,                     { 40, 200 },       message="Humpty"}, 
           { straight_align,             { -91, 0 } },
           { p23_11,                     { 50, 200 },       message="Laydown Loop"},  
-          { straight_align,             { 230, 0 } },
-          { p23_12,                     { 30, 200 },       message="Half Square Loop"},   
-          { straight_align,             { 30, 0 } },
-          { p23_13a,                    { 30, 200 },       message="Stall Turn"},                  -- stall turn    
+          { straight_align,             { 220, 0 } },
+          { p23_12,                     { 40, 200 },       message="Half Square Loop"},   
+          { straight_align,             { 40, 0 } },
+          { p23_13a,                    { 40, 200 },       message="Stall Turn"},                  -- stall turn    
           { straight_roll,              { 100,   0 } },      
-          { p23_14,                     { 30, 180 },       message="Fighter Turn"},                  
-          { straight_align,             { -28, 0 } },
-          { p23_15,                     { 30, 200 },       message="Triangle"},   
-          { straight_align,             { 230, 0 } },
-          { p23_16,                     { 30, 160 },       message="Sharks Tooth"},    
+          { p23_14,                     { 40, 180 },       message="Fighter Turn"},                  
+          { straight_align,             { -24, 0 } },
+          { p23_15,                     { 40, 200 },       message="Triangle"},   
+          { straight_align,             { 220, 0 } },
+          { p23_16,                     { 40, 160 },       message="Sharks Tooth"},    
           { straight_align,             { 0, 0 } },
           { p23_17,                     { 100 },           message="Loop"},  
           { straight_roll,              { 100, 0 } },
@@ -1558,42 +1577,46 @@ end
 function f4c_example_l_r()                          -- positioned for a flight line nominally 150m out (some manouvers start 30m out)
                                                     -- Script start point is ON CENTER @ 150m, with the model heading DOWNWIND ie flying Right to Left!
    return path_composer("f4c_example", {    
-         { straight_roll,             { 180,   0 } },
-         { half_climbing_circle,      { -60, 0, -60 } },            -- come in close for the first two manouvers
-         { straight_roll,             { 20,   0 } },
-         { scale_figure_eight,        { -80, -30 },        message="Scale Figure Eight"},   
+         { straight_roll,             { 320,   0 } },
+         { half_climbing_circle,      { -70, 0, -60 } },            -- come in close for the first two manouvers
+         --{ straight_roll,             { 10,   0 } },
+         { straight_align,            { 280, 0 } },
+         { scale_figure_eight,        { -140, -30 },        message="Scale Figure Eight"},   
          { straight_roll,             { 80,   0 } },
-         { immelmann_turn,            { 50       } }, 
+         { immelmann_turn,            { 90       } }, 
          { straight_align,            { 0, 0 } },
          --{ straight_roll,             { 340,   0 } },
-         { climbing_circle,           { 80, -125, 30 },    message="Descending 360"},   
+         { climbing_circle,           { 140, -205, 30 },    message="Descending 360"},   
          { straight_roll,             { 40,   0 } },
          { upline_20,                 { 80, 25 } },                  -- Climb up 25m to base height
-         { straight_roll,             { 20,   0 } },
-         { half_climbing_circle,      { 60, 0, 60 } },               -- Go back out to 150m
+         { straight_roll,             { 50,   0 } },
+         { half_climbing_circle,      { 70, 0, 60 } },               -- Go back out to 150m
          { straight_align,            { 0, 0 } },
-         { loop,                      { 50,    0, 1 },     message="Loop"},       
+         { loop,                      { 90,    0, 1 },      message="Loop"},       
          { straight_align,            { -50, 0 } },
-         { half_reverse_cuban_eight,  { 50       } },
+         { half_reverse_cuban_eight,  { 90       } },
          { straight_align,            { 0, 0 } },
-         { immelmann_turn,            { 50       },        message="Immelmann Turn"},    
+         { immelmann_turn,            { 90       },         message="Immelmann Turn"},    
          { straight_align,            { -140, 0 } },
-         { split_s,                   { 50       } },
+         { split_s,                   { 90       } },
          { straight_align,            { 0, 0 } },
-         { half_cuban_eight,          { 50       },        message="Half Cuban Eight"},  
+         { half_cuban_eight,          { 90       },         message="Half Cuban Eight"},  
          { straight_align,            { -180, 0 } },
-         { half_climbing_circle,      { 65, 0, 60 } },  
-         { straight_roll,             { 115,   0 } },         
-         { derry_turn,                { 65,   60 },        message="Derry Turn"}, 
+         { half_climbing_circle,      { 70, 0, 60 } },  
+         --{ straight_roll,             { 115,   0 } }, 
+         { straight_align,            { -90, 0 } },         
+         { derry_turn,                { 90,   60 },         message="Derry Turn"}, 
          { straight_roll,             { 200,   0 } },           
-         { half_climbing_circle,      { -65, 0, -60 } },   
+         { half_climbing_circle,      { -90, 0, -60 } },   
          { straight_align,            { 0, 0 } },         
-         { climbing_circle,           { -80,    0, -30 },  message="Gear Demo"}, 
-         { straight_roll,             { 200,   0 } },
-         { half_climbing_circle,      { -65, 0, -60 } },
-         { straight_align,            { 200, 0 } },
-         --{ barrel_roll,            { 100, 200 } , message="Barrel Roll"},     -- barrel roll - (radius, length)
-         { straight_roll,             { 20,    0 } },
+         { climbing_circle,           { -140,    0, -30 },  message="Gear Demo"}, 
+         { straight_roll,             { 250,   0 } },
+         { half_climbing_circle,      { -100, 0, -60 } },
+         { straight_align,            { -185, 0 } },
+         { barrel_roll,               { 90, 240, 1 },      message="Barrel Roll"},  
+         { straight_roll,             { 60,    0 } },
+         { half_reverse_cuban_eight,  { 90       }},
+         { straight_roll,             { 60,    0 } },
    })
 end
 
@@ -2259,6 +2282,9 @@ command_table[25]= PathFunction(laydown_humpty, "Laydown Humpty")
 command_table[26] = PathFunction(barrel_roll, "Barrel Roll")
 command_table[27]= PathFunction(straight_flight, "Straight Hold")
 command_table[28] = PathFunction(partial_circle, "Partial Circle")
+command_table[29]= PathFunction(four_point_roll, "Four Point Roll")
+command_table[30]= PathFunction(eight_point_roll, "Eight Point Roll")
+command_table[31]= PathFunction(multi_point_roll, "Multi Point Roll")
 command_table[200] = PathFunction(test_all_paths, "Test Suite")
 command_table[201] = PathFunction(nz_clubman, "NZ Clubman")
 command_table[202] = PathFunction(f3a_p23_l_r, "FAI F3A P23 L to R")
@@ -2301,6 +2327,14 @@ load_table["figure_eight"] = figure_eight
 load_table["barrel_roll"] = barrel_roll
 load_table["straight_hold"] = straight_hold
 load_table["partial_circle"] = partial_circle
+load_table["multi_point_roll"] = multi_point_roll
+load_table["p23_1a"] = p23_1a
+load_table["p23_1"] = p23_1
+load_table["p23_13a"] = p23_13a
+load_table["p23_14"] = p23_14
+load_table["p23_15"] = p23_15
+load_table["p23_16"] = p23_16
+load_table["p23_17"] = p23_17
 
 
 --[[
