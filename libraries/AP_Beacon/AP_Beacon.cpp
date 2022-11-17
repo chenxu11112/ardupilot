@@ -41,7 +41,7 @@ const AP_Param::GroupInfo AP_Beacon::var_info[] = {
     // @DisplayName: Beacon origin's latitude
     // @Description: Beacon origin's latitude
     // @Units: deg
-    // @Increment: 0.000001
+    // @Increment: 0.000001f
     // @Range: -90 90
     // @User: Advanced
     AP_GROUPINFO("_LATITUDE", 1, AP_Beacon, origin_lat, 0),
@@ -73,8 +73,13 @@ const AP_Param::GroupInfo AP_Beacon::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_ORIENT_YAW", 4, AP_Beacon, orient_yaw, 0),
 
+    AP_SUBGROUPVARPTR(_driver, "_", 5, AP_Beacon, _backend_var_info),
+
     AP_GROUPEND
 };
+
+const struct AP_Param::GroupInfo *AP_Beacon::_backend_var_info;
+
 
 AP_Beacon::AP_Beacon()
 {
@@ -104,12 +109,17 @@ void AP_Beacon::init(void)
         _driver = new AP_Beacon_Nooploop(*this);
     } else if (_type == AP_BeaconType_LinkPG) {
         _driver = new AP_Beacon_LinkPG(*this);
+        _backend_var_info= AP_Beacon_LinkPG::var_info;
     }
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     if (_type == AP_BeaconType_SITL) {
         _driver = new AP_Beacon_SITL(*this);
     }
 #endif
+
+    if (_driver && _backend_var_info) {
+            AP_Param::load_object_from_eeprom(_driver, _backend_var_info);
+        }
 }
 
 // return true if beacon feature is enabled

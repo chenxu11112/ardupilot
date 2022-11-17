@@ -22,8 +22,39 @@
 #include <AP_Math/crc.h>
 #include "AP_Beacon_LinkPG.h"
 #include <stdio.h>
+#include <GCS_MAVLink/GCS.h>
 
 extern const AP_HAL::HAL &hal;
+
+const AP_Param::GroupInfo AP_Beacon_LinkPG::var_info[] = {
+    AP_GROUPINFO("alpha", 0, AP_Beacon_LinkPG, alpha, 0.7f),
+
+    // @Param: Beacon 0
+    AP_GROUPINFO("b0_X", 1, AP_Beacon_LinkPG, beacon0_x, 0),
+    AP_GROUPINFO("b0_Y", 2, AP_Beacon_LinkPG, beacon0_y, 0),
+    AP_GROUPINFO("b0_Z", 3, AP_Beacon_LinkPG, beacon0_z, 0),
+
+    // @Param: Beacon 1
+    AP_GROUPINFO("b1_X", 4, AP_Beacon_LinkPG, beacon1_x, 20),
+    AP_GROUPINFO("b1_Y", 5, AP_Beacon_LinkPG, beacon1_y, 630),
+    AP_GROUPINFO("b1_Z", 6, AP_Beacon_LinkPG, beacon1_z, 270),
+
+    // @Param: Beacon 2
+    AP_GROUPINFO("b2_X", 7, AP_Beacon_LinkPG, beacon2_x, 560),
+    AP_GROUPINFO("b2_Y", 8, AP_Beacon_LinkPG, beacon2_y, 630),
+    AP_GROUPINFO("b2_Z", 9, AP_Beacon_LinkPG, beacon2_z, 270),
+
+    // @Param: Beacon 3
+    AP_GROUPINFO("b3_X", 10, AP_Beacon_LinkPG, beacon3_x, 660),
+    AP_GROUPINFO("b3_Y", 11, AP_Beacon_LinkPG, beacon3_y, 0),
+    AP_GROUPINFO("b3_Z", 12, AP_Beacon_LinkPG, beacon3_z, 0),
+
+    AP_GROUPEND};
+
+AP_Beacon_LinkPG::AP_Beacon_LinkPG(AP_Beacon &frontend) : AP_Beacon_Backend(frontend)
+{
+    AP_Param::setup_object_defaults(this, var_info);
+}
 
 // return true if sensor is basically healthy (we are receiving data)
 bool AP_Beacon_LinkPG::healthy()
@@ -41,6 +72,7 @@ void AP_Beacon_LinkPG::update(void)
 
     // read any available characters
     int16_t nbytes = uart->available();
+    // hal.console->printf("update bcn,nbytes=%d\n", nbytes);
 
     while (nbytes-- > 0)
     {
@@ -157,17 +189,19 @@ void AP_Beacon_LinkPG::update(void)
     }
 }
 
-const float BEACON_SPACING_NORTH = 10.0;
-const float BEACON_SPACING_EAST = 20.0;
-const float BEACON_SPACING_UP = 10.0;
+// const float BEACON_SPACING_NORTH = 10.0;
+// const float BEACON_SPACING_EAST = 20.0;
+// const float BEACON_SPACING_UP = 10.0;
 // parse buffer
 void AP_Beacon_LinkPG::parse_buffer()
 {
-    for (int i = 0; i < 47; i++)
-    {
-        printf("%x ", linebuf[i]);
-    }
-    printf("\r\n");
+    // hal.console->printf("parse_buffer\n");
+
+    // for (int i = 0; i < 47; i++)
+    // {
+    //     hal.console->printf("%x ", linebuf[i]);
+    // }
+    // hal.console->printf("\r\n");
 
     // check crc
     uint16_t crc = calc_crc_modbus(linebuf, linebuf_len - 2); // CRC16
@@ -179,53 +213,95 @@ void AP_Beacon_LinkPG::parse_buffer()
 
     if ((crc1 != linebuf[45]) || (crc2 != linebuf[46]))
     {
+        hal.console->printf("crc error\r\n");
+        gcs().send_text(MAV_SEVERITY_WARNING, "crc error\r\n");
         return;
     }
-    int16_t vehicle_x = (uint16_t)linebuf[39] << 8 | (uint16_t)linebuf[40];
-    int16_t vehicle_y = (uint16_t)linebuf[41] << 8 | (uint16_t)linebuf[42];
-    int16_t vehicle_z = (uint16_t)linebuf[43] << 8 | (uint16_t)linebuf[44];
-
-    Vector3f veh_pos(Vector3f(vehicle_x * 0.01f, vehicle_y * 0.01f, vehicle_z * 0.01f));
-
-    printf("veh_pos:%f,%f,%f\r\n", veh_pos[0], veh_pos[1], veh_pos[2]);
-
-    set_vehicle_position(veh_pos, 0.1f);
 
     //////////////////////////
-    int16_t distance;
-    distance = (uint16_t)linebuf[7] << 8 | (uint16_t)linebuf[8];
-    set_beacon_distance(0, distance * 0.01f);
+    Vector3f veh_pos;
 
-    distance = (uint16_t)linebuf[9] << 8 | (uint16_t)linebuf[10];
-    set_beacon_distance(1, distance * 0.01f);
+    // linkpg beacon is enu, transform to ned
+    veh_pos[1] = 0.01f * (float)(int16_t)((uint16_t)linebuf[39] << 8 | (uint16_t)linebuf[40]);
+    veh_pos[0] = 0.01f * (float)(int16_t)((uint16_t)linebuf[41] << 8 | (uint16_t)linebuf[42]);
+    veh_pos[2] = -0.01f * (float)(int16_t)((uint16_t)linebuf[43] << 8 | (uint16_t)linebuf[44]);
 
-    distance = (uint16_t)linebuf[11] << 8 | (uint16_t)linebuf[12];
-    set_beacon_distance(2, distance * 0.01f);
+    if ((last_veh_pos - veh_pos).length() > 2.0f)
+    {
+        veh_pos = last_veh_pos;
+    }
 
-    distance = (uint16_t)linebuf[13] << 8 | (uint16_t)linebuf[14];
-    set_beacon_distance(3, distance * 0.01f);
+    veh_pos = veh_pos * alpha + last_veh_pos * (1 - alpha);
+    last_veh_pos = veh_pos;
 
-    Vector3f pos;
+    set_vehicle_position(veh_pos, 0.15f);
 
-    pos[0] = -BEACON_SPACING_NORTH / 2;
-    pos[1] = -BEACON_SPACING_EAST / 2;
-    pos[2] = -BEACON_SPACING_UP / 2;
-    set_beacon_position(0, pos);
+    //////////////////////////
+    float distance;
+    Vector3f beacon_pos;
 
-    pos[0] = -BEACON_SPACING_NORTH / 2;
-    pos[1] = BEACON_SPACING_EAST / 2;
-    pos[2] = BEACON_SPACING_UP / 2;
-    set_beacon_position(1, pos);
+    //////////////////////////
+    distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7] << 8 | (uint16_t)linebuf[8]);
+    if (fabsf(last_distance[0] - distance) > 2.0f)
+    {
+        distance = last_distance[0];
+    }
+    distance = distance * alpha + last_distance[0] * (1 - alpha);
+    last_distance[0] = distance;
+    set_beacon_distance(0, distance);
 
-    pos[0] = BEACON_SPACING_NORTH / 2;
-    pos[1] = BEACON_SPACING_EAST / 2;
-    pos[2] = -BEACON_SPACING_UP / 2;
-    set_beacon_position(2, pos);
+    //////////////////////////
+    distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 5 * 2] << 8 | (uint16_t)linebuf[8 + 5 * 2]);
+    if (fabsf(last_distance[1] - distance) > 2.0f)
+    {
+        distance = last_distance[1];
+    }
+    distance = distance * alpha + last_distance[1] * (1 - alpha);
+    last_distance[1] = distance;
+    set_beacon_distance(1, distance);
 
-    pos[0] = BEACON_SPACING_NORTH / 2;
-    pos[1] = -BEACON_SPACING_EAST / 2;
-    pos[2] = BEACON_SPACING_UP / 2;
-    set_beacon_position(3, pos);
+    //////////////////////////
+    distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 3 * 2] << 8 | (uint16_t)linebuf[8 + 3 * 2]);
+    if (fabsf(last_distance[2] - distance) > 2.0f)
+    {
+        distance = last_distance[2];
+    }
+    distance = distance * alpha + last_distance[2] * (1 - alpha);
+    last_distance[2] = distance;
+    set_beacon_distance(2, distance);
+
+    //////////////////////////
+    distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 2 * 2] << 8 | (uint16_t)linebuf[8 + 2 * 2]);
+    if (fabsf(last_distance[3] - distance) > 2.0f)
+    {
+        distance = last_distance[3];
+    }
+    distance = distance * alpha + last_distance[3] * (1 - alpha);
+    last_distance[3] = distance;
+    set_beacon_distance(3, distance);
+
+    // linkpg beacon is enu, transform to ned
+    beacon_pos[1] = 0.01f * (float)(beacon0_x);
+    beacon_pos[0] = 0.01f * (float)(beacon0_y);
+    beacon_pos[2] = -0.01f * (float)(beacon0_z);
+    set_beacon_position(0, beacon_pos);
+
+    beacon_pos[1] = 0.01f * (float)(beacon1_x);
+    beacon_pos[0] = 0.01f * (float)(beacon1_y);
+    beacon_pos[2] = -0.01f * (float)(beacon1_z);
+    set_beacon_position(1, beacon_pos);
+
+    beacon_pos[1] = 0.01f * (float)(beacon2_x);
+    beacon_pos[0] = 0.01f * (float)(beacon2_y);
+    beacon_pos[2] = -0.01f * (float)(beacon2_z);
+    set_beacon_position(2, beacon_pos);
+
+    beacon_pos[1] = 0.01f * (float)(beacon3_x);
+    beacon_pos[0] = 0.01f * (float)(beacon3_y);
+    beacon_pos[2] = -0.01f * (float)(beacon3_z);
+    set_beacon_position(3, beacon_pos);
 
     last_update_ms = AP_HAL::millis();
+
+    // hal.console->printf("%ld\r\n", last_update_ms);
 }
