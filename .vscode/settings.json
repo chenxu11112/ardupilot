@@ -33,5 +33,7 @@
         "unordered_set": "cpp",
         "stdexcept": "cpp",
         "condition_variable": "cpp"
-    }
+    },
+    "C_Cpp.clang_format_fallbackStyle": "{BasedOnStyle: WebKit, IndentWidth: 4, ColumnLimit: 120}",
+
 }

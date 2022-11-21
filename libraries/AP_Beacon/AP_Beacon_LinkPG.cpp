@@ -18,15 +18,16 @@
  April 2017
  */
 
+#include "AP_Beacon_LinkPG.h"
+
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/crc.h>
-#include "AP_Beacon_LinkPG.h"
-#include <stdio.h>
 #include <GCS_MAVLink/GCS.h>
+#include <stdio.h>
 
-extern const AP_HAL::HAL &hal;
+extern const AP_HAL::HAL& hal;
 
-const AP_Param::GroupInfo AP_Beacon_LinkPG::var_info[] = {
+const AP_Param::GroupInfo AP_Beacon_LinkPG::var_info[] = { 
     AP_GROUPINFO("alpha", 0, AP_Beacon_LinkPG, alpha, 0.7f),
 
     // @Param: Beacon 0
@@ -49,9 +50,10 @@ const AP_Param::GroupInfo AP_Beacon_LinkPG::var_info[] = {
     AP_GROUPINFO("b3_Y", 11, AP_Beacon_LinkPG, beacon3_y, 0),
     AP_GROUPINFO("b3_Z", 12, AP_Beacon_LinkPG, beacon3_z, 0),
 
-    AP_GROUPEND};
+    AP_GROUPEND };
 
-AP_Beacon_LinkPG::AP_Beacon_LinkPG(AP_Beacon &frontend) : AP_Beacon_Backend(frontend)
+AP_Beacon_LinkPG::AP_Beacon_LinkPG(AP_Beacon& frontend)
+    : AP_Beacon_Backend(frontend)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }
@@ -65,8 +67,7 @@ bool AP_Beacon_LinkPG::healthy()
 
 void AP_Beacon_LinkPG::update(void)
 {
-    if (uart == nullptr)
-    {
+    if (uart == nullptr) {
         return;
     }
 
@@ -74,16 +75,13 @@ void AP_Beacon_LinkPG::update(void)
     int16_t nbytes = uart->available();
     // hal.console->printf("update bcn,nbytes=%d\n", nbytes);
 
-    while (nbytes-- > 0)
-    {
+    while (nbytes-- > 0) {
         uint8_t c = uart->read();
 
-        switch (parse_state)
-        {
+        switch (parse_state) {
         default:
         case ParseState_WaitingForModBusID:
-            if (c == 0x01)
-            {
+            if (c == 0x01) {
                 linebuf_len = 0;
                 parse_state = ParseState_WaitingForModBusFunc;
                 linebuf[linebuf_len++] = c;
@@ -91,13 +89,10 @@ void AP_Beacon_LinkPG::update(void)
             break;
 
         case ParseState_WaitingForModBusFunc:
-            if (c == 0x03)
-            {
+            if (c == 0x03) {
                 parse_state = ParseState_WaitingForLen;
                 linebuf[linebuf_len++] = c;
-            }
-            else
-            {
+            } else {
                 parse_state = ParseState_WaitingForModBusID;
             }
             break;
@@ -106,76 +101,60 @@ void AP_Beacon_LinkPG::update(void)
             parse_msg_len = c;
             linebuf[linebuf_len++] = c;
 
-            if (parse_msg_len > AP_BEACON_LINKPG_BUF_SIZE)
-            {
+            if (parse_msg_len > AP_BEACON_LINKPG_BUF_SIZE) {
                 // invalid message length
                 parse_state = ParseState_WaitingForModBusID;
-            }
-            else
-            {
+            } else {
                 parse_state = ParseState_WaitingForFlag1;
             }
             break;
 
         case ParseState_WaitingForFlag1:
 
-            if (c == 0xAC)
-            {
+            if (c == 0xAC) {
                 parse_state = ParseState_WaitingForFlag2;
 
                 linebuf[linebuf_len++] = c;
-            }
-            else
-            {
+            } else {
                 parse_state = ParseState_WaitingForModBusID;
             }
             break;
 
         case ParseState_WaitingForFlag2:
 
-            if (c == 0xDA)
-            {
+            if (c == 0xDA) {
                 linebuf[linebuf_len++] = c;
 
                 parse_state = ParseState_WaitingForInfoFlag1;
-            }
-            else
-            {
+            } else {
                 parse_state = ParseState_WaitingForModBusID;
             }
             break;
 
         case ParseState_WaitingForInfoFlag1:
 
-            if (c == 0x00)
-            {
+            if (c == 0x00) {
                 linebuf[linebuf_len++] = c;
 
                 parse_state = ParseState_WaitingForInfoFlag2;
-            }
-            else
-            {
+            } else {
                 parse_state = ParseState_WaitingForModBusID;
             }
             break;
 
         case ParseState_WaitingForInfoFlag2:
-            if (c == 0x03)
-            {
+            if (c == 0x03) {
                 linebuf[linebuf_len++] = c;
 
                 parse_state = ParseState_WaitingForContents;
-            }
-            else
-            {
+            } else {
                 parse_state = ParseState_WaitingForModBusID;
             }
             break;
 
         case ParseState_WaitingForContents:
             linebuf[linebuf_len++] = c;
-            if (linebuf_len == (parse_msg_len + 3 + 2))
-            {
+            if (linebuf_len == (parse_msg_len + 3 + 2)) {
                 // process buffer
 
                 // printf("parse_buffer\r\n");
@@ -211,8 +190,7 @@ void AP_Beacon_LinkPG::parse_buffer()
 
     // printf("crc=0x%x,0x%x\r\n", crc1, crc2);
 
-    if ((crc1 != linebuf[45]) || (crc2 != linebuf[46]))
-    {
+    if ((crc1 != linebuf[45]) || (crc2 != linebuf[46])) {
         hal.console->printf("crc error\r\n");
         gcs().send_text(MAV_SEVERITY_WARNING, "crc error\r\n");
         return;
@@ -226,8 +204,7 @@ void AP_Beacon_LinkPG::parse_buffer()
     veh_pos[0] = 0.01f * (float)(int16_t)((uint16_t)linebuf[41] << 8 | (uint16_t)linebuf[42]);
     veh_pos[2] = -0.01f * (float)(int16_t)((uint16_t)linebuf[43] << 8 | (uint16_t)linebuf[44]);
 
-    if ((last_veh_pos - veh_pos).length() > 2.0f)
-    {
+    if ((last_veh_pos - veh_pos).length() > 2.0f) {
         veh_pos = last_veh_pos;
     }
 
@@ -242,8 +219,7 @@ void AP_Beacon_LinkPG::parse_buffer()
 
     //////////////////////////
     distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7] << 8 | (uint16_t)linebuf[8]);
-    if (fabsf(last_distance[0] - distance) > 2.0f)
-    {
+    if (fabsf(last_distance[0] - distance) > 2.0f) {
         distance = last_distance[0];
     }
     distance = distance * alpha + last_distance[0] * (1 - alpha);
@@ -252,8 +228,7 @@ void AP_Beacon_LinkPG::parse_buffer()
 
     //////////////////////////
     distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 5 * 2] << 8 | (uint16_t)linebuf[8 + 5 * 2]);
-    if (fabsf(last_distance[1] - distance) > 2.0f)
-    {
+    if (fabsf(last_distance[1] - distance) > 2.0f) {
         distance = last_distance[1];
     }
     distance = distance * alpha + last_distance[1] * (1 - alpha);
@@ -262,8 +237,7 @@ void AP_Beacon_LinkPG::parse_buffer()
 
     //////////////////////////
     distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 3 * 2] << 8 | (uint16_t)linebuf[8 + 3 * 2]);
-    if (fabsf(last_distance[2] - distance) > 2.0f)
-    {
+    if (fabsf(last_distance[2] - distance) > 2.0f) {
         distance = last_distance[2];
     }
     distance = distance * alpha + last_distance[2] * (1 - alpha);
@@ -272,8 +246,7 @@ void AP_Beacon_LinkPG::parse_buffer()
 
     //////////////////////////
     distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 2 * 2] << 8 | (uint16_t)linebuf[8 + 2 * 2]);
-    if (fabsf(last_distance[3] - distance) > 2.0f)
-    {
+    if (fabsf(last_distance[3] - distance) > 2.0f) {
         distance = last_distance[3];
     }
     distance = distance * alpha + last_distance[3] * (1 - alpha);
