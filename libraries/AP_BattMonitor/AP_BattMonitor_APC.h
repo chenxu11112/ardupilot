@@ -3,7 +3,7 @@
 #include "AP_BattMonitor.h"
 #include "AP_BattMonitor_Analog.h"
 
-class AP_BattMonitor_APC : public AP_BattMonitor_Backend
+class AP_BattMonitor_APC : public AP_BattMonitor_Analog
 {
 public:
     /// Constructor
@@ -20,18 +20,8 @@ public:
     /// Read the battery voltage.
     void read() override;
 
-    static const struct AP_Param::GroupInfo var_info[];
-
 private:
-    // Parameters
-    AP_Float _volt_multiplier; /// voltage on volt pin multiplied by this to calculate battery voltage
-    AP_Float _volt_offset;     /// offset voltage that is subtracted from voltage pin before conversion
-    AP_Int8 _volt_pin;         /// board pin used to measure battery voltage
-    AP_Float _volt_pwmfreq;    /// The ratio of PWM conversion voltage
-    AP_Float _volt_maxvolt;    /// Maximum voltage of APC input
-    AP_Int32 _volt_pwm_low;    /// Lower limit duty cycle values
-    AP_Int32 _volt_pwm_up;     /// Upper limit duty cycle values
-
+  
     struct IrqState {
         uint32_t last_pulse_us;
         uint32_t pulse_width_us;

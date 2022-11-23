@@ -6,8 +6,9 @@ extern const AP_HAL::HAL &hal;
 
 /// Constructor
 AP_BattMonitor_APC::AP_BattMonitor_APC(AP_BattMonitor &mon,
-                                       AP_BattMonitor::BattMonitor_State &mon_state,
-                                       AP_BattMonitor_Params &params) : AP_BattMonitor_Backend(mon, mon_state, params)
+                                                 AP_BattMonitor::BattMonitor_State &mon_state,
+                                                 AP_BattMonitor_Params &params) :
+    AP_BattMonitor_Analog(mon, mon_state, params)
 {
     _state.voltage = 1.0; // show a fixed voltage of 1v
 
