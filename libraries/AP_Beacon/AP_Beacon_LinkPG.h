@@ -26,11 +26,10 @@
 
 #define AP_BEACON_LINKPG_MAX_NUM 4
 
-class AP_Beacon_LinkPG : public AP_Beacon_Backend
-{
+class AP_Beacon_LinkPG : public AP_Beacon_Backend {
 public:
     // constructor
-    AP_Beacon_LinkPG(AP_Beacon &frontend);
+    AP_Beacon_LinkPG(AP_Beacon& frontend);
 
     // return true if sensor is basically healthy (we are receiving data)
     bool healthy() override;
@@ -41,8 +40,7 @@ public:
     static const struct AP_Param::GroupInfo var_info[];
 
 private:
-    enum ParseState
-    {
+    enum ParseState {
         ParseState_WaitingForModBusID = 0,
         ParseState_WaitingForModBusFunc = 1,
         ParseState_WaitingForLen = 2,
@@ -63,24 +61,15 @@ private:
     uint8_t parse_msg_id;
     uint8_t parse_msg_len;
 
-    AP_Int16 beacon0_x;
-    AP_Int16 beacon0_y;
-    AP_Int16 beacon0_z;
+    AP_Int16 beaconXYZ[AP_BEACON_LINKPG_MAX_NUM][3];
 
-    AP_Int16 beacon1_x;
-    AP_Int16 beacon1_y;
-    AP_Int16 beacon1_z;
-
-    AP_Int16 beacon2_x;
-    AP_Int16 beacon2_y;
-    AP_Int16 beacon2_z;
-
-    AP_Int16 beacon3_x;
-    AP_Int16 beacon3_y;
-    AP_Int16 beacon3_z;
+    AP_Int8 beaconID[AP_BEACON_LINKPG_MAX_NUM];
 
     AP_Float alpha;
 
     Vector3f last_veh_pos;
+
+    float beaconDistance[AP_BEACON_LINKPG_MAX_NUM];
+
     float last_distance[AP_BEACON_LINKPG_MAX_NUM];
 };

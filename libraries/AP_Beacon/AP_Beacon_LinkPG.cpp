@@ -31,24 +31,36 @@ const AP_Param::GroupInfo AP_Beacon_LinkPG::var_info[] = {
     AP_GROUPINFO("alpha", 0, AP_Beacon_LinkPG, alpha, 0.7f),
 
     // @Param: Beacon 0
-    AP_GROUPINFO("b0_X", 1, AP_Beacon_LinkPG, beacon0_x, 0),
-    AP_GROUPINFO("b0_Y", 2, AP_Beacon_LinkPG, beacon0_y, 0),
-    AP_GROUPINFO("b0_Z", 3, AP_Beacon_LinkPG, beacon0_z, 0),
+    AP_GROUPINFO("b0_X", 1, AP_Beacon_LinkPG, beaconXYZ[0][0], 0),
+    AP_GROUPINFO("b0_Y", 2, AP_Beacon_LinkPG, beaconXYZ[0][1], 0),
+    AP_GROUPINFO("b0_Z", 3, AP_Beacon_LinkPG, beaconXYZ[0][2], 0),
 
     // @Param: Beacon 1
-    AP_GROUPINFO("b1_X", 4, AP_Beacon_LinkPG, beacon1_x, 20),
-    AP_GROUPINFO("b1_Y", 5, AP_Beacon_LinkPG, beacon1_y, 630),
-    AP_GROUPINFO("b1_Z", 6, AP_Beacon_LinkPG, beacon1_z, 270),
+    AP_GROUPINFO("b1_X", 4, AP_Beacon_LinkPG, beaconXYZ[1][0], 0),
+    AP_GROUPINFO("b1_Y", 5, AP_Beacon_LinkPG, beaconXYZ[1][1], 600),
+    AP_GROUPINFO("b1_Z", 6, AP_Beacon_LinkPG, beaconXYZ[1][2], 300),
 
     // @Param: Beacon 2
-    AP_GROUPINFO("b2_X", 7, AP_Beacon_LinkPG, beacon2_x, 560),
-    AP_GROUPINFO("b2_Y", 8, AP_Beacon_LinkPG, beacon2_y, 630),
-    AP_GROUPINFO("b2_Z", 9, AP_Beacon_LinkPG, beacon2_z, 270),
+    AP_GROUPINFO("b2_X", 7, AP_Beacon_LinkPG, beaconXYZ[2][0], 600),
+    AP_GROUPINFO("b2_Y", 8, AP_Beacon_LinkPG, beaconXYZ[2][1], 600),
+    AP_GROUPINFO("b2_Z", 9, AP_Beacon_LinkPG, beaconXYZ[2][2], 300),
 
     // @Param: Beacon 3
-    AP_GROUPINFO("b3_X", 10, AP_Beacon_LinkPG, beacon3_x, 660),
-    AP_GROUPINFO("b3_Y", 11, AP_Beacon_LinkPG, beacon3_y, 0),
-    AP_GROUPINFO("b3_Z", 12, AP_Beacon_LinkPG, beacon3_z, 0),
+    AP_GROUPINFO("b3_X", 10, AP_Beacon_LinkPG, beaconXYZ[3][0], 600),
+    AP_GROUPINFO("b3_Y", 11, AP_Beacon_LinkPG, beaconXYZ[3][1], 0),
+    AP_GROUPINFO("b3_Z", 12, AP_Beacon_LinkPG, beaconXYZ[3][2], 0),
+
+    // @Param: Beacon 0 id
+    AP_GROUPINFO("b0_id", 13, AP_Beacon_LinkPG, beaconID[0], 0),
+
+    // @Param: Beacon 1 id
+    AP_GROUPINFO("b1_id", 14, AP_Beacon_LinkPG, beaconID[1], 5),
+
+    // @Param: Beacon 2 id
+    AP_GROUPINFO("b2_id", 15, AP_Beacon_LinkPG, beaconID[2], 3),
+
+    // @Param: Beacon 3 id
+    AP_GROUPINFO("b3_id", 16, AP_Beacon_LinkPG, beaconID[3], 2),
 
     AP_GROUPEND };
 
@@ -196,7 +208,7 @@ void AP_Beacon_LinkPG::parse_buffer()
         return;
     }
 
-    //////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
     Vector3f veh_pos;
 
     // linkpg beacon is enu, transform to ned
@@ -204,77 +216,43 @@ void AP_Beacon_LinkPG::parse_buffer()
     veh_pos[0] = 0.01f * (float)(int16_t)((uint16_t)linebuf[41] << 8 | (uint16_t)linebuf[42]);
     veh_pos[2] = -0.01f * (float)(int16_t)((uint16_t)linebuf[43] << 8 | (uint16_t)linebuf[44]);
 
-    if ((last_veh_pos - veh_pos).length() > 2.0f) {
-        veh_pos = last_veh_pos;
-    }
+    // if ((last_veh_pos - veh_pos).length() > 2.0f) {
+    //     veh_pos = last_veh_pos;
+    // }
 
     veh_pos = veh_pos * alpha + last_veh_pos * (1 - alpha);
     last_veh_pos = veh_pos;
 
     set_vehicle_position(veh_pos, 0.15f);
 
-    //////////////////////////
-    float distance;
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
     Vector3f beacon_pos;
 
-    //////////////////////////
-    distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7] << 8 | (uint16_t)linebuf[8]);
-    if (fabsf(last_distance[0] - distance) > 2.0f) {
-        distance = last_distance[0];
+    for (uint8_t i = 0; i < AP_BEACON_LINKPG_MAX_NUM; i++) {
+        // beaconDistance 
+        beaconDistance[i] = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + beaconID[i] * 2] << 8 | (uint16_t)linebuf[8 + beaconID[i] * 2]);
+        // if (fabsf(last_distance[i] - beaconDistance[i]) > 2.0f) {
+        //     beaconDistance[i] = last_distance[0];
+        // }
+        beaconDistance[i] = beaconDistance[i] * alpha + last_distance[i] * (1 - alpha);
+        last_distance[i] = beaconDistance[i];
+        set_beacon_distance(i, beaconDistance[i]);
+
+        // beaconXYZ is enu, transform to ned
+        beacon_pos[1] = 0.01f * (float)(beaconXYZ[i][0]);
+        beacon_pos[0] = 0.01f * (float)(beaconXYZ[i][1]);
+        beacon_pos[2] = -0.01f * (float)(beaconXYZ[i][2]);
+        set_beacon_position(i, beacon_pos);
+
+        /////////////////////////////////////////////////
+        printf("beaconXYZ[%d]=%d,%d,%d\r\n", i, (int)beaconXYZ[i][0], (int)beaconXYZ[i][1], (int)beaconXYZ[i][2]);
+        printf("beaconDistance[%d]=%f\r\n", i, beaconDistance[i]);
     }
-    distance = distance * alpha + last_distance[0] * (1 - alpha);
-    last_distance[0] = distance;
-    set_beacon_distance(0, distance);
 
-    //////////////////////////
-    distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 5 * 2] << 8 | (uint16_t)linebuf[8 + 5 * 2]);
-    if (fabsf(last_distance[1] - distance) > 2.0f) {
-        distance = last_distance[1];
-    }
-    distance = distance * alpha + last_distance[1] * (1 - alpha);
-    last_distance[1] = distance;
-    set_beacon_distance(1, distance);
+    uint32_t millis = AP_HAL::millis();
+    uint32_t delta_ms = millis - last_update_ms;
+    // hal.console->printf("%d\r\n", last_update_ms);
+    printf("%d\r\n", delta_ms);
 
-    //////////////////////////
-    distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 3 * 2] << 8 | (uint16_t)linebuf[8 + 3 * 2]);
-    if (fabsf(last_distance[2] - distance) > 2.0f) {
-        distance = last_distance[2];
-    }
-    distance = distance * alpha + last_distance[2] * (1 - alpha);
-    last_distance[2] = distance;
-    set_beacon_distance(2, distance);
-
-    //////////////////////////
-    distance = 0.01f * (float)(uint16_t)((uint16_t)linebuf[7 + 2 * 2] << 8 | (uint16_t)linebuf[8 + 2 * 2]);
-    if (fabsf(last_distance[3] - distance) > 2.0f) {
-        distance = last_distance[3];
-    }
-    distance = distance * alpha + last_distance[3] * (1 - alpha);
-    last_distance[3] = distance;
-    set_beacon_distance(3, distance);
-
-    // linkpg beacon is enu, transform to ned
-    beacon_pos[1] = 0.01f * (float)(beacon0_x);
-    beacon_pos[0] = 0.01f * (float)(beacon0_y);
-    beacon_pos[2] = -0.01f * (float)(beacon0_z);
-    set_beacon_position(0, beacon_pos);
-
-    beacon_pos[1] = 0.01f * (float)(beacon1_x);
-    beacon_pos[0] = 0.01f * (float)(beacon1_y);
-    beacon_pos[2] = -0.01f * (float)(beacon1_z);
-    set_beacon_position(1, beacon_pos);
-
-    beacon_pos[1] = 0.01f * (float)(beacon2_x);
-    beacon_pos[0] = 0.01f * (float)(beacon2_y);
-    beacon_pos[2] = -0.01f * (float)(beacon2_z);
-    set_beacon_position(2, beacon_pos);
-
-    beacon_pos[1] = 0.01f * (float)(beacon3_x);
-    beacon_pos[0] = 0.01f * (float)(beacon3_y);
-    beacon_pos[2] = -0.01f * (float)(beacon3_z);
-    set_beacon_position(3, beacon_pos);
-
-    last_update_ms = AP_HAL::millis();
-
-    // hal.console->printf("%ld\r\n", last_update_ms);
+    last_update_ms = millis;
 }
