@@ -22,6 +22,12 @@
 
 #include "AP_Beacon_Backend.h"
 
+#
+#include <AP_HAL/AP_HAL.h>
+#include <Filter/AverageFilter.h> // AverageFilter class (inherits from Filter class)
+#include <Filter/Filter.h> // Filter library
+#include <Filter/ModeFilter.h> // ModeFilter class (inherits from Filter class)
+
 #define AP_BEACON_LINKPG_BUF_SIZE 47
 
 #define AP_BEACON_LINKPG_MAX_NUM 4
@@ -65,11 +71,13 @@ private:
 
     AP_Int8 beaconID[AP_BEACON_LINKPG_MAX_NUM];
 
-    AP_Float alpha;
-
-    Vector3f last_veh_pos;
-
     float beaconDistance[AP_BEACON_LINKPG_MAX_NUM];
 
-    float last_distance[AP_BEACON_LINKPG_MAX_NUM];
+    Vector3f vehPos;
+
+    ModeFilterInt16_Size7 vehPosFilter[3];
+    butter10hz1_6 vehposbutter[3];
+
+    ModeFilterUInt16_Size7 beaconDistFilter[AP_BEACON_LINKPG_MAX_NUM];
+    butter10hz1_6 beaconDistbutter[AP_BEACON_LINKPG_MAX_NUM];
 };

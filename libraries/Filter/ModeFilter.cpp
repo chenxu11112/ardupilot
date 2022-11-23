@@ -98,3 +98,7 @@ void ModeFilter<T,FILTER_SIZE>::isort(T new_sample, bool drop_high)
 // instantiate required implementations
 template class ModeFilter<float,5>;
 template class ModeFilter<int16_t,5>;
+template class ModeFilter<int16_t,7>;
+
+template class ModeFilter<uint16_t,5>;
+template class ModeFilter<uint16_t,7>;
