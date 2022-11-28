@@ -34,6 +34,8 @@ public:
     // update
     virtual void update() = 0;
 
+    virtual void setBeaconXYZ() { }
+
     // set vehicle position
     // pos should be in meters in NED frame from the beacon's local origin
     // accuracy_estimate is also in meters

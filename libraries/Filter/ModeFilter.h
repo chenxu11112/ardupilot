@@ -61,11 +61,15 @@ typedef ModeFilter<int16_t,4> ModeFilterInt16_Size4;
 typedef ModeFilter<int16_t,5> ModeFilterInt16_Size5;
 typedef ModeFilter<int16_t,6> ModeFilterInt16_Size6;
 typedef ModeFilter<int16_t,7> ModeFilterInt16_Size7;
+typedef ModeFilter<int16_t,9> ModeFilterInt16_Size9;
+
 typedef ModeFilter<uint16_t,3> ModeFilterUInt16_Size3;
 typedef ModeFilter<uint16_t,4> ModeFilterUInt16_Size4;
 typedef ModeFilter<uint16_t,5> ModeFilterUInt16_Size5;
 typedef ModeFilter<uint16_t,6> ModeFilterUInt16_Size6;
 typedef ModeFilter<uint16_t,7> ModeFilterUInt16_Size7;
+typedef ModeFilter<uint16_t,9> ModeFilterUInt16_Size9;
+
 typedef ModeFilter<float,3> ModeFilterFloat_Size3;
 typedef ModeFilter<float,4> ModeFilterFloat_Size4;
 typedef ModeFilter<float,5> ModeFilterFloat_Size5;

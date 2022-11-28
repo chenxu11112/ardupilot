@@ -18,17 +18,17 @@
 #if AP_BEACON_ENABLED
 
 #include "AP_Beacon_Backend.h"
-#include "AP_Beacon_Pozyx.h"
+#include "AP_Beacon_LinkPG.h"
 #include "AP_Beacon_Marvelmind.h"
 #include "AP_Beacon_Nooploop.h"
-#include "AP_Beacon_LinkPG.h"
+#include "AP_Beacon_Pozyx.h"
 
 #include "AP_Beacon_SITL.h"
 
 #include <AP_Common/Location.h>
 #include <AP_Logger/AP_Logger.h>
 
-extern const AP_HAL::HAL &hal;
+extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
 const AP_Param::GroupInfo AP_Beacon::var_info[] = {
@@ -38,7 +38,7 @@ const AP_Param::GroupInfo AP_Beacon::var_info[] = {
     // @Description: What type of beacon based position estimation device is connected
     // @Values: 0:None,1:Pozyx,2:Marvelmind,3:Nooploop,10:SITL
     // @User: Advanced
-    AP_GROUPINFO_FLAGS("_TYPE",    0, AP_Beacon, _type, 0, AP_PARAM_FLAG_ENABLE),
+    AP_GROUPINFO_FLAGS("_TYPE", 0, AP_Beacon, _type, 0, AP_PARAM_FLAG_ENABLE),
 
     // @Param: _LATITUDE
     // @DisplayName: Beacon origin's latitude
@@ -81,8 +81,7 @@ const AP_Param::GroupInfo AP_Beacon::var_info[] = {
     AP_GROUPEND
 };
 
-const struct AP_Param::GroupInfo *AP_Beacon::_backend_var_info;
-
+const struct AP_Param::GroupInfo* AP_Beacon::_backend_var_info;
 
 AP_Beacon::AP_Beacon()
 {
@@ -112,7 +111,7 @@ void AP_Beacon::init(void)
         _driver = new AP_Beacon_Nooploop(*this);
     } else if (_type == AP_BeaconType_LinkPG) {
         _driver = new AP_Beacon_LinkPG(*this);
-        _backend_var_info= AP_Beacon_LinkPG::var_info;
+        _backend_var_info = AP_Beacon_LinkPG::var_info;
     }
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     if (_type == AP_BeaconType_SITL) {
@@ -121,15 +120,14 @@ void AP_Beacon::init(void)
 #endif
 
     if (_driver && _backend_var_info) {
-            AP_Param::load_object_from_eeprom(_driver, _backend_var_info);
-        }
+        AP_Param::load_object_from_eeprom(_driver, _backend_var_info);
+
+        _driver->setBeaconXYZ();
+    }
 }
 
 // return true if beacon feature is enabled
-bool AP_Beacon::enabled(void) const
-{
-    return (_type != AP_BeaconType_None);
-}
+bool AP_Beacon::enabled(void) const { return (_type != AP_BeaconType_None); }
 
 // return true if sensor is basically healthy (we are receiving data)
 bool AP_Beacon::healthy(void) const
@@ -153,7 +151,7 @@ void AP_Beacon::update(void)
 }
 
 // return origin of position estimate system
-bool AP_Beacon::get_origin(Location &origin_loc) const
+bool AP_Beacon::get_origin(Location& origin_loc) const
 {
     if (!device_ready()) {
         return false;
@@ -174,7 +172,7 @@ bool AP_Beacon::get_origin(Location &origin_loc) const
 }
 
 // return position in NED from position estimate system's origin in meters
-bool AP_Beacon::get_vehicle_position_ned(Vector3f &position, float& accuracy_estimate) const
+bool AP_Beacon::get_vehicle_position_ned(Vector3f& position, float& accuracy_estimate) const
 {
     if (!device_ready()) {
         return false;
@@ -231,7 +229,7 @@ bool AP_Beacon::beacon_healthy(uint8_t beacon_instance) const
 // return distance to beacon in meters
 float AP_Beacon::beacon_distance(uint8_t beacon_instance) const
 {
-    if ( beacon_instance >= num_beacons || !beacon_state[beacon_instance].healthy) {
+    if (beacon_instance >= num_beacons || !beacon_state[beacon_instance].healthy) {
         return 0.0f;
     }
     return beacon_state[beacon_instance].distance;
@@ -278,21 +276,23 @@ void AP_Beacon::update_boundary_points()
 
     // create polygon around boundary points using the following algorithm
     //     set the "current point" as the first boundary point
-    //     loop through all the boundary points looking for the point which creates a vector (from the current point to this new point) with the lowest angle
-    //     check if point is already in boundary
+    //     loop through all the boundary points looking for the point which creates a vector (from the current point to this new point) with the
+    //     lowest angle check if point is already in boundary
     //       - no: add to boundary, move current point to this new point and repeat the above
     //       - yes: we've completed the bounding box, delete any boundary points found earlier than the duplicate
 
-    Vector2f boundary_points[AP_BEACON_MAX_BEACONS+1];  // array of boundary points
-    uint8_t curr_boundary_idx = 0;                      // index into boundary_sorted index.  always points to the highest filled in element of the array
-    uint8_t curr_beacon_idx = 0;                        // index into beacon_point array.  point indexed is same point as curr_boundary_idx's
+    Vector2f boundary_points[AP_BEACON_MAX_BEACONS + 1]; // array of boundary points
+    uint8_t curr_boundary_idx = 0; // index into boundary_sorted index.  always points to the highest filled in element of the array
+    uint8_t curr_beacon_idx = 0; // index into beacon_point array.  point indexed is same point as curr_boundary_idx's
 
-    // initialise first point of boundary_sorted with first beacon's position (this point may be removed later if it is found to not be on the outer boundary)
+    // initialise first point of boundary_sorted with first beacon's position (this point may be removed later if it is found to not be on the outer
+    // boundary)
     boundary_points[curr_boundary_idx] = beacon_points[curr_beacon_idx];
 
-    bool boundary_success = false;  // true once the boundary has been successfully found
-    bool boundary_failure = false;  // true if we fail to build the boundary
-    float start_angle = 0.0f;       // starting angle used when searching for next boundary point, on each iteration this climbs but never climbs past PI * 2
+    bool boundary_success = false; // true once the boundary has been successfully found
+    bool boundary_failure = false; // true if we fail to build the boundary
+    float start_angle
+        = 0.0f; // starting angle used when searching for next boundary point, on each iteration this climbs but never climbs past PI * 2
     while (!boundary_success && !boundary_failure) {
         // look for next outer point
         uint8_t next_idx;
@@ -321,7 +321,7 @@ void AP_Beacon::update_boundary_points()
                 if (num_pts >= AP_BEACON_MINIMUM_FENCE_BEACONS) { // we consider three points to be a polygon
                     // success, copy boundary points to boundary array and convert meters to cm
                     for (uint8_t j = 0; j < num_pts; j++) {
-                        boundary[j] = boundary_points[j+dup_idx] * 100.0f;
+                        boundary[j] = boundary_points[j + dup_idx] * 100.0f;
                     }
                     boundary_num_points = num_pts;
                     boundary_success = true;
@@ -348,7 +348,8 @@ void AP_Beacon::update_boundary_points()
 //   start_angle is an angle (in radians), the search will sweep clockwise from this angle
 //   the index of the next point is returned in the next_index argument
 //   the angle to the next point is returned in the next_angle argument
-bool AP_Beacon::get_next_boundary_point(const Vector2f* boundary_pts, uint8_t num_points, uint8_t current_index, float start_angle, uint8_t& next_index, float& next_angle)
+bool AP_Beacon::get_next_boundary_point(
+    const Vector2f* boundary_pts, uint8_t num_points, uint8_t current_index, float start_angle, uint8_t& next_index, float& next_angle)
 {
     // sanity check
     if (boundary_pts == nullptr || current_index >= num_points) {
@@ -363,7 +364,7 @@ bool AP_Beacon::get_next_boundary_point(const Vector2f* boundary_pts, uint8_t nu
     float lowest_angle_relative = M_PI_2;
     bool lowest_found = false;
     uint8_t lowest_index = 0;
-    for (uint8_t i=0; i < num_points; i++) {
+    for (uint8_t i = 0; i < num_points; i++) {
         if (i != current_index) {
             Vector2f vec = boundary_pts[i] - curr_point;
             if (!vec.is_zero()) {
@@ -400,10 +401,7 @@ const Vector2f* AP_Beacon::get_boundary_points(uint16_t& num_points) const
 }
 
 // check if the device is ready
-bool AP_Beacon::device_ready(void) const
-{
-    return ((_driver != nullptr) && (_type != AP_BeaconType_None));
-}
+bool AP_Beacon::device_ready(void) const { return ((_driver != nullptr) && (_type != AP_BeaconType_None)); }
 
 // Write beacon sensor (position) data
 void AP_Beacon::log()
@@ -416,31 +414,27 @@ void AP_Beacon::log()
     float accuracy = 0.0f;
     get_vehicle_position_ned(pos, accuracy);
 
-    const struct log_Beacon pkt_beacon{
-       LOG_PACKET_HEADER_INIT(LOG_BEACON_MSG),
-       time_us         : AP_HAL::micros64(),
-       health          : (uint8_t)healthy(),
-       count           : (uint8_t)count(),
-       dist0           : beacon_distance(0),
-       dist1           : beacon_distance(1),
-       dist2           : beacon_distance(2),
-       dist3           : beacon_distance(3),
-       posx            : pos.x,
-       posy            : pos.y,
-       posz            : pos.z
+    const struct log_Beacon pkt_beacon {
+        LOG_PACKET_HEADER_INIT(LOG_BEACON_MSG), time_us : AP_HAL::micros64(),
+                                                          health : (uint8_t)healthy(),
+                                                                   count : (uint8_t)count(),
+                                                                           dist0 : beacon_distance(0),
+                                                                                   dist1 : beacon_distance(1),
+                                                                                           dist2 : beacon_distance(2),
+                                                                                                   dist3 : beacon_distance(3),
+                                                                                                           posx : pos.x,
+                                                                                                           posy : pos.y,
+                                                                                                           posz : pos.z
     };
     AP::logger().WriteBlock(&pkt_beacon, sizeof(pkt_beacon));
 }
 
 // singleton instance
-AP_Beacon *AP_Beacon::_singleton;
+AP_Beacon* AP_Beacon::_singleton;
 
 namespace AP {
 
-AP_Beacon *beacon()
-{
-    return AP_Beacon::get_singleton();
-}
+AP_Beacon* beacon() { return AP_Beacon::get_singleton(); }
 
 }
 

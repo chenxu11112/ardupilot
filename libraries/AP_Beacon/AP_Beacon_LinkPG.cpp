@@ -66,19 +66,6 @@ AP_Beacon_LinkPG::AP_Beacon_LinkPG(AP_Beacon& frontend)
     , beaconDistFilter { 4, 4, 4, 4 }
 {
     AP_Param::setup_object_defaults(this, var_info);
-
-    Vector3f beacon_pos;
-    for (uint8_t i = 0; i < AP_BEACON_LINKPG_MAX_NUM; i++) {
-        beacon_pos[0] = 0.01f * (float)(beaconXYZ[i][0]);
-        beacon_pos[1] = 0.01f * (float)(beaconXYZ[i][1]);
-        beacon_pos[2] = 0.01f * (float)(beaconXYZ[i][2]);
-
-        // beaconXYZ is enu, transform to ned
-        beacon_pos.rotate(ROTATION_PITCH_180_YAW_270);
-        set_beacon_position(i, beacon_pos);
-
-        printf("beaconXYZ[%d]=%f,%f,%f\r\n", i, beacon_pos.x, beacon_pos.y, beacon_pos.z);
-    }
 }
 
 // return true if sensor is basically healthy (we are receiving data)
@@ -259,4 +246,21 @@ void AP_Beacon_LinkPG::parse_buffer()
     printf("%d\r\n", delta_ms);
 
     last_update_ms = millis;
+}
+
+
+void AP_Beacon_LinkPG::setBeaconXYZ()
+{
+        Vector3f beacon_pos;
+    for (uint8_t i = 0; i < AP_BEACON_LINKPG_MAX_NUM; i++) {
+        beacon_pos[0] = 0.01f * (float)(beaconXYZ[i][0]);
+        beacon_pos[1] = 0.01f * (float)(beaconXYZ[i][1]);
+        beacon_pos[2] = 0.01f * (float)(beaconXYZ[i][2]);
+
+        // beaconXYZ is enu, transform to ned
+        beacon_pos.rotate(ROTATION_PITCH_180_YAW_270);
+        set_beacon_position(i, beacon_pos);
+
+        printf("beaconXYZ[%d]=%f,%f,%f\r\n", i, beacon_pos.x, beacon_pos.y, beacon_pos.z);
+    }
 }

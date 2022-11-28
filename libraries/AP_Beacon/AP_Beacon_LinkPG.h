@@ -43,6 +43,8 @@ public:
     // update
     void update() override;
 
+    void setBeaconXYZ() override;
+
     static const struct AP_Param::GroupInfo var_info[];
 
 private:
@@ -75,9 +77,9 @@ private:
 
     Vector3f vehPos;
 
-    ModeFilterInt16_Size7 vehPosFilter[3];
+    ModeFilterInt16_Size9 vehPosFilter[3];
     butter10hz1_6 vehposbutter[3];
 
-    ModeFilterUInt16_Size7 beaconDistFilter[AP_BEACON_LINKPG_MAX_NUM];
+    ModeFilterUInt16_Size9 beaconDistFilter[AP_BEACON_LINKPG_MAX_NUM];
     butter10hz1_6 beaconDistbutter[AP_BEACON_LINKPG_MAX_NUM];
 };
