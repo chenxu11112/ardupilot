@@ -4,10 +4,10 @@
 MCU STM32G491 STM32G491xx
 
 FLASH_RESERVE_START_KB 0
-FLASH_BOOTLOADER_LOAD_KB 32
+FLASH_BOOTLOADER_LOAD_KB 26
 
 # reserve some space for params
-APP_START_OFFSET_KB 4
+APP_START_OFFSET_KB 8
 
 # board ID for firmware load
 APJ_BOARD_ID 1001
@@ -18,7 +18,7 @@ env AP_PERIPH 1
 # crystal frequency
 OSCILLATOR_HZ 8000000
 
-define CH_CFG_ST_FREQUENCY 1000000
+# define CH_CFG_ST_FREQUENCY 1000000
 
 # assume 128k flash part
 FLASH_SIZE_KB 512
@@ -67,7 +67,7 @@ define NO_DATAFLASH TRUE
 
 define DMA_RESERVE_SIZE 0
 
-# define PERIPH_FW TRUE
+define PERIPH_FW TRUE
 
 define HAL_DISABLE_LOOP_DELAY
 
@@ -82,15 +82,19 @@ define HAL_NO_RCIN_THREAD
 PB8 CAN1_RX CAN1
 PB9 CAN1_TX CAN1
 
+# define HAL_USE_CAN TRUE
+# define STM32_CAN_USE_CAN1 TRUE
+
 define CAN_APP_NODE_NAME "tsdpilot.gmu3"
 
-# # use DNA
-# define HAL_CAN_DEFAULT_NODE_ID 0
-# # passthrough CAN1
-# define HAL_DEFAULT_CPORT 1
+# use DNA
+define HAL_CAN_DEFAULT_NODE_ID 0
+# passthrough CAN1
+define HAL_DEFAULT_CPORT 1
 
 # use a small bootloader timeout
-define HAL_BOOTLOADER_TIMEOUT 2500
+define HAL_BOOTLOADER_TIMEOUT 1000
 
 # reserve 256 bytes for comms between app and bootloader
-# RAM_RESERVE_START 256
+RAM_RESERVE_START 256
+
