@@ -190,6 +190,7 @@ private:
 
     // flight modes convenience array
     AP_Int8 *flight_modes = &g.flight_mode1;
+    const uint8_t num_flight_modes = 6;
 
     AP_FixedWing::Rangefinder_State rangefinder_state;
 
@@ -244,8 +245,14 @@ private:
     AP_OpticalFlow optflow;
 #endif
 
+#if HAL_RALLY_ENABLED
     // Rally Ponints
     AP_Rally rally;
+#endif
+
+    // returns a Location for a rally point or home; if
+    // HAL_RALLY_ENABLED is false, just home.
+    Location calc_best_rally_or_home_location(const Location &current_loc, float rtl_home_alt_amsl_cm) const;
 
 #if OSD_ENABLED || OSD_PARAM_ENABLED
     AP_OSD osd;
@@ -391,18 +398,6 @@ private:
     AP_BattMonitor battery{MASK_LOG_CURRENT,
                            FUNCTOR_BIND_MEMBER(&Plane::handle_battery_failsafe, void, const char*, const int8_t),
                            _failsafe_priorities};
-
-    // ACRO controller state
-    struct {
-        bool locked_roll;
-        bool locked_pitch;
-        float locked_roll_err;
-        int32_t locked_pitch_cd;
-        Quaternion q;
-        bool roll_active_last;
-        bool pitch_active_last;
-        bool yaw_active_last;
-    } acro_state;
 
     struct {
         uint32_t last_tkoff_arm_time;
@@ -868,9 +863,6 @@ private:
     void stabilize_stick_mixing_direct();
     void stabilize_stick_mixing_fbw();
     void stabilize_yaw();
-    void stabilize_training();
-    void stabilize_acro();
-    void stabilize_acro_quaternion();
     void calc_nav_yaw_coordinated();
     void calc_nav_yaw_course(void);
     void calc_nav_yaw_ground(void);
@@ -962,14 +954,19 @@ private:
 
     // commands.cpp
     void set_guided_WP(const Location &loc);
-    void update_home();
+
+    // update home position. Return true if update done
+    bool update_home();
+
+    // update current_loc
+    void update_current_loc(void);
+
     // set home location and store it persistently:
     bool set_home_persistently(const Location &loc) WARN_IF_UNUSED;
 
     // control_modes.cpp
     void read_control_switch();
     uint8_t readSwitch(void) const;
-    void reset_control_switch();
     void autotune_start(void);
     void autotune_restore(void);
     void autotune_enable(bool enable);
@@ -977,6 +974,10 @@ private:
     bool mode_allows_autotuning(void);
     uint8_t get_mode() const override { return (uint8_t)control_mode->mode_number(); }
     Mode *mode_from_mode_num(const enum Mode::Number num);
+    bool current_mode_requires_mission() const override {
+        return control_mode == &mode_auto;
+    }
+
     bool autotuning;
 
     // events.cpp
@@ -996,6 +997,7 @@ private:
 
     // ArduPlane.cpp
     void disarm_if_autoland_complete();
+    bool trigger_land_abort(const float climb_to_alt_m);
     void get_osd_roll_pitch_rad(float &roll, float &pitch) const override;
     float tecs_hgt_afe(void);
     void efi_update(void);

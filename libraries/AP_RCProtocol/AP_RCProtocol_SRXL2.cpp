@@ -146,7 +146,7 @@ void AP_RCProtocol_SRXL2::_process_byte(uint32_t timestamp_us, uint8_t byte)
             }
             // Try to parse SRXL packet -- this internally calls srxlRun() after packet is parsed and resets timeout
             if (srxlParsePacket(0, _buffer, _frame_len_full)) {
-                add_input(MAX_CHANNELS, _channels, _in_failsafe, _new_rssi);
+                add_input(ARRAY_SIZE(_channels), _channels, _in_failsafe, _new_rssi);
             }
             _last_run_ms = AP_HAL::millis();
 
@@ -200,7 +200,7 @@ void AP_RCProtocol_SRXL2::_capture_scaled_input(const uint8_t *values_p, bool in
         _new_rssi = new_rssi * 255 / 100;
     }
 
-    for (uint8_t i = 0; i < MAX_CHANNELS; i++) {
+    for (uint8_t i = 0; i < ARRAY_SIZE(_channels); i++) {
         /*
          * Store the decoded channel into the R/C input buffer, taking into
          * account the different ideas about channel assignement that we have.
@@ -298,61 +298,6 @@ void AP_RCProtocol_SRXL2::send_on_uart(uint8_t* pBuffer, uint8_t length)
         srxl2->_send_on_uart(pBuffer, length);
     }
 }
-
-#if AP_VIDEOTX_ENABLED
-// configure the video transmitter, the input values are Spektrum-oriented
-void AP_RCProtocol_SRXL2::configure_vtx(uint8_t band, uint8_t channel, uint8_t power, uint8_t pitmode)
-{
-    AP_VideoTX& vtx = AP::vtx();
-    // VTX Band (0 = Fatshark, 1 = Raceband, 2 = E, 3 = B, 4 = A)
-    // map to TBS band A, B, E, Race, Airwave, LoRace
-    switch (band) {
-    case VTX_BAND_FATSHARK:
-        vtx.set_configured_band(AP_VideoTX::VideoBand::FATSHARK);
-        break;
-    case VTX_BAND_RACEBAND:
-        vtx.set_configured_band(AP_VideoTX::VideoBand::RACEBAND);
-        break;
-    case VTX_BAND_E_BAND:
-        vtx.set_configured_band(AP_VideoTX::VideoBand::BAND_E);
-        break;
-    case VTX_BAND_B_BAND:
-        vtx.set_configured_band(AP_VideoTX::VideoBand::BAND_B);
-        break;
-    case VTX_BAND_A_BAND:
-        vtx.set_configured_band(AP_VideoTX::VideoBand::BAND_A);
-        break;
-    default:
-        break;
-    }
-    // VTX Channel (0-7)
-    vtx.set_configured_channel(channel);
-    if (pitmode) {
-        vtx.set_configured_options(vtx.get_options() | uint8_t(AP_VideoTX::VideoOptions::VTX_PITMODE));
-    } else {
-        vtx.set_configured_options(vtx.get_options() & ~uint8_t(AP_VideoTX::VideoOptions::VTX_PITMODE));
-    }
-
-    switch (power) {
-    case VTX_POWER_1MW_14MW:
-    case VTX_POWER_15MW_25MW:
-        vtx.set_configured_power_mw(25);
-        break;
-    case VTX_POWER_26MW_99MW:
-    case VTX_POWER_100MW_299MW:
-        vtx.set_configured_power_mw(100);
-        break;
-    case VTX_POWER_300MW_600MW:
-        vtx.set_configured_power_mw(400);
-        break;
-    case VTX_POWER_601_PLUS:
-        vtx.set_configured_power_mw(800);
-        break;
-    default:
-        break;
-    }
-}
-#endif  // AP_VIDEOTX_ENABLED
 
 // send data to the uart
 void AP_RCProtocol_SRXL2::_send_on_uart(uint8_t* pBuffer, uint8_t length)
@@ -458,6 +403,6 @@ bool srxlOnBind(SrxlFullID device, SrxlBindData info)
 void srxlOnVtx(SrxlVtxData* pVtxData)
 {
 #if AP_VIDEOTX_ENABLED
-    AP_RCProtocol_SRXL2::configure_vtx(pVtxData->band, pVtxData->channel, pVtxData->power, pVtxData->pit);
+    AP_RCProtocol_Backend::configure_vtx(pVtxData->band, pVtxData->channel, pVtxData->power, pVtxData->pit);
 #endif
 }

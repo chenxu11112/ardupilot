@@ -314,7 +314,7 @@ void GCS_MAVLINK_Copter::send_pid_tuning()
 // send winch status message
 void GCS_MAVLINK_Copter::send_winch_status() const
 {
-#if WINCH_ENABLED == ENABLED
+#if AP_WINCH_ENABLED
     AP_Winch *winch = AP::winch();
     if (winch == nullptr) {
         return;
@@ -579,6 +579,14 @@ const struct GCS_MAVLINK::stream_entries GCS_MAVLINK::all_stream_entries[] = {
     MAV_STREAM_TERMINATOR // must have this at end of stream_entries
 };
 
+MISSION_STATE GCS_MAVLINK_Copter::mission_state(const class AP_Mission &mission) const
+{
+    if (copter.mode_auto.paused()) {
+        return MISSION_STATE_PAUSED;
+    }
+    return GCS_MAVLINK::mission_state(mission);
+}
+
 bool GCS_MAVLINK_Copter::handle_guided_request(AP_Mission::Mission_Command &cmd)
 {
 #if MODE_AUTO_ENABLED == ENABLED
@@ -640,19 +648,19 @@ void GCS_MAVLINK_Copter::handle_command_ack(const mavlink_message_t &msg)
 */
 void GCS_MAVLINK_Copter::handle_landing_target(const mavlink_landing_target_t &packet, uint32_t timestamp_ms)
 {
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
     copter.precland.handle_msg(packet, timestamp_ms);
 #endif
 }
 
-MAV_RESULT GCS_MAVLINK_Copter::_handle_command_preflight_calibration(const mavlink_command_long_t &packet)
+MAV_RESULT GCS_MAVLINK_Copter::_handle_command_preflight_calibration(const mavlink_command_long_t &packet, const mavlink_message_t &msg)
 {
     if (is_equal(packet.param6,1.0f)) {
         // compassmot calibration
         return copter.mavlink_compassmot(*this);
     }
 
-    return GCS_MAVLINK::_handle_command_preflight_calibration(packet);
+    return GCS_MAVLINK::_handle_command_preflight_calibration(packet, msg);
 }
 
 
@@ -914,7 +922,7 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_long_packet(const mavlink_command_
                                                packet.param4,
                                                (uint8_t)packet.param5);
 
-#if WINCH_ENABLED == ENABLED
+#if AP_WINCH_ENABLED
     case MAV_CMD_DO_WINCH:
         // param1 : winch number (ignored)
         // param2 : action (0=relax, 1=relative length control, 2=rate control). See WINCH_ACTIONS enum.

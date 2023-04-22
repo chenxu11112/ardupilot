@@ -57,11 +57,12 @@ class SizeCompareBranches(object):
                  all_boards=False,
                  use_merge_base=True,
                  waf_consistent_builds=True,
+                 show_empty=True,
                  extra_hwdef=[],
                  extra_hwdef_branch=[],
                  extra_hwdef_master=[]):
         if branch is None:
-            branch = self.find_current_git_branch()
+            branch = self.find_current_git_branch_or_sha1()
 
         self.master_branch = master_branch
         self.branch = branch
@@ -76,6 +77,7 @@ class SizeCompareBranches(object):
         self.all_boards = all_boards
         self.use_merge_base = use_merge_base
         self.waf_consistent_builds = waf_consistent_builds
+        self.show_empty = show_empty
 
         if self.bin_dir is None:
             self.bin_dir = self.find_bin_dir()
@@ -116,10 +118,62 @@ class SizeCompareBranches(object):
 
         # some boards we don't have a -bl.dat for, so skip them.
         # TODO: find a way to get this information from board_list:
-        self.bootloader_blacklist = frozenset([
-            'skyviper-v2450',
+        self.bootloader_blacklist = set([
+            'CubeOrange-SimOnHardWare',
+            'CubeOrangePlus-SimOnHardWare',
+            'fmuv2',
+            'fmuv3-bdshot',
             'iomcu',
+            'iomcu',
+            'iomcu_f103_8MHz',
+            'luminousbee4',
+            'skyviper-v2450',
+            'skyviper-f412-rev1',
+            'skyviper-journey',
+            'Pixhawk1-1M-bdshot',
+            'SITL_arm_linux_gnueabihf',
         ])
+
+        # blacklist all linux boards for bootloader build:
+        self.bootloader_blacklist.update(self.linux_board_names())
+        # ... and esp32 boards:
+        self.bootloader_blacklist.update(self.esp32_board_names())
+
+    def linux_board_names(self):
+        '''return a list of all Linux board names; FIXME: get this dynamically'''
+        # grep 'class.*[(]linux' Tools/ardupilotwaf/boards.py  | perl -pe "s/class (.*)\(linux\).*/            '\\1',/"
+        return [
+            'navigator',
+            'erleboard',
+            'navio',
+            'navio2',
+            'edge',
+            'zynq',
+            'ocpoc_zynq',
+            'bbbmini',
+            'blue',
+            'pocket',
+            'pxf',
+            'bebop',
+            'vnav',
+            'disco',
+            'erlebrain2',
+            'bhat',
+            'dark',
+            'pxfmini',
+            'aero',
+            'rst_zynq',
+            'obal',
+            'SITL_x86_64_linux_gnu',
+        ]
+
+    def esp32_board_names(self):
+        return [
+            'esp32buzz',
+            'esp32empty',
+            'esp32icarous',
+            'esp32diy',
+        ]
 
     def find_bin_dir(self):
         '''attempt to find where the arm-none-eabi tools are'''
@@ -166,8 +220,16 @@ class SizeCompareBranches(object):
                 returncode, cmd_list)
         return output
 
-    def find_current_git_branch(self):
-        output = self.run_git(["symbolic-ref", "--short", "HEAD"])
+    def find_current_git_branch_or_sha1(self):
+        try:
+            output = self.run_git(["symbolic-ref", "--short", "HEAD"])
+            output = output.strip()
+            return output
+        except subprocess.CalledProcessError:
+            pass
+
+        # probably in a detached-head state.  Get a sha1 instead:
+        output = self.run_git(["rev-parse", "--short", "HEAD"])
         output = output.strip()
         return output
 
@@ -244,6 +306,11 @@ class SizeCompareBranches(object):
             # need special configuration directive
             bootloader_waf_configure_args = copy.copy(waf_configure_args)
             bootloader_waf_configure_args.append('--bootloader')
+            # hopefully temporary hack so you can build bootloader
+            # after building other vehicles without a clean:
+            dsdl_generated_path = os.path.join('build', board, "modules", "DroneCAN", "libcanard", "dsdlc_generated")
+            self.progress("HACK: Removing (%s)" % dsdl_generated_path)
+            shutil.rmtree(dsdl_generated_path, ignore_errors=True)
             self.run_waf(bootloader_waf_configure_args)
             self.run_waf([v])
         self.run_program("rsync", ["rsync", "-aP", "build/", outdir])
@@ -285,6 +352,10 @@ class SizeCompareBranches(object):
                     else:
                         bytes_delta = result.bytes_delta
                 line.append(str(bytes_delta))
+            # do not add to ret value if we're not showing empty results:
+            if not self.show_empty:
+                if len(list(filter(lambda x : x != "", line[1:]))) == 0:
+                    continue
             ret += ",".join(line) + "\n"
         return ret
 
@@ -374,10 +445,15 @@ class SizeCompareBranches(object):
             elf_filename = self.vehicle_map[vehicle]
             bin_filename = self.vehicle_map[vehicle] + '.bin'
 
-            master_bin_dir = os.path.join(outdir_1, board, "bin")
-            new_bin_dir = os.path.join(outdir_2, board, "bin")
-
             if self.run_elf_diff:
+                master_elf_dirname = "bin"
+                new_elf_dirname = "bin"
+                if vehicle == 'bootloader':
+                    # elfs for bootloaders are in the bootloader directory...
+                    master_elf_dirname = "bootloader"
+                    new_elf_dirname = "bootloader"
+                master_elf_dir = os.path.join(outdir_1, board, master_elf_dirname)
+                new_elf_dir = os.path.join(outdir_2, board, new_elf_dirname)
                 self.progress("Starting compare (~10 minutes!)")
                 elf_diff_commandline = [
                     "time",
@@ -388,11 +464,14 @@ class SizeCompareBranches(object):
                     "--old_alias", "%s %s" % (self.master_branch, elf_filename),
                     "--new_alias", "%s %s" % (self.branch, elf_filename),
                     "--html_dir", "../ELF_DIFF_%s_%s" % (board, vehicle),
-                    os.path.join(master_bin_dir, elf_filename),
-                    os.path.join(new_bin_dir, elf_filename)
+                    os.path.join(master_elf_dir, elf_filename),
+                    os.path.join(new_elf_dir, elf_filename)
                 ]
 
                 self.run_program("SCB", elf_diff_commandline)
+
+            master_bin_dir = os.path.join(outdir_1, board, "bin")
+            new_bin_dir = os.path.join(outdir_2, board, "bin")
 
             try:
                 master_path = os.path.join(master_bin_dir, bin_filename)
@@ -415,10 +494,10 @@ class SizeCompareBranches(object):
 if __name__ == '__main__':
     parser = optparse.OptionParser("size_compare_branches.py")
     parser.add_option("",
-                      "--no-elf-diff",
+                      "--elf-diff",
                       action="store_true",
                       default=False,
-                      help="do not run elf_diff on output files")
+                      help="run elf_diff on output files")
     parser.add_option("",
                       "--master-branch",
                       type="string",
@@ -444,6 +523,11 @@ if __name__ == '__main__':
                       action='append',
                       default=[],
                       help="vehicle to build for")
+    parser.add_option("",
+                      "--show-empty",
+                      action='store_true',
+                      default=False,
+                      help="Show result lines even if no builds were done for the board")
     parser.add_option("",
                       "--board",
                       action='append',
@@ -496,10 +580,11 @@ if __name__ == '__main__':
         extra_hwdef=cmd_opts.extra_hwdef,
         extra_hwdef_branch=cmd_opts.extra_hwdef_branch,
         extra_hwdef_master=cmd_opts.extra_hwdef_master,
-        run_elf_diff=(not cmd_opts.no_elf_diff),
+        run_elf_diff=(cmd_opts.elf_diff),
         all_vehicles=cmd_opts.all_vehicles,
         all_boards=cmd_opts.all_boards,
         use_merge_base=not cmd_opts.no_merge_base,
         waf_consistent_builds=not cmd_opts.no_waf_consistent_builds,
+        show_empty=cmd_opts.show_empty,
     )
     x.run()

@@ -53,7 +53,7 @@ bool ModeAuto::init(bool ignore_checks)
         // reset flag indicating if pilot has applied roll or pitch inputs during landing
         copter.ap.land_repo_active = false;
 
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
         // initialise precland state machine
         copter.precland_statemachine.init();
 #endif
@@ -725,7 +725,7 @@ bool ModeAuto::start_command(const AP_Mission::Mission_Command& cmd)
         break;
 #endif
 
-#if WINCH_ENABLED == ENABLED
+#if AP_WINCH_ENABLED
     case MAV_CMD_DO_WINCH:                             // Mission command to control winch
         do_winch(cmd);
         break;
@@ -1901,7 +1901,7 @@ void ModeAuto::do_mount_control(const AP_Mission::Mission_Command& cmd)
 #endif
 }
 
-#if WINCH_ENABLED == ENABLED
+#if AP_WINCH_ENABLED
 // control winch based on mission command
 void ModeAuto::do_winch(const AP_Mission::Mission_Command& cmd)
 {
@@ -2235,8 +2235,8 @@ bool ModeAuto::verify_nav_attitude_time(const AP_Mission::Mission_Command& cmd)
 // pause - Prevent aircraft from progressing along the track
 bool ModeAuto::pause()
 {
-    // do not pause if already paused or not in the WP sub mode or already reached to the destination
-    if(wp_nav->paused() || _mode != SubMode::WP || wp_nav->reached_wp_destination()) {
+    // do not pause if not in the WP sub mode or already reached to the destination
+    if (_mode != SubMode::WP || wp_nav->reached_wp_destination()) {
         return false;
     }
 
@@ -2247,13 +2247,13 @@ bool ModeAuto::pause()
 // resume - Allow aircraft to progress along the track
 bool ModeAuto::resume()
 {
-    // do not resume if not paused before
-    if(!wp_nav->paused()) {
-        return false;
-    }
-
     wp_nav->set_resume();
     return true;
+}
+
+bool ModeAuto::paused() const
+{
+    return wp_nav->paused();
 }
 
 #endif

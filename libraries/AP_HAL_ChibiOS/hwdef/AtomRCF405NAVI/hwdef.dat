@@ -30,7 +30,7 @@ define HAL_GPIO_B_LED_PIN 1
 PC5 BUZZER OUTPUT GPIO(80) LOW
 define HAL_BUZZER_PIN 80
 define HAL_BUZZER_ON 1
-define HAL_BUZZER_OFF 0
+
 
 # spi1 bus for IMU
 PA5 SPI1_SCK SPI1
@@ -161,7 +161,7 @@ define AP_PARAM_MAX_EMBEDDED_PARAM 256
 # save some flash
 include ../include/minimal_GPS.inc
 include ../include/save_some_flash.inc
-define AP_BATTMON_SMBUS_ENABLE 0
+define AP_BATTERY_SMBUS_ENABLED 0
 define HAL_PARACHUTE_ENABLED 0
 define HAL_SPRAYER_ENABLED 0
-define AP_BATTMON_SYNTHETIC_CURRENT_ENABLED 0
+define AP_BATTERY_SYNTHETIC_CURRENT_ENABLED 0

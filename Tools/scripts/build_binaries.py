@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """
 script to build the latest binaries for each vehicle type, ready to upload
@@ -56,9 +56,6 @@ def get_required_compiler(vehicle, tag, board):
     if not is_chibios_build(board):
         # only override compiler for ChibiOS builds
         return None
-    if vehicle == 'Sub' and tag in ['stable', 'beta']:
-        # sub stable and beta is on the old compiler
-        return "g++-6.3.1"
     # use 10.2.1 compiler for all other builds
     return "g++-10.2.1"
 
@@ -96,7 +93,7 @@ class build_binaries(object):
             waf = "./waf"
         else:
             waf = os.path.join(".", "modules", "waf", "waf-light")
-        cmd_list = [waf]
+        cmd_list = ["python3", waf]
         cmd_list.extend(args)
         env = None
         if compiler is not None:
@@ -213,7 +210,7 @@ is bob we will attempt to checkout bob-AVR'''
         try:
             out = self.run_program(
                 'waf',
-                ['./waf', 'configure', '--board=BOARDTEST'],
+                ["python3", './waf', 'configure', '--board=BOARDTEST'],
                 show_output=False,
                 force_success=True
             )

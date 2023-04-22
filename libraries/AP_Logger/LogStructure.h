@@ -613,36 +613,8 @@ struct PACKED log_Winch {
     int8_t temp;
 };
 
-// position controller North axis logging
-struct PACKED log_PSCN {
-    LOG_PACKET_HEADER;
-    uint64_t time_us;
-    float pos_target;
-    float pos;
-    float vel_desired;
-    float vel_target;
-    float vel;
-    float accel_desired;
-    float accel_target;
-    float accel;
-};
-
-// position controller East axis logging
-struct PACKED log_PSCE {
-    LOG_PACKET_HEADER;
-    uint64_t time_us;
-    float pos_target;
-    float pos;
-    float vel_desired;
-    float vel_target;
-    float vel;
-    float accel_desired;
-    float accel_target;
-    float accel;
-};
-
-// position controller Down axis logging
-struct PACKED log_PSCD {
+// position controller per-axis logging
+struct PACKED log_PSCx {
     LOG_PACKET_HEADER;
     uint64_t time_us;
     float pos_target;
@@ -690,6 +662,7 @@ struct PACKED log_MotBatt {
     float   bat_volt;
     float   th_limit;
     float th_average_max;
+    float th_out;
     uint8_t mot_fail_flags;
 };
 
@@ -716,6 +689,10 @@ struct PACKED log_VER {
 #define PID_FMT    "QfffffffffB"
 #define PID_UNITS  "s----------"
 #define PID_MULTS  "F----------"
+
+#define PIDx_FMT "Qffffffff"
+#define PIDx_UNITS "smmnnnooo"
+#define PIDx_MULTS "F00000000"
 
 // @LoggerMessage: ADSB
 // @Description: Automatic Dependent Serveillance - Broadcast detected vehicle information
@@ -1228,6 +1205,7 @@ struct PACKED log_VER {
 // @Field: BatVolt: Ratio between detected battery voltage and maximum battery voltage
 // @Field: ThLimit: Throttle limit set due to battery current limitations
 // @Field: ThrAvMx: Maximum average throttle that can be used to maintain attitude control, derived from throttle mix params
+// @Field: ThrOut: Throttle output
 // @Field: FailFlags: bit 0 motor failed, bit 1 motors balanced, should be 2 in normal flight
 
 // messages for all boards
@@ -1340,12 +1318,12 @@ LOG_STRUCTURE_FROM_VISUALODOM \
       "ERR",   "QBB",         "TimeUS,Subsys,ECode", "s--", "F--" }, \
     { LOG_WINCH_MSG, sizeof(log_Winch), \
       "WINC", "QBBBBBfffHfb", "TimeUS,Heal,ThEnd,Mov,Clut,Mode,DLen,Len,DRate,Tens,Vcc,Temp", "s-----mmn?vO", "F-----000000" }, \
-    { LOG_PSCN_MSG, sizeof(log_PSCN), \
-      "PSCN", "Qffffffff", "TimeUS,TPN,PN,DVN,TVN,VN,DAN,TAN,AN", "smmnnnooo", "F00000000" }, \
-    { LOG_PSCE_MSG, sizeof(log_PSCE), \
-      "PSCE", "Qffffffff", "TimeUS,TPE,PE,DVE,TVE,VE,DAE,TAE,AE", "smmnnnooo", "F00000000" }, \
-    { LOG_PSCD_MSG, sizeof(log_PSCD), \
-      "PSCD", "Qffffffff", "TimeUS,TPD,PD,DVD,TVD,VD,DAD,TAD,AD", "smmnnnooo", "F00000000" }, \
+    { LOG_PSCN_MSG, sizeof(log_PSCx), \
+      "PSCN", PIDx_FMT, "TimeUS,TPN,PN,DVN,TVN,VN,DAN,TAN,AN", PIDx_UNITS, PIDx_MULTS }, \
+    { LOG_PSCE_MSG, sizeof(log_PSCx), \
+      "PSCE", PIDx_FMT, "TimeUS,TPE,PE,DVE,TVE,VE,DAE,TAE,AE", PIDx_UNITS, PIDx_MULTS }, \
+    { LOG_PSCD_MSG, sizeof(log_PSCx), \
+      "PSCD", PIDx_FMT, "TimeUS,TPD,PD,DVD,TVD,VD,DAD,TAD,AD", PIDx_UNITS, PIDx_MULTS }, \
     { LOG_STAK_MSG, sizeof(log_STAK), \
       "STAK", "QBBHHN", "TimeUS,Id,Pri,Total,Free,Name", "s#----", "F-----", true }, \
     { LOG_FILE_MSG, sizeof(log_File), \
@@ -1356,7 +1334,7 @@ LOG_STRUCTURE_FROM_AIS \
     { LOG_VER_MSG, sizeof(log_VER), \
       "VER",   "QBHBBBBIZH", "TimeUS,BT,BST,Maj,Min,Pat,FWT,GH,FWS,APJ", "s---------", "F---------", false }, \
     { LOG_MOTBATT_MSG, sizeof(log_MotBatt), \
-      "MOTB", "QffffB",  "TimeUS,LiftMax,BatVolt,ThLimit,ThrAvMx,FailFlags", "s-----", "F-----" , true }
+      "MOTB", "QfffffB",  "TimeUS,LiftMax,BatVolt,ThLimit,ThrAvMx,ThrOut,FailFlags", "s------", "F------" , true }
 
 // message types 0 to 63 reserved for vehicle specific use
 

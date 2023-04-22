@@ -24,8 +24,8 @@
 #include "AP_Compass_LIS3MDL.h"
 #include "AP_Compass_AK09916.h"
 #include "AP_Compass_QMC5883L.h"
-#if AP_COMPASS_UAVCAN_ENABLED
-#include "AP_Compass_UAVCAN.h"
+#if AP_COMPASS_DRONECAN_ENABLED
+#include "AP_Compass_DroneCAN.h"
 #endif
 #include "AP_Compass_MMC3416.h"
 #include "AP_Compass_MMC5xx3.h"
@@ -1064,6 +1064,7 @@ void Compass::_probe_external_i2c_compasses(void)
 {
 #if !defined(HAL_SKIP_AUTO_INTERNAL_I2C_PROBE)
     bool all_external = (AP_BoardConfig::get_board_type() == AP_BoardConfig::PX4_BOARD_PIXHAWK2);
+    (void)all_external;  // in case all backends using this are compiled out
 #endif
 #if AP_COMPASS_HMC5843_ENABLED
     // external i2c bus
@@ -1084,7 +1085,7 @@ void Compass::_probe_external_i2c_compasses(void)
 #endif  // !defined(HAL_SKIP_AUTO_INTERNAL_I2C_PROBE)
 #endif  // AP_COMPASS_HMC5843_ENABLED
 
-#if AP_COMPASS_I2C_BACKEND_DEFAULT_ENABLED || defined(HAL_USE_I2C_MAG_QMC5883L)
+#if AP_COMPASS_QMC5883L_ENABLED
     //external i2c bus
     FOREACH_I2C_EXTERNAL(i) {
         ADD_BACKEND(DRIVER_QMC5883L, AP_Compass_QMC5883L::probe(GET_I2C_DEVICE(i, HAL_COMPASS_QMC5883L_I2C_ADDR),
@@ -1102,10 +1103,11 @@ void Compass::_probe_external_i2c_compasses(void)
         }
     }
 #endif
-#endif
+#endif  // AP_COMPASS_QMC5883L_ENABLED
 
 #ifndef HAL_BUILD_AP_PERIPH
     // AK09916 on ICM20948
+#if AP_COMPASS_AK09916_ENABLED && AP_COMPASS_ICM20948_ENABLED
     FOREACH_I2C_EXTERNAL(i) {
         ADD_BACKEND(DRIVER_ICM20948, AP_Compass_AK09916::probe_ICM20948(GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
                     GET_I2C_DEVICE(i, HAL_COMPASS_ICM20948_I2C_ADDR),
@@ -1125,6 +1127,7 @@ void Compass::_probe_external_i2c_compasses(void)
                     all_external, ROTATION_PITCH_180_YAW_90));
     }
 #endif
+#endif  // AP_COMPASS_AK09916_ENABLED && AP_COMPASS_ICM20948_ENABLED
 #endif // HAL_BUILD_AP_PERIPH
 
 #if AP_COMPASS_LIS3MDL_ENABLED
@@ -1154,7 +1157,7 @@ void Compass::_probe_external_i2c_compasses(void)
     }
 #endif  // AP_COMPASS_LIS3MDL_ENABLED
 
-#if AP_COMPASS_I2C_BACKEND_DEFAULT_ENABLED || defined(HAL_USE_I2C_MAG_AK09916)
+#if AP_COMPASS_AK09916_ENABLED
     // AK09916. This can be found twice, due to the ICM20948 i2c bus pass-thru, so we need to be careful to avoid that
     FOREACH_I2C_EXTERNAL(i) {
         ADD_BACKEND(DRIVER_AK09916, AP_Compass_AK09916::probe(GET_I2C_DEVICE(i, HAL_COMPASS_AK09916_I2C_ADDR),
@@ -1166,7 +1169,7 @@ void Compass::_probe_external_i2c_compasses(void)
                     all_external, all_external?ROTATION_YAW_270:ROTATION_NONE));
     }
 #endif
-#endif
+#endif  // AP_COMPASS_AK09916_ENABLED
 
 #if AP_COMPASS_IST8310_ENABLED
     // IST8310 on external and internal bus
@@ -1211,7 +1214,7 @@ void Compass::_probe_external_i2c_compasses(void)
 #endif
 #endif  // AP_COMPASS_IST8308_ENABLED
 
-#if AP_COMPASS_I2C_BACKEND_DEFAULT_ENABLED || defined(HAL_USE_I2C_MAG_MMC3416)
+#if AP_COMPASS_MMC3416_ENABLED
     // external i2c bus
     FOREACH_I2C_EXTERNAL(i) {
         ADD_BACKEND(DRIVER_MMC3416, AP_Compass_MMC3416::probe(GET_I2C_DEVICE(i, HAL_COMPASS_MMC3416_I2C_ADDR),
@@ -1223,9 +1226,9 @@ void Compass::_probe_external_i2c_compasses(void)
                     all_external, ROTATION_NONE));
     }
 #endif
-#endif
+#endif  // AP_COMPASS_MMC3416_ENABLED
 
-#if AP_COMPASS_I2C_BACKEND_DEFAULT_ENABLED || defined(HAL_USE_I2C_MAG_RM3100)
+#if AP_COMPASS_RM3100_ENABLED
 #ifdef HAL_COMPASS_RM3100_I2C_ADDR
     const uint8_t rm3100_addresses[] = { HAL_COMPASS_RM3100_I2C_ADDR };
 #else
@@ -1249,7 +1252,7 @@ void Compass::_probe_external_i2c_compasses(void)
         }
     }
 #endif
-#endif
+#endif  // AP_COMPASS_RM3100_ENABLED
 
 #if AP_COMPASS_BMM150_DETECT_BACKENDS_ENABLED
     // BMM150 on I2C
@@ -1270,7 +1273,7 @@ void Compass::_detect_backends(void)
 #if AP_COMPASS_EXTERNALAHRS_ENABLED
     const int8_t serial_port = AP::externalAHRS().get_port(AP_ExternalAHRS::AvailableSensor::COMPASS);
     if (serial_port >= 0) {
-        ADD_BACKEND(DRIVER_SERIAL, new AP_Compass_ExternalAHRS(serial_port));
+        ADD_BACKEND(DRIVER_EXTERNALAHRS, new AP_Compass_ExternalAHRS(serial_port));
     }
 #endif
     
@@ -1283,7 +1286,7 @@ void Compass::_detect_backends(void)
     }
 #endif
 
-#if AP_COMPASS_SITL_ENABLED
+#if AP_COMPASS_SITL_ENABLED && !AP_TEST_DRONECAN_DRIVERS
     ADD_BACKEND(DRIVER_SITL, new AP_Compass_SITL());
 #endif
 
@@ -1377,7 +1380,9 @@ void Compass::_detect_backends(void)
         // first MPU9250 to run without disturbance at high rate
         ADD_BACKEND(DRIVER_AK8963, AP_Compass_AK8963::probe_mpu9250(1, ROTATION_YAW_270));
 #endif
+#if AP_COMPASS_AK09916_ENABLED && AP_COMPASS_ICM20948_ENABLED
         ADD_BACKEND(DRIVER_AK09916, AP_Compass_AK09916::probe_ICM20948(0, ROTATION_ROLL_180_YAW_90));
+#endif
         break;
 
     case AP_BoardConfig::PX4_BOARD_FMUV5:
@@ -1444,10 +1449,10 @@ void Compass::_detect_backends(void)
 #endif
 
 
-#if AP_COMPASS_UAVCAN_ENABLED
+#if AP_COMPASS_DRONECAN_ENABLED
     if (_driver_enabled(DRIVER_UAVCAN)) {
         for (uint8_t i=0; i<COMPASS_MAX_BACKEND; i++) {
-            AP_Compass_Backend* _uavcan_backend = AP_Compass_UAVCAN::probe(i);
+            AP_Compass_Backend* _uavcan_backend = AP_Compass_DroneCAN::probe(i);
             if (_uavcan_backend) {
                 _add_backend(_uavcan_backend);
             }
@@ -1469,7 +1474,7 @@ void Compass::_detect_backends(void)
             // There's a UAVCAN compass missing
             // Let's check if there's a replacement
             for (uint8_t j=0; j<COMPASS_MAX_INSTANCES; j++) {
-                uint32_t detected_devid = AP_Compass_UAVCAN::get_detected_devid(j);
+                uint32_t detected_devid = AP_Compass_DroneCAN::get_detected_devid(j);
                 // Check if this is a potential replacement mag
                 if (!is_replacement_mag(detected_devid)) {
                     continue;
@@ -1480,7 +1485,7 @@ void Compass::_detect_backends(void)
                 _priority_did_stored_list[i].set_and_save(0);
                 _priority_did_list[i] = 0;
 
-                AP_Compass_Backend* _uavcan_backend = AP_Compass_UAVCAN::probe(j);
+                AP_Compass_Backend* _uavcan_backend = AP_Compass_DroneCAN::probe(j);
                 if (_uavcan_backend) {
                     _add_backend(_uavcan_backend);
                     // we also need to remove the id from unreg list
@@ -1514,7 +1519,7 @@ void Compass::_detect_backends(void)
         }
 #endif  // #if COMPASS_MAX_UNREG_DEV > 0
     }
-#endif  // AP_COMPASS_UAVCAN_ENABLED
+#endif  // AP_COMPASS_DRONECAN_ENABLED
 
     if (_backend_count == 0 ||
         _compass_count == 0) {
@@ -1603,7 +1608,7 @@ void Compass::_reset_compass_id()
 void
 Compass::_detect_runtime(void)
 {
-#if AP_COMPASS_UAVCAN_ENABLED
+#if AP_COMPASS_DRONECAN_ENABLED
     if (!available()) {
         return;
     }
@@ -1620,14 +1625,14 @@ Compass::_detect_runtime(void)
     last_try = AP_HAL::millis();
     if (_driver_enabled(DRIVER_UAVCAN)) {
         for (uint8_t i=0; i<COMPASS_MAX_BACKEND; i++) {
-            AP_Compass_Backend* _uavcan_backend = AP_Compass_UAVCAN::probe(i);
+            AP_Compass_Backend* _uavcan_backend = AP_Compass_DroneCAN::probe(i);
             if (_uavcan_backend) {
                 _add_backend(_uavcan_backend);
             }
             CHECK_UNREG_LIMIT_RETURN;
         }
     }
-#endif  // AP_COMPASS_UAVCAN_ENABLED
+#endif  // AP_COMPASS_DRONECAN_ENABLED
 }
 
 bool
@@ -2024,15 +2029,8 @@ void Compass::motor_compensation_type(const uint8_t comp_type)
 
 bool Compass::consistent() const
 {
-    const Vector3f &primary_mag_field = get_field();
-    const Vector2f primary_mag_field_xy = Vector2f(primary_mag_field.x,primary_mag_field.y);
-
-    if (primary_mag_field_xy.is_zero()) {
-        return false;
-    }
-
-    const Vector3f primary_mag_field_norm = primary_mag_field.normalized();
-    const Vector2f primary_mag_field_xy_norm = primary_mag_field_xy.normalized();
+    const Vector3f &primary_mag_field { get_field() };
+    const Vector2f &primary_mag_field_xy { primary_mag_field.xy() };
 
     for (uint8_t i=0; i<get_count(); i++) {
         if (!use_for_yaw(i)) {
@@ -2040,32 +2038,27 @@ bool Compass::consistent() const
             continue;
         }
 
-        Vector3f mag_field = get_field(i);
-        Vector2f mag_field_xy = Vector2f(mag_field.x,mag_field.y);
+        const Vector3f &mag_field = get_field(i);
+        const Vector2f &mag_field_xy = mag_field.xy();
 
         if (mag_field_xy.is_zero()) {
             return false;
         }
 
-        const float xy_len_diff  = (primary_mag_field_xy-mag_field_xy).length();
-
-        mag_field.normalize();
-        mag_field_xy.normalize();
-
-        const float xyz_ang_diff = acosf(constrain_float(mag_field*primary_mag_field_norm,-1.0f,1.0f));
-        const float xy_ang_diff  = acosf(constrain_float(mag_field_xy*primary_mag_field_xy_norm,-1.0f,1.0f));
-
         // check for gross misalignment on all axes
+        const float xyz_ang_diff  = mag_field.angle(primary_mag_field);
         if (xyz_ang_diff > AP_COMPASS_MAX_XYZ_ANG_DIFF) {
             return false;
         }
 
         // check for an unacceptable angle difference on the xy plane
+        const float xy_ang_diff  = mag_field_xy.angle(primary_mag_field_xy);
         if (xy_ang_diff > AP_COMPASS_MAX_XY_ANG_DIFF) {
             return false;
         }
 
         // check for an unacceptable length difference on the xy plane
+        const float xy_len_diff = (primary_mag_field_xy-mag_field_xy).length();
         if (xy_len_diff > AP_COMPASS_MAX_XY_LENGTH_DIFF) {
             return false;
         }
@@ -2111,7 +2104,7 @@ void Compass::handle_msp(const MSP::msp_compass_data_message_t &pkt)
 #if AP_COMPASS_EXTERNALAHRS_ENABLED
 void Compass::handle_external(const AP_ExternalAHRS::mag_data_message_t &pkt)
 {
-    if (!_driver_enabled(DRIVER_SERIAL)) {
+    if (!_driver_enabled(DRIVER_EXTERNALAHRS)) {
         return;
     }
     for (uint8_t i=0; i<_backend_count; i++) {
