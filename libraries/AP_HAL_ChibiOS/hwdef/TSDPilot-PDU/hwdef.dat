@@ -1,0 +1,138 @@
+
+# MCU class and specific type
+MCU STM32F4xx STM32F405xx
+
+# bootloader starts firmware at 64k
+FLASH_RESERVE_START_KB 64
+FLASH_SIZE_KB 1024
+
+# store parameters in pages 2 and 3
+STORAGE_FLASH_PAGE 2
+define HAL_STORAGE_SIZE 15360
+
+# board ID for firmware load
+APJ_BOARD_ID 1052
+
+env AP_PERIPH 1
+
+define STM32_ST_USE_TIMER 5
+define CH_CFG_ST_RESOLUTION 32
+
+# enable watchdog
+
+# crystal frequency
+OSCILLATOR_HZ 8000000
+
+define HAL_HAVE_PIXRACER_LED
+PC9 LED_RED   OUTPUT GPIO(10)
+PC8 LED_GREEN OUTPUT GPIO(11)
+PC7 LED_BLUE  OUTPUT GPIO(12)
+define HAL_GPIO_A_LED_PIN 10
+define HAL_GPIO_B_LED_PIN 11
+define HAL_GPIO_C_LED_PIN 12
+
+define HAL_GPIO_ESC_ENABLED
+define HAL_GPIO_ESC_PIN 13
+PB5 ESC_GPIO  OUTPUT GPIO(13)
+define HAL_GPIO_ESC_OPEN_NUM 123456
+define HAL_GPIO_ESC_CLOSE_NUM 654321
+define HAL_GPIO_ESC_OPEN 1
+define HAL_GPIO_ESC_CLOSE 0
+
+
+STDOUT_SERIAL SD3
+STDOUT_BAUDRATE 57600
+
+define HAL_NO_GPIO_IRQ
+define SERIAL_BUFFERS_SIZE 512
+define PORT_INT_REQUIRED_STACK 64
+
+# debug 
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+# avoid timer and RCIN threads to save memory
+define HAL_NO_RCIN_THREAD
+
+define HAL_USE_RTC FALSE
+
+# define DISABLE_SERIAL_ESC_COMM TRUE
+
+define DMA_RESERVE_SIZE 0
+
+define HAL_DISABLE_LOOP_DELAY
+define HAL_NO_MONITOR_THREAD
+define HAL_NO_LOGGING
+
+define HAL_DEVICE_THREAD_STACK 768
+
+# we setup a small defaults.parm
+define AP_PARAM_MAX_EMBEDDED_PARAM 512
+
+# keep ROMFS uncompressed as we don't have enough RAM
+# to uncompress the bootloader at runtime
+env ROMFS_UNCOMPRESSED True
+
+# ---------------------- CAN bus -------------------------
+# enable CAN support
+PB8 CAN1_RX CAN1
+PB9 CAN1_TX CAN1
+
+CAN_ORDER 1
+
+# use DNA for node allocation
+define CAN_APP_NODE_NAME "tsdpilot.pdu"
+
+# order of UARTs
+SERIAL_ORDER UART4 
+
+# USART3 for debug
+PB10 USART3_TX USART3 SPEED_HIGH NODMA
+PB11 USART3_RX USART3 SPEED_HIGH NODMA
+
+# USART4
+PC10 UART4_TX UART4 SPEED_HIGH NODMA
+PC11 UART4_RX UART4 SPEED_HIGH NODMA
+
+define HAL_SERIAL3_BAUD_DEFAULT 57600
+
+
+# --------------------- CAM Trigger + Feedback -----------------------
+PA0  TIM2_CH1  TIM2 PWM(1) GPIO(50)
+PA1  TIM2_CH2  TIM2 PWM(2) GPIO(51)
+PA2  TIM2_CH3  TIM2 PWM(3) GPIO(52)
+PA3  TIM2_CH4  TIM2 PWM(4) GPIO(53)
+
+# enable ESC control
+define HAL_SUPPORT_RCOUT_SERIAL 1
+define HAL_WITH_ESC_TELEM 1
+
+# ------------------ BATTERY Monitor -----------------------
+define HAL_PERIPH_ENABLE_BATTERY
+
+define HAL_USE_ADC TRUE
+define STM32_ADC_USE_ADC1 TRUE
+PC4 BATT_VOLTAGE_SENS ADC1 SCALE(1)
+PC5 BATT_CURRENT_SENS ADC1 SCALE(1)
+
+# Set the Default Battery Monitor Type to be Off
+define HAL_BATT_MONITOR_DEFAULT 4
+
+define HAL_BATT_VOLT_PIN 14
+define HAL_BATT_VOLT_SCALE 21.0
+
+define HAL_BATT_CURR_PIN 15
+define HAL_BATT_CURR_SCALE 50.0
+
+
+# -------------------- Buzzer+NeoPixels --------------------
+define HAL_PERIPH_ENABLE_RC_OUT
+define HAL_PERIPH_ENABLE_NOTIFY
+define HAL_BARO_ALLOW_INIT_NO_BARO
+
+
+
+
+# allow for reboot command for faster development
+define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
+

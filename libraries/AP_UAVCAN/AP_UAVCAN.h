@@ -128,6 +128,10 @@ public:
     // buzzer
     void set_buzzer_tone(float frequency, float duration_s);
 
+#ifdef UAVCAN_ESC_CONTROL
+    void esc_control_send();
+#endif
+
     // send RTCMStream packets
     void send_RTCMStream(const uint8_t *data, uint32_t len);
 
@@ -331,6 +335,9 @@ private:
 
     // notify vehicle state
     uint32_t _last_notify_state_ms;
+
+    // esc_control  send state
+    uint32_t _last_esc_control_ms;
 
     // incoming button handling
     static void handle_button(AP_UAVCAN* ap_uavcan, uint8_t node_id, const ButtonCb &cb);
