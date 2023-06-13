@@ -895,6 +895,31 @@ static void can_safety_button_update(void)
 }
 #endif // HAL_GPIO_PIN_SAFE_BUTTON
 
+#if defined(HAL_GPIO_ESC_ENABLED)
+static void handle_esc_control(CanardInstance* ins, CanardRxTransfer* transfer)
+{
+    uavcan_protocol_debug_KeyValue msg;
+    if (uavcan_protocol_debug_KeyValue_decode(transfer, &msg)) {
+        return;
+    }
+
+    if (strncmp((char*)msg.key.data, "esc_control", sizeof("esc_control") - 1) == 0)
+    {           
+        printf("esc_control\n");
+
+        if (msg.value == HAL_GPIO_ESC_OPEN_NUM)
+        {
+            hal.gpio->write(HAL_GPIO_ESC_PIN, HAL_GPIO_ESC_OPEN);
+            printf("ESC_OPEN\n");
+        }else if (msg.value == HAL_GPIO_ESC_CLOSE_NUM)
+        {
+            hal.gpio->write(HAL_GPIO_ESC_PIN, HAL_GPIO_ESC_CLOSE);
+            printf("ESC_CLOSE\n");
+        }
+    }
+}
+#endif // HAL_GPIO_ESC_ENABLED
+
 /**
  * This callback is invoked by the library when a new message or request or response is received.
  */
@@ -994,6 +1019,11 @@ static void onTransferReceived(CanardInstance* ins,
         handle_notify_state(ins, transfer);
         break;
 #endif
+#ifdef HAL_GPIO_ESC_ENABLED
+    case UAVCAN_PROTOCOL_DEBUG_KEYVALUE_ID:
+        handle_esc_control(ins, transfer);
+        break;
+#endif
     }
 }
 
@@ -1084,6 +1114,11 @@ static bool shouldAcceptTransfer(const CanardInstance* ins,
 #if defined(HAL_PERIPH_ENABLE_NOTIFY)
     case ARDUPILOT_INDICATION_NOTIFYSTATE_ID:
         *out_data_type_signature = ARDUPILOT_INDICATION_NOTIFYSTATE_SIGNATURE;
+        return true;
+#endif
+#ifdef HAL_GPIO_ESC_ENABLED
+    case UAVCAN_PROTOCOL_DEBUG_KEYVALUE_ID:
+        *out_data_type_signature = UAVCAN_PROTOCOL_DEBUG_KEYVALUE_SIGNATURE;
         return true;
 #endif
     default:
