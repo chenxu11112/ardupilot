@@ -96,12 +96,16 @@ PC11 UART4_RX UART4 SPEED_HIGH NODMA
 
 define HAL_SERIAL3_BAUD_DEFAULT 57600
 
-
-# --------------------- CAM Trigger + Feedback -----------------------
+# --------------------- PWM -----------------------
 PA0  TIM2_CH1  TIM2 PWM(1) GPIO(50)
 PA1  TIM2_CH2  TIM2 PWM(2) GPIO(51)
 PA2  TIM2_CH3  TIM2 PWM(3) GPIO(52)
 PA3  TIM2_CH4  TIM2 PWM(4) GPIO(53)
+PB6  TIM4_CH1  TIM4 PWM(5) GPIO(54)
+PB7  TIM4_CH2  TIM4 PWM(6) GPIO(55)
+
+# PWM output for buzzer
+PA8 TIM1_CH1 TIM1 GPIO(77) ALARM
 
 # enable ESC control
 define HAL_SUPPORT_RCOUT_SERIAL 1
@@ -129,9 +133,6 @@ define HAL_BATT_CURR_SCALE 50.0
 define HAL_PERIPH_ENABLE_RC_OUT
 define HAL_PERIPH_ENABLE_NOTIFY
 define HAL_BARO_ALLOW_INIT_NO_BARO
-
-
-
 
 # allow for reboot command for faster development
 define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
