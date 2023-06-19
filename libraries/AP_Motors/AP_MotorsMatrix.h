@@ -101,6 +101,16 @@ public:
     };
     void add_motors_raw(const struct MotorDefRaw *motors, uint8_t num_motors);
 
+    void actuator_order_to_ground_idle();
+
+    uint32_t time_cur_ms;
+    uint32_t time_last_ms;
+
+    uint8_t spin_cnt;
+    uint8_t spin_max_cnt;
+    uint8_t motor_cnt;
+
+
 protected:
     // output - sends commands to the motors
     void                output_armed_stabilizing() override;
