@@ -175,11 +175,52 @@ void AP_MotorsMatrix::output_to_motors()
     }
 
     // convert output to PWM and send to each motor
-    for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
-        if (motor_enabled[i]) {
-            rc_write(i, output_to_pwm(_actuator[i]));
-        }
+
+
+    if (_mav_type == MAV_TYPE_QUADROTOR)
+    {
+        spin_max_cnt = 4;
     }
+
+    switch (_spool_state) {
+    case SpoolState::SHUT_DOWN:
+        for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
+            if (motor_enabled[i]) {
+                rc_write(i, output_to_pwm(_actuator[i]));
+            }
+        }
+        spin_cnt = 0;
+        time_last_ms = AP_HAL::millis();
+
+        break;
+
+    case SpoolState::GROUND_IDLE:
+    case SpoolState::SPOOLING_UP:
+    case SpoolState::THROTTLE_UNLIMITED:
+    case SpoolState::SPOOLING_DOWN:
+        if (spin_cnt < spin_max_cnt) {
+            time_cur_ms = AP_HAL::millis();
+            if ((time_cur_ms - time_last_ms) > 1500) {
+                gcs().send_text(MAV_SEVERITY_INFO, "starting motor: %d", spin_cnt);
+
+                if (motor_enabled[spin_cnt]) {
+                    rc_write(spin_cnt, output_to_pwm(_actuator[spin_cnt]));
+                }
+                time_last_ms = time_cur_ms;
+                spin_cnt++;
+            }
+        } else {
+            for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
+                if (motor_enabled[i]) {
+                    rc_write(i, output_to_pwm(_actuator[i]));
+                }
+            }
+        }
+        break;
+
+    }
+
+   
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)

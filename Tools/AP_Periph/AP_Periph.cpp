@@ -442,6 +442,15 @@ void AP_Periph_FW::update()
 #ifdef HAL_PERIPH_ENABLE_ADSB
     adsb_update();
 #endif
+
+#ifdef RGB_FlIGHT_STAT
+    hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
+    hal.rcout->serial_led_send(4);
+
+    hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
+    hal.rcout->serial_led_send(5);
+#endif
+
 }
 
 #ifdef HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT

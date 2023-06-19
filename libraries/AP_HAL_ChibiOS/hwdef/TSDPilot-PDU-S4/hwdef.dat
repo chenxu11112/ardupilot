@@ -11,8 +11,9 @@ STORAGE_FLASH_PAGE 2
 define HAL_STORAGE_SIZE 15360
 
 # board ID for firmware load
-APJ_BOARD_ID 1052
+APJ_BOARD_ID 10201
 
+# setup build for a peripheral firmware
 env AP_PERIPH 1
 
 define STM32_ST_USE_TIMER 5
@@ -62,16 +63,9 @@ define DMA_RESERVE_SIZE 0
 
 define HAL_DISABLE_LOOP_DELAY
 define HAL_NO_MONITOR_THREAD
-define HAL_NO_LOGGING
 
-define HAL_DEVICE_THREAD_STACK 768
-
-# we setup a small defaults.parm
-define AP_PARAM_MAX_EMBEDDED_PARAM 512
-
-# keep ROMFS uncompressed as we don't have enough RAM
-# to uncompress the bootloader at runtime
-env ROMFS_UNCOMPRESSED True
+define HAL_DEVICE_THREAD_STACK 2048
+# define AP_SCRIPTING_ENABLED 1
 
 # ---------------------- CAN bus -------------------------
 # enable CAN support
@@ -80,11 +74,15 @@ PB9 CAN1_TX CAN1
 
 CAN_ORDER 1
 
-# use DNA for node allocation
-define CAN_APP_NODE_NAME "tsdpilot.pdu"
 
 # order of UARTs
-SERIAL_ORDER UART4 
+SERIAL_ORDER OTG1 UART4
+
+PA11 OTG_FS_DM OTG1
+PA12 OTG_FS_DP OTG1
+
+define USB_USE_WAIT TRUE
+define HAL_USE_USB_MSD TRUE
 
 # USART3 for debug
 PB10 USART3_TX USART3 SPEED_HIGH NODMA
@@ -110,6 +108,7 @@ PA8 TIM1_CH1 TIM1 GPIO(77) ALARM
 # enable ESC control
 define HAL_SUPPORT_RCOUT_SERIAL 1
 define HAL_WITH_ESC_TELEM 1
+
 
 # ------------------ BATTERY Monitor -----------------------
 define HAL_PERIPH_ENABLE_BATTERY
@@ -137,3 +136,12 @@ define HAL_BARO_ALLOW_INIT_NO_BARO
 # allow for reboot command for faster development
 define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
 
+define SCRIPTING_HEAP_SIZE (64*1024)
+
+define CAN_APP_NODE_NAME "tsdpilot.pdu"
+
+define HAL_ENABLE_SLCAN 1
+
+define AP_PERIPH_HAVE_LED TRUE
+
+define RGB_FlIGHT_STAT TRUE
