@@ -160,7 +160,13 @@ void AP_Periph_FW::init()
 #endif
 
 #ifdef HAL_PERIPH_NEOPIXEL_CHAN_WITHOUT_NOTIFY
-    hal.rcout->set_serial_led_num_LEDs(HAL_PERIPH_NEOPIXEL_CHAN_WITHOUT_NOTIFY, HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY, AP_HAL::RCOutput::MODE_NEOPIXEL);
+    hal.rcout->set_serial_led_num_LEDs(5, HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY, AP_HAL::RCOutput::MODE_NEOPIXEL);
+#endif
+
+#ifdef HAL_RGB_FlIGHT_STAT
+    hal.rcout->set_serial_led_num_LEDs(4, 3, AP_HAL::RCOutput::MODE_NEOPIXEL);
+    hal.rcout->set_serial_led_num_LEDs(5, 3, AP_HAL::RCOutput::MODE_NEOPIXEL);
+
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_RC_OUT
@@ -241,6 +247,16 @@ void AP_Periph_FW::init()
     hal.gpio->pinMode(HAL_GPIO_ESC_PIN, HAL_GPIO_OUTPUT);
     hal.gpio->write(HAL_GPIO_ESC_PIN, HAL_GPIO_ESC_CLOSE);
 #endif
+
+
+#ifdef HAL_RGB_FlIGHT_STAT
+    hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
+    hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
+    hal.rcout->serial_led_send(4);
+    hal.rcout->serial_led_send(5);
+
+#endif
+
 }
 
 #if (defined(HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY) && HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY == 8) || defined(HAL_PERIPH_ENABLE_NOTIFY)
@@ -308,6 +324,7 @@ void AP_Periph_FW::update_rainbow()
 #if defined(HAL_PERIPH_NEOPIXEL_CHAN_WITHOUT_NOTIFY)
     hal.rcout->serial_led_send(HAL_PERIPH_NEOPIXEL_CHAN_WITHOUT_NOTIFY);
 #endif
+
 }
 #endif // HAL_PERIPH_ENABLE_NOTIFY
 
@@ -443,15 +460,52 @@ void AP_Periph_FW::update()
     adsb_update();
 #endif
 
-#ifdef RGB_FlIGHT_STAT
-    hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
-    hal.rcout->serial_led_send(4);
-
-    hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
-    hal.rcout->serial_led_send(5);
+#ifdef HAL_RGB_FlIGHT_STAT
+    RGB_FlIGHT_STAT_update();
 #endif
 
 }
+
+#ifdef HAL_RGB_FlIGHT_STAT
+void AP_Periph_FW::RGB_FlIGHT_STAT_update()
+{
+    time_cur_ms = AP_HAL::millis();
+    if((time_cur_ms - time_last_ms) < 25) {
+       return;
+    }
+
+    time_last_ms = time_cur_ms;
+
+    flight_stat_cnt++;
+
+    switch(flight_stat_cnt) {
+    case 50:
+        hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
+        hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
+        hal.rcout->serial_led_send(4);
+        hal.rcout->serial_led_send(5);
+    break;
+
+    case 60:
+        hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
+        hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
+        hal.rcout->serial_led_send(4);
+        hal.rcout->serial_led_send(5);
+    break;
+
+    case 61:
+        flight_stat_cnt = 0;
+    break;
+
+    default:
+        hal.rcout->set_serial_led_rgb_data(4, -1, 0, 0, 0);
+        hal.rcout->set_serial_led_rgb_data(5, -1, 0, 0, 0);
+        hal.rcout->serial_led_send(4);
+        hal.rcout->serial_led_send(5);
+    break;        
+    }
+}
+#endif
 
 #ifdef HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT
 // check for uploader.py reboot command
