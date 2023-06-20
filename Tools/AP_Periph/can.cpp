@@ -644,7 +644,7 @@ static void handle_MovingBaselineData(CanardInstance* ins, CanardRxTransfer* tra
 static void set_rgb_led(uint8_t red, uint8_t green, uint8_t blue)
 {
 #ifdef HAL_PERIPH_ENABLE_NOTIFY
-    // periph.notify.handle_rgb(red, green, blue);
+    periph.notify.handle_rgb(red, green, blue);
 #ifdef HAL_PERIPH_ENABLE_RC_OUT
     periph.rcout_has_new_data_to_update = true;
 #endif // HAL_PERIPH_ENABLE_RC_OUT

@@ -280,6 +280,15 @@ public:
 
     static bool no_iface_finished_dna;
     static constexpr auto can_printf = ::can_printf;
+
+#ifdef HAL_RGB_FlIGHT_STAT
+    void RGB_FlIGHT_STAT_update();
+
+    uint32_t time_cur_ms;
+    uint32_t time_last_ms;
+    uint16_t flight_stat_cnt;
+
+#endif
 };
 
 namespace AP
