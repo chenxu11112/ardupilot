@@ -214,6 +214,12 @@ public:
     // returns true on success and control_value is set to a value in the range -1 to +1
     virtual bool get_control_output(AP_Vehicle::ControlOutput control_output, float &control_value) { return false; }
 
+    // returns true if vehicle is in the process of landing
+    virtual bool is_landing() const { return false; }
+
+    // returns true if vehicle is in the process of taking off
+    virtual bool is_taking_off() const { return false; }
+
 #endif // AP_SCRIPTING_ENABLED
 
     // zeroing the RC outputs can prevent unwanted motor movement:
@@ -301,9 +307,13 @@ protected:
 #endif
     AP_SerialManager serial_manager;
 
+#if AP_RELAY_ENABLED
     AP_Relay relay;
+#endif
 
+#if AP_SERVORELAYEVENTS_ENABLED
     AP_ServoRelayEvents ServoRelayEvents;
+#endif
 
     // notification object for LEDs, buzzers etc (parameter set to
     // false disables external leds)

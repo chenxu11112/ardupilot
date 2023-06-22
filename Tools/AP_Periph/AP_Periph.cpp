@@ -223,7 +223,7 @@ void AP_Periph_FW::init()
     }
 #endif
 
-#ifdef HAL_PERIPH_ENABLE_PRX
+#if HAL_PROXIMITY_ENABLED
     if (proximity.get_type(0) != AP_Proximity::Type::None && g.proximity_port >= 0) {
         auto *uart = hal.serial(g.proximity_port);
         if (uart != nullptr) {
@@ -240,6 +240,15 @@ void AP_Periph_FW::init()
 
 #ifdef HAL_PERIPH_ENABLE_HWESC
     hwesc_telem.init(hal.serial(HAL_PERIPH_HWESC_SERIAL_PORT));
+#endif
+
+#ifdef HAL_PERIPH_ENABLE_ESC_APD
+    for (uint8_t i = 0; i < ESC_NUMBERS; i++) {
+        const uint8_t port = g.esc_serial_port[i];
+        if (port < SERIALMANAGER_NUM_PORTS) { // skip bad ports
+            apd_esc_telem[i] = new ESC_APD_Telem (hal.serial(port), g.pole_count[i]);
+        }
+    }
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_MSP

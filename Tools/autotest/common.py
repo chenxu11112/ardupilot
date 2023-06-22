@@ -37,6 +37,7 @@ from pymavlink import mavwp, mavutil, DFReader
 from pymavlink import mavextra
 from pymavlink.rotmat import Vector3
 from pymavlink import quaternion
+from pymavlink.generator import mavgen
 
 from pysim import util, vehicleinfo
 
@@ -196,11 +197,13 @@ class Context(object):
         self.heartbeat_interval_ms = 1000
         self.original_heartbeat_interval_ms = None
         self.installed_scripts = []
+        self.installed_modules = []
 
 
 # https://stackoverflow.com/questions/616645/how-do-i-duplicate-sys-stdout-to-a-log-file-in-python
 class TeeBoth(object):
-    def __init__(self, name, mode, mavproxy_logfile):
+    def __init__(self, name, mode, mavproxy_logfile, suppress_stdout=False):
+        self.suppress_stdout = suppress_stdout
         self.file = open(name, mode)
         self.stdout = sys.stdout
         self.stderr = sys.stderr
@@ -219,7 +222,8 @@ class TeeBoth(object):
 
     def write(self, data):
         self.file.write(data)
-        self.stdout.write(data)
+        if not self.suppress_stdout:
+            self.stdout.write(data)
 
     def flush(self):
         self.file.flush()
@@ -1650,13 +1654,27 @@ class AutoTest(ABC):
         """Allow subclasses to override SITL streamrate."""
         return 10
 
+    def adjust_ardupilot_port(self, port):
+        '''adjust port in case we do not wish to use the default range (5760 and 5501 etc)'''
+        return port
+
+    def spare_network_port(self, offset=0):
+        '''returns a network port which should be able to be bound'''
+        if offset > 2:
+            raise ValueError("offset too large")
+        return 8000 + offset
+
     def autotest_connection_string_to_ardupilot(self):
-        return "tcp:127.0.0.1:5760"
+        return "tcp:127.0.0.1:%u" % self.adjust_ardupilot_port(5760)
+
+    def sitl_rcin_port(self, offset=0):
+        if offset > 2:
+            raise ValueError("offset too large")
+        return 5501 + offset
 
     def mavproxy_options(self):
         """Returns options to be passed to MAVProxy."""
         ret = [
-            '--sitl=127.0.0.1:5502',
             '--streamrate=%u' % self.sitl_streamrate(),
             '--target-system=%u' % self.sysid_thismav(),
             '--target-component=1',
@@ -2041,6 +2059,7 @@ class AutoTest(ABC):
 
     def set_streamrate(self, streamrate, timeout=20, stream=mavutil.mavlink.MAV_DATA_STREAM_ALL):
         '''set MAV_DATA_STREAM_ALL; timeout is wallclock time'''
+        self.do_timesync_roundtrip(timeout_in_wallclock=True)
         tstart = time.time()
         while True:
             if time.time() - tstart > timeout:
@@ -2255,7 +2274,6 @@ class AutoTest(ABC):
             "SIM_GPS2_POS_X",
             "SIM_GPS2_POS_Y",
             "SIM_GPS2_POS_Z",
-            "SIM_GPS2_TYPE",
             "SIM_GPS2_VERR_X",
             "SIM_GPS2_VERR_Y",
             "SIM_GPS2_VERR_Z",
@@ -2276,7 +2294,6 @@ class AutoTest(ABC):
             "SIM_GPS_POS_X",
             "SIM_GPS_POS_Y",
             "SIM_GPS_POS_Z",
-            "SIM_GPS_TYPE",
             "SIM_GPS_VERR_X",
             "SIM_GPS_VERR_Y",
             "SIM_GPS_VERR_Z",
@@ -2424,7 +2441,6 @@ class AutoTest(ABC):
             "SIM_INS_THR_MIN",
             "SIM_LED_LAYOUT",
             "SIM_LOOP_DELAY",
-            "SIM_MAG1_DEVID",
             "SIM_MAG1_SCALING",
             "SIM_MAG2_DEVID",
             "SIM_MAG2_DIA_X",
@@ -2961,7 +2977,7 @@ class AutoTest(ABC):
         REPLAY_MSGS = ['RFRH', 'RFRF', 'REV2', 'RSO2', 'RWA2', 'REV3', 'RSO3', 'RWA3', 'RMGI',
                        'REY3', 'RFRN', 'RISH', 'RISI', 'RISJ', 'RBRH', 'RBRI', 'RRNH', 'RRNI',
                        'RGPH', 'RGPI', 'RGPJ', 'RASH', 'RASI', 'RBCH', 'RBCI', 'RVOH', 'RMGH',
-                       'ROFH', 'REPH', 'REVH', 'RWOH', 'RBOH']
+                       'ROFH', 'REPH', 'REVH', 'RWOH', 'RBOH', 'RSLL']
 
         docco_ids = {}
         for thing in tree.logformat:
@@ -3366,17 +3382,19 @@ class AutoTest(ABC):
                 self.progress("Received: %s" % str(m))
             if m is None:
                 continue
-            if m.tc1 == 0:
-                self.progress("this is a timesync request, which we don't answer")
-                continue
             if m.ts1 % 1000 != self.mav.source_system:
                 self.progress("this isn't a response to our timesync (%s)" % (m.ts1 % 1000))
+                continue
+            if m.tc1 == 0:
+                # this should also not happen:
+                self.progress("this is a timesync request, which we don't answer")
                 continue
             if int(m.ts1 / 1000) != self.timesync_number:
                 self.progress("this isn't the one we just sent")
                 continue
             if m.get_srcSystem() != self.mav.target_system:
-                self.progress("response from system other than our target")
+                self.progress("response from system other than our target (want=%u got=%u" %
+                              (self.mav.target_system, m.get_srcSystem()))
                 continue
             # no component check ATM because we send broadcast...
 #            if m.get_srcComponent() != self.mav.target_component:
@@ -3463,7 +3481,7 @@ class AutoTest(ABC):
             self.reboot_sitl()
 
             mav2 = mavutil.mavlink_connection(
-                "tcp:localhost:5763",
+                "tcp:localhost:%u" % self.adjust_ardupilot_port(5763),
                 robust_parsing=True,
                 source_system=7,
                 source_component=7,
@@ -4215,6 +4233,18 @@ class AutoTest(ABC):
         self.install_test_script(scriptname)
         self.context_get().installed_scripts.append(scriptname)
 
+    def install_test_modules_context(self):
+        '''installs test modules which will be removed when the context goes
+        away'''
+        self.install_test_modules()
+        self.context_get().installed_modules.append("test")
+
+    def install_mavlink_module_context(self):
+        '''installs mavlink module which will be removed when the context goes
+        away'''
+        self.install_mavlink_module()
+        self.context_get().installed_modules.append("mavlink")
+
     def install_applet_script_context(self, scriptname):
         '''installs an applet script which will be removed when the context goes
         away'''
@@ -4862,7 +4892,7 @@ class AutoTest(ABC):
     def rc_thread_main(self):
         chan16 = [1000] * 16
 
-        sitl_output = mavutil.mavudp("127.0.0.1:5501", input=False)
+        sitl_output = mavutil.mavudp("127.0.0.1:%u" % self.sitl_rcin_port(), input=False)
         buf = None
 
         while True:
@@ -5645,7 +5675,7 @@ class AutoTest(ABC):
         del context.collections[msg_type]
         return ret
 
-    def context_pop(self):
+    def context_pop(self, process_interaction_allowed=True):
         """Set parameters to origin values in reverse order."""
         dead = self.contexts.pop()
         # remove hooks first; these hooks can raise exceptions which
@@ -5654,13 +5684,17 @@ class AutoTest(ABC):
             self.remove_message_hook(hook)
         for script in dead.installed_scripts:
             self.remove_installed_script(script)
+        for module in dead.installed_modules:
+            print("Removing module (%s)" % module)
+            self.remove_installed_modules(module)
         if dead.sitl_commandline_customised and len(self.contexts):
             self.contexts[-1].sitl_commandline_customised = True
 
         dead_parameters_dict = {}
         for p in dead.parameters:
             dead_parameters_dict[p[0]] = p[1]
-        self.set_parameters(dead_parameters_dict, add_to_context=False)
+        if process_interaction_allowed:
+            self.set_parameters(dead_parameters_dict, add_to_context=False)
 
         if getattr(self, "old_binary", None) is not None:
             self.stop_SITL()
@@ -7323,7 +7357,7 @@ class AutoTest(ABC):
         '''ensure we can't arm in auto mode without mission items present'''
         # load a trivial mission
         items = []
-        items.append((mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 0, 0, 20000),)
+        items.append((mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 1000, 0, 20000),)
         items.append((mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH, 0, 0, 0))
         self.upload_simple_relhome_mission(items)
 
@@ -7476,6 +7510,7 @@ Also, ignores heartbeats not from our target system'''
         self.progress("Waiting for EKF value %u" % required_value)
         last_print_time = 0
         tstart = self.get_sim_time()
+        m = None
         while timeout is None or self.get_sim_time_cached() < tstart + timeout:
             m = self.mav.recv_match(type='EKF_STATUS_REPORT', blocking=True, timeout=timeout)
             if m is None:
@@ -7491,6 +7526,11 @@ Also, ignores heartbeats not from our target system'''
             if everything_ok:
                 self.progress("EKF Flags OK")
                 return True
+        m_str = str(m)
+        if m is not None:
+            m_str = self.dump_message_verbose(m)
+        self.progress("Last EKF_STATUS_REPORT message:")
+        self.progress(m_str)
         raise AutoTestTimeoutException("Failed to get EKF.flags=%u" %
                                        required_value)
 
@@ -7629,6 +7669,19 @@ Also, ignores heartbeats not from our target system'''
         self.progress("Copying (%s) to (%s)" % (source, dest))
         shutil.copy(source, dest)
 
+    def install_test_modules(self):
+        source = os.path.join(self.rootdir(), "libraries", "AP_Scripting", "tests", "modules", "test")
+        dest = os.path.join("scripts", "modules", "test")
+        self.progress("Copying (%s) to (%s)" % (source, dest))
+        shutil.copytree(source, dest)
+
+    def install_mavlink_module(self):
+        dest = os.path.join("scripts", "modules", "mavlink")
+        ardupilotmega_xml = os.path.join(self.rootdir(), "modules", "mavlink",
+                                         "message_definitions", "v1.0", "ardupilotmega.xml")
+        mavgen.mavgen(mavgen.Opts(output=dest, wire_protocol='2.0', language='Lua'), [ardupilotmega_xml])
+        self.progress("Installed mavlink module")
+
     def install_example_script(self, scriptname):
         source = self.script_example_source_path(scriptname)
         self.install_script(source, scriptname)
@@ -7645,6 +7698,15 @@ Also, ignores heartbeats not from our target system'''
         dest = self.installed_script_path(os.path.basename(scriptname))
         try:
             os.unlink(dest)
+        except IOError:
+            pass
+        except OSError:
+            pass
+
+    def remove_installed_modules(self, modulename):
+        dest = os.path.join("scripts", "modules", modulename)
+        try:
+            shutil.rmtree(dest)
         except IOError:
             pass
         except OSError:
@@ -7673,6 +7735,10 @@ Also, ignores heartbeats not from our target system'''
         self.mav.mav.set_send_callback(self.send_message_hook, self)
         self.mav.idle_hooks.append(self.idle_hook)
 
+        # we need to wait for a heartbeat here.  If we don't then
+        # self.mav.target_system will be zero because it hasn't
+        # "locked on" to a target system yet.
+        self.wait_heartbeat()
         self.set_streamrate(self.sitl_streamrate())
 
     def show_test_timings_key_sorter(self, t):
@@ -7760,14 +7826,14 @@ Also, ignores heartbeats not from our target system'''
             util.run_cmd('/bin/cp build/sitl/bin/* %s' % to_dir,
                          directory=util.reltopdir('.'))
 
-    def run_one_test(self, test, interact=False):
+    def run_one_test(self, test, interact=False, suppress_stdout=False):
         '''new-style run-one-test used by run_tests'''
         for i in range(0, test.attempts-1):
-            result = self.run_one_test_attempt(test, interact=interact, attempt=i+2)
+            result = self.run_one_test_attempt(test, interact=interact, attempt=i+2, suppress_stdout=suppress_stdout)
             if result.passed:
                 return result
             self.progress("Run attempt failed.  Retrying")
-        return self.run_one_test_attempt(test, interact=interact, attempt=1)
+        return self.run_one_test_attempt(test, interact=interact, attempt=1, suppress_stdout=suppress_stdout)
 
     def print_exception_caught(self, e, send_statustext=True):
         self.progress("Exception caught: %s" %
@@ -7784,7 +7850,31 @@ Also, ignores heartbeats not from our target system'''
             for line in f:
                 self.progress(line.rstrip())
 
-    def run_one_test_attempt(self, test, interact=False, attempt=1):
+    def dump_process_status(self, result):
+        '''used to show where the SITL process is upto.  Often caused when
+        we've lost contact'''
+
+        if self.sitl.isalive():
+            self.progress("pexpect says it is alive")
+            for tool in "dumpstack.sh", "dumpcore.sh":
+                tool_filepath = os.path.join(self.rootdir(), 'Tools', 'scripts', tool)
+                if util.run_cmd([tool_filepath, str(self.sitl.pid)]) != 0:
+                    reason = "Failed %s" % (tool,)
+                    self.progress(reason)
+                    result.reason = reason
+                    result.passed = False
+        else:
+            self.progress("pexpect says it is dead")
+
+        # try dumping the process status file for more information:
+        status_filepath = "/proc/%u/status" % self.sitl.pid
+        self.progress("Checking for status filepath (%s)" % status_filepath)
+        if os.path.exists(status_filepath):
+            self.progress_file_content(status_filepath)
+        else:
+            self.progress("... does not exist")
+
+    def run_one_test_attempt(self, test, interact=False, attempt=1, suppress_stdout=False):
         '''called by run_one_test to actually run the test in a retry loop'''
         name = test.name
         desc = test.description
@@ -7797,7 +7887,7 @@ Also, ignores heartbeats not from our target system'''
             test_output_filename = self.buildlogs_path("%s-%s.txt" %
                                                        (self.log_name(), name))
 
-        tee = TeeBoth(test_output_filename, 'w', self.mavproxy_logfile)
+        tee = TeeBoth(test_output_filename, 'w', self.mavproxy_logfile, suppress_stdout=suppress_stdout)
 
         start_message_hooks = self.mav.message_hooks
 
@@ -7844,12 +7934,6 @@ Also, ignores heartbeats not from our target system'''
         if ex is not None:
             passed = False
 
-        try:
-            self.context_pop()
-        except Exception as e:
-            self.print_exception_caught(e, send_statustext=False)
-            passed = False
-
         result = Result(test)
 
         ardupilot_alive = False
@@ -7859,28 +7943,16 @@ Also, ignores heartbeats not from our target system'''
         except Exception:
             # process is dead
             self.progress("No heartbeat after test", send_statustext=False)
-            if self.sitl.isalive():
-                self.progress("pexpect says it is alive")
-                for tool in "dumpstack.sh", "dumpcore.sh":
-                    tool_filepath = os.path.join(self.rootdir(), 'Tools', 'scripts', tool)
-                    if util.run_cmd([tool_filepath, str(self.sitl.pid)]) != 0:
-                        self.progress("Failed %s" % (tool,))
-                        result.description
-                        result.passed = False
-                        return result
-            else:
-                self.progress("pexpect says it is dead")
-
-            # try dumping the process status file for more information:
-            status_filepath = "/proc/%u/status" % self.sitl.pid
-            self.progress("Checking for status filepath (%s)" % status_filepath)
-            if os.path.exists(status_filepath):
-                self.progress_file_content(status_filepath)
-            else:
-                self.progress("... does not exist")
+            self.dump_process_status(result)
 
             passed = False
             reset_needed = True
+
+        try:
+            self.context_pop(process_interaction_allowed=ardupilot_alive)
+        except Exception as e:
+            self.print_exception_caught(e, send_statustext=False)
+            passed = False
 
         # if we haven't already reset ArduPilot because it's dead,
         # then ensure the vehicle was disarmed at the end of the test.
@@ -7901,7 +7973,7 @@ Also, ignores heartbeats not from our target system'''
                 self.progress("Force-rebooting SITL")
                 self.reboot_sitl() # that'll learn it
             passed = False
-        elif not passed:  # implicit reboot after a failed test:
+        elif ardupilot_alive and not passed:  # implicit reboot after a failed test:
             self.progress("Test failed but ArduPilot process alive; rebooting")
             self.reboot_sitl() # that'll learn it
 
@@ -7929,7 +8001,7 @@ Also, ignores heartbeats not from our target system'''
             # pop off old contexts to clean up message hooks etc
             while len(self.contexts) > old_contexts_length:
                 try:
-                    self.context_pop()
+                    self.context_pop(process_interaction_allowed=ardupilot_alive)
                 except Exception as e:
                     self.print_exception_caught(e, send_statustext=False)
             self.progress("Done popping extra contexts")
@@ -7977,7 +8049,7 @@ Also, ignores heartbeats not from our target system'''
     def defaults_filepath(self):
         return None
 
-    def start_mavproxy(self):
+    def start_mavproxy(self, sitl_rcin_port=None):
         self.start_mavproxy_count += 1
         if self.mavproxy is not None:
             return self.mavproxy
@@ -7989,11 +8061,17 @@ Also, ignores heartbeats not from our target system'''
         if self.valgrind or self.callgrind:
             pexpect_timeout *= 10
 
+        if sitl_rcin_port is None:
+            sitl_rcin_port = self.sitl_rcin_port()
+
         mavproxy = util.start_MAVProxy_SITL(
             self.vehicleinfo_key(),
+            master='tcp:127.0.0.1:%u' % self.adjust_ardupilot_port(5762),
             logfile=self.mavproxy_logfile,
             options=self.mavproxy_options(),
-            pexpect_timeout=pexpect_timeout)
+            pexpect_timeout=pexpect_timeout,
+            sitl_rcin_port=sitl_rcin_port,
+        )
         mavproxy.expect(r'Telemetry log: (\S+)\r\n')
         self.logfile = mavproxy.match.group(1)
         self.progress("LOGFILE %s" % self.logfile)
@@ -8039,13 +8117,21 @@ Also, ignores heartbeats not from our target system'''
         self.sitl = util.start_SITL(binary, **start_sitl_args)
         self.expect_list_add(self.sitl)
         self.sup_prog = []
+        count = 0
         for sup_binary in self.sup_binaries:
             self.progress("Starting Supplementary Program ", sup_binary)
             start_sitl_args["customisations"] = [sup_binary[1]]
             start_sitl_args["supplementary"] = True
+            start_sitl_args["stdout_prefix"] = "%s-%u" % (os.path.basename(sup_binary[0]), count)
             sup_prog_link = util.start_SITL(sup_binary[0], **start_sitl_args)
             self.sup_prog.append(sup_prog_link)
             self.expect_list_add(sup_prog_link)
+            count += 1
+
+        # mavlink will have disconnected here.  Explicitly reconnect,
+        # or the first packet we send will be lost:
+        if self.mav is not None:
+            self.mav.reconnect()
 
     def get_suplementary_programs(self):
         return self.sup_prog
@@ -8087,6 +8173,7 @@ Also, ignores heartbeats not from our target system'''
                     start_sitl_args["customisations"] = [sup_binary[1], args]
                 start_sitl_args["supplementary"] = True
                 sup_prog_link = util.start_SITL(sup_binary[0], **start_sitl_args)
+                time.sleep(3)
                 self.sup_prog.append(sup_prog_link) # add to list
                 self.expect_list_add(sup_prog_link) # add to expect list
         else:
@@ -8096,6 +8183,7 @@ Also, ignores heartbeats not from our target system'''
                 start_sitl_args["customisations"] = [self.sup_binaries[instance][1], args]
             start_sitl_args["supplementary"] = True
             sup_prog_link = util.start_SITL(self.sup_binaries[instance][0], **start_sitl_args)
+            time.sleep(3)
             self.sup_prog[instance] = sup_prog_link # add to list
             self.expect_list_add(sup_prog_link) # add to expect list
 
@@ -10536,6 +10624,78 @@ Also, ignores heartbeats not from our target system'''
         self.do_RTL(distance_min=0, distance_max=wp_accuracy)
         self.disarm_vehicle()
 
+    def SetpointBadVel(self, timeout=30):
+        '''try feeding in a very, very bad velocity and make sure it is ignored'''
+        self.takeoff(mode='GUIDED')
+        # following values from a real log:
+        target_speed = Vector3(-3.6019095525029597e+30,
+                               1.7796490496925177e-41,
+                               3.0557017120313744e-26)
+
+        self.progress("Feeding in bad global data, hoping we don't move")
+
+        def send_speed_vector_global_int(vector , mav_frame):
+            self.mav.mav.set_position_target_global_int_send(
+                0,  # timestamp
+                self.sysid_thismav(),  # target system_id
+                1,  # target component id
+                mav_frame,
+                MAV_POS_TARGET_TYPE_MASK.POS_IGNORE |
+                MAV_POS_TARGET_TYPE_MASK.ACC_IGNORE |
+                MAV_POS_TARGET_TYPE_MASK.YAW_IGNORE |
+                MAV_POS_TARGET_TYPE_MASK.YAW_RATE_IGNORE,
+                0,
+                0,
+                0,
+                vector.x,  # vx
+                vector.y,  # vy
+                vector.z,  # vz
+                0,  # afx
+                0,  # afy
+                0,  # afz
+                0,  # yaw
+                0,  # yawrate
+            )
+        self.wait_speed_vector(
+            Vector3(0, 0, 0),
+            timeout=timeout,
+            called_function=lambda plop, empty: send_speed_vector_global_int(target_speed, mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT),  # noqa
+            minimum_duration=10
+        )
+
+        self.progress("Feeding in bad local data, hoping we don't move")
+
+        def send_speed_vector_local_ned(vector , mav_frame):
+            self.mav.mav.set_position_target_local_ned_send(
+                0,  # timestamp
+                self.sysid_thismav(),  # target system_id
+                1,  # target component id
+                mav_frame,
+                MAV_POS_TARGET_TYPE_MASK.POS_IGNORE |
+                MAV_POS_TARGET_TYPE_MASK.ACC_IGNORE |
+                MAV_POS_TARGET_TYPE_MASK.YAW_IGNORE |
+                MAV_POS_TARGET_TYPE_MASK.YAW_RATE_IGNORE,
+                0,
+                0,
+                0,
+                vector.x,  # vx
+                vector.y,  # vy
+                vector.z,  # vz
+                0,  # afx
+                0,  # afy
+                0,  # afz
+                0,  # yaw
+                0,  # yawrate
+            )
+        self.wait_speed_vector(
+            Vector3(0, 0, 0),
+            timeout=timeout,
+            called_function=lambda plop, empty: send_speed_vector_local_ned(target_speed, mavutil.mavlink.MAV_FRAME_LOCAL_NED),  # noqa
+            minimum_duration=10
+        )
+
+        self.do_RTL()
+
     def SetpointGlobalVel(self, timeout=30):
         """Test set position message in guided mode."""
         # Disable heading and yaw rate test on rover type
@@ -11415,9 +11575,10 @@ switch value'''
         '''Test AHRS NMEA Output can be read by out NMEA GPS'''
         self.set_parameter("SERIAL5_PROTOCOL", 20) # serial5 is NMEA output
         self.set_parameter("GPS_TYPE2", 5) # GPS2 is NMEA
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartE=tcp:6735", # GPS2 is NMEA....
-            "--uartF=tcpclient:127.0.0.1:6735", # serial5 spews to localhost:6735
+            "--uartE=tcp:%u" % port, # GPS2 is NMEA....
+            "--uartF=tcpclient:127.0.0.1:%u" % port, # serial5 spews to localhost port
         ])
         self.do_timesync_roundtrip()
         self.wait_gps_fix_type_gte(3)
@@ -12026,10 +12187,11 @@ switch value'''
             "RPM1_TYPE": 10, # enable RPM output
             "TERRAIN_ENABLE": 0,
         })
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartF=tcp:6735" # serial5 spews to localhost:6735
+            "--uartF=tcp:%u" % port # serial5 spews to localhost port
         ])
-        frsky = FRSkyPassThrough(("127.0.0.1", 6735),
+        frsky = FRSkyPassThrough(("127.0.0.1", port),
                                  get_time=self.get_sim_time_cached)
 
         # waiting until we are ready to arm should ensure our wanted
@@ -12120,10 +12282,11 @@ switch value'''
             "SERIAL5_PROTOCOL": 10, # serial5 is FRSky passthrough
             "RPM1_TYPE": 10, # enable RPM output
         })
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartF=tcp:6735" # serial5 spews to localhost:6735
+            "--uartF=tcp:%u" % port # serial5 spews to localhost port
         ])
-        frsky = FRSkyPassThrough(("127.0.0.1", 6735),
+        frsky = FRSkyPassThrough(("127.0.0.1", port),
                                  get_time=self.get_sim_time_cached)
 
         self.wait_ready_to_arm()
@@ -12274,10 +12437,11 @@ switch value'''
     def FRSkyMAVlite(self):
         '''Test FrSky MAVlite serial output'''
         self.set_parameter("SERIAL5_PROTOCOL", 10) # serial5 is FRSky passthrough
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartF=tcp:6735" # serial5 spews to localhost:6735
+            "--uartF=tcp:%u" % port # serial5 spews to localhost port
         ])
-        frsky = FRSkyPassThrough(("127.0.0.1", 6735))
+        frsky = FRSkyPassThrough(("127.0.0.1", port))
         frsky.connect()
 
         sport_to_mavlite = SPortToMAVlite()
@@ -12548,10 +12712,11 @@ switch value'''
         '''Test FrSky SPort mode'''
         self.set_parameter("SERIAL5_PROTOCOL", 4) # serial5 is FRSky sport
         self.set_parameter("RPM1_TYPE", 10) # enable SITL RPM sensor
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartF=tcp:6735" # serial5 spews to localhost:6735
+            "--uartF=tcp:%u" % port # serial5 spews to localhost port
         ])
-        frsky = FRSkySPort(("127.0.0.1", 6735), verbose=True)
+        frsky = FRSkySPort(("127.0.0.1", port), verbose=True)
         self.wait_ready_to_arm()
 
         # we need to start the engine to get some RPM readings, we do it for plane only
@@ -12620,10 +12785,11 @@ switch value'''
     def FRSkyD(self):
         '''Test FrSkyD serial output'''
         self.set_parameter("SERIAL5_PROTOCOL", 3) # serial5 is FRSky output
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartF=tcp:6735" # serial5 spews to localhost:6735
+            "--uartF=tcp:%u" % port # serial5 spews to localhost port
         ])
-        frsky = FRSkyD(("127.0.0.1", 6735))
+        frsky = FRSkyD(("127.0.0.1", port))
         self.wait_ready_to_arm()
         m = self.assert_receive_message('GLOBAL_POSITION_INT', timeout=1)
         gpi_abs_alt = int((m.alt+500) / 1000) # mm -> m
@@ -12742,10 +12908,11 @@ switch value'''
     def LTM(self):
         '''Test LTM serial output'''
         self.set_parameter("SERIAL5_PROTOCOL", 25) # serial5 is LTM output
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartF=tcp:6735" # serial5 spews to localhost:6735
+            "--uartF=tcp:%u" % port  # serial5 spews to localhost port
         ])
-        ltm = LTM(("127.0.0.1", 6735))
+        ltm = LTM(("127.0.0.1", port))
         self.wait_ready_to_arm()
 
         wants = {
@@ -12784,10 +12951,11 @@ switch value'''
         '''Test DEVO serial output'''
         self.context_push()
         self.set_parameter("SERIAL5_PROTOCOL", 17) # serial5 is DEVO output
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartF=tcp:6735" # serial5 spews to localhost:6735
+            "--uartF=tcp:%u" % port  # serial5 spews to localhost port
         ])
-        devo = DEVO(("127.0.0.1", 6735))
+        devo = DEVO(("127.0.0.1", port))
         self.wait_ready_to_arm()
         m = self.assert_receive_message('GLOBAL_POSITION_INT', timeout=1)
 
@@ -12856,10 +13024,11 @@ switch value'''
         '''Test MSP DJI serial output'''
         self.set_parameter("SERIAL5_PROTOCOL", 33) # serial5 is MSP DJI output
         self.set_parameter("MSP_OPTIONS", 1) # telemetry (unpolled) mode
+        port = self.spare_network_port()
         self.customise_SITL_commandline([
-            "--uartF=tcp:6735" # serial5 spews to localhost:6735
+            "--uartF=tcp:%u" % port # serial5 spews to localhost port
         ])
-        msp = MSP_DJI(("127.0.0.1", 6735))
+        msp = MSP_DJI(("127.0.0.1", port))
         self.wait_ready_to_arm()
 
         tstart = self.get_sim_time()
@@ -12883,10 +13052,11 @@ switch value'''
         ex = None
         try:
             self.set_parameter("SERIAL5_PROTOCOL", 23) # serial5 is RCIN input
+            port = self.spare_network_port()
             self.customise_SITL_commandline([
-                "--uartF=tcp:6735" # serial5 reads from to localhost:6735
+                "--uartF=tcp:%u" % port # serial5 reads from to localhost port
             ])
-            crsf = CRSF(("127.0.0.1", 6735))
+            crsf = CRSF(("127.0.0.1", port))
             crsf.connect()
 
             self.progress("Writing vtx_frame")
@@ -13038,6 +13208,7 @@ switch value'''
                                            (msg, m.alt, gpi_alt))
         introduced_error = 10  # in metres
         self.set_parameter("SIM_GPS2_ALT_OFS", introduced_error)
+        self.do_timesync_roundtrip()
         m = self.assert_receive_message("GPS2_RAW")
         if abs((m.alt-introduced_error*1000) - gpi_alt) > 100:
             raise NotAchievedException("skewed Alt (%s) discrepancy; %d+%d vs %d" %
@@ -13056,9 +13227,11 @@ switch value'''
         if abs(new_gpi_alt2 - m.alt) > 100:
             raise NotAchievedException("Failover not detected")
 
-    def fetch_file_via_ftp(self, path):
+    def fetch_file_via_ftp(self, path, timeout=20):
         '''returns the content of the FTP'able file at path'''
+        self.progress("Retrieving (%s) using MAVProxy" % path)
         mavproxy = self.start_mavproxy()
+        mavproxy.expect("Saved .* parameters to")
         ex = None
         tmpfile = tempfile.NamedTemporaryFile(mode='r', delete=False)
         try:
@@ -13067,9 +13240,18 @@ switch value'''
             mavproxy.send("ftp set debug 1\n")  # so we get the "Terminated session" message
             mavproxy.send("ftp get %s %s\n" % (path, tmpfile.name))
             mavproxy.expect("Getting")
-            self.delay_sim_time(2)
-            mavproxy.send("ftp status\n")
-            mavproxy.expect("No transfer in progress")
+            tstart = self.get_sim_time()
+            while True:
+                now = self.get_sim_time()
+                if now - tstart > timeout:
+                    raise NotAchievedException("expected complete transfer")
+                self.progress("Polling status")
+                mavproxy.send("ftp status\n")
+                try:
+                    mavproxy.expect("No transfer in progress", timeout=1)
+                    break
+                except Exception:
+                    continue
             # terminate the connection, or it may still be in progress the next time an FTP is attempted:
             mavproxy.send("ftp cancel\n")
             mavproxy.expect("Terminated session")
@@ -13222,7 +13404,11 @@ SERIAL5_BAUD 128
             disabled = {}
         skip_list = []
         tests = []
+        seen_test_name = set()
         for test in all_tests:
+            if test.name in seen_test_name:
+                raise ValueError("Duplicate test name %s" % test.name)
+            seen_test_name.add(test.name)
             if test.name in disabled:
                 self.progress("##### %s is skipped: %s" % (test, disabled[test.name]))
                 skip_list.append((test, disabled[test.name]))

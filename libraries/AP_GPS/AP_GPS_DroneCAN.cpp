@@ -699,6 +699,9 @@ bool AP_GPS_DroneCAN::read(void)
     }
 
     WITH_SEMAPHORE(sem);
+
+    send_rtcm();
+
     if (_new_data) {
         _new_data = false;
 
@@ -756,6 +759,37 @@ bool AP_GPS_DroneCAN::is_configured(void) const
 }
 
 /*
+  send pending RTCM data
+ */
+void AP_GPS_DroneCAN::send_rtcm(void)
+{
+    if (_rtcm_stream.buf == nullptr) {
+        return;
+    }
+    WITH_SEMAPHORE(sem);
+
+    const uint32_t now = AP_HAL::native_millis();
+    if (now - _rtcm_stream.last_send_ms < 20) {
+        // don't send more than 50 per second
+        return;
+    }
+    uint32_t outlen = 0;
+    const uint8_t *ptr = _rtcm_stream.buf->readptr(outlen);
+    if (ptr == nullptr || outlen == 0) {
+        return;
+    }
+    uavcan_equipment_gnss_RTCMStream msg {};
+    outlen = MIN(outlen, sizeof(msg.data.data));
+    msg.protocol_id = UAVCAN_EQUIPMENT_GNSS_RTCMSTREAM_PROTOCOL_ID_RTCM3;
+    memcpy(msg.data.data, ptr, outlen);
+    msg.data.len = outlen;
+    if (_detected_modules[_detected_module].ap_dronecan->rtcm_stream.broadcast(msg)) {
+        _rtcm_stream.buf->advance(outlen);
+        _rtcm_stream.last_send_ms = now;
+    }
+}
+
+/*
   handle RTCM data from MAVLink GPS_RTCM_DATA, forwarding it over MAVLink
  */
 void AP_GPS_DroneCAN::inject_data(const uint8_t *data, uint16_t len)
@@ -766,7 +800,16 @@ void AP_GPS_DroneCAN::inject_data(const uint8_t *data, uint16_t len)
     // don't want to send duplicates
     if (_detected_module == 0 ||
         _detected_modules[_detected_module].ap_dronecan != _detected_modules[0].ap_dronecan) {
-        _detected_modules[_detected_module].ap_dronecan->send_RTCMStream(data, len);
+        if (_rtcm_stream.buf == nullptr) {
+            // give enough space for a full round from a NTRIP server with all
+            // constellations
+            _rtcm_stream.buf = new ByteBuffer(2400);
+            if (_rtcm_stream.buf == nullptr) {
+                return;
+            }
+        }
+        _rtcm_stream.buf->write(data, len);
+        send_rtcm();
     }
 }
 

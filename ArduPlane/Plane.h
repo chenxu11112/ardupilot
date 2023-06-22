@@ -387,6 +387,7 @@ private:
     // Ground speed
     // The amount current ground speed is below min ground speed.  Centimeters per second
     int32_t groundspeed_undershoot;
+    bool groundspeed_undershoot_is_valid;
 
     // Difference between current altitude and desired altitude.  Centimeters
     int32_t altitude_error_cm;
@@ -402,11 +403,13 @@ private:
     struct {
         uint32_t last_tkoff_arm_time;
         uint32_t last_check_ms;
+        uint32_t rudder_takeoff_warn_ms;
         uint32_t last_report_ms;
         bool launchTimerStarted;
         uint8_t accel_event_counter;
         uint32_t accel_event_ms;
         uint32_t start_time_ms;
+        bool waiting_for_rudder_neutral;
     } takeoff_state;
 
     // ground steering controller state
@@ -687,6 +690,9 @@ private:
 
         // The amount of time we should stay in a loiter for the Loiter Time command.  Milliseconds.
         uint32_t time_max_ms;
+
+        // current value of loiter radius in metres used by the controller
+        float radius;
     } loiter;
 
     // Conditional command
@@ -860,7 +866,6 @@ private:
     float stabilize_roll_get_roll_out();
     void stabilize_pitch();
     float stabilize_pitch_get_pitch_out();
-    void stabilize_stick_mixing_direct();
     void stabilize_stick_mixing_fbw();
     void stabilize_yaw();
     void calc_nav_yaw_coordinated();
@@ -1025,6 +1030,7 @@ private:
     void update_fly_forward(void);
     void update_flight_stage();
     void set_flight_stage(AP_FixedWing::FlightStage fs);
+    bool flight_option_enabled(FlightOptions flight_option) const;
 
     // navigation.cpp
     void loiter_angle_reset(void);
@@ -1103,6 +1109,7 @@ private:
     void channel_function_mixer(SRV_Channel::Aux_servo_function_t func1_in, SRV_Channel::Aux_servo_function_t func2_in,
                                 SRV_Channel::Aux_servo_function_t func1_out, SRV_Channel::Aux_servo_function_t func2_out) const;
     void flaperon_update();
+    void indicate_waiting_for_rud_neutral_to_takeoff(void);
 
     // is_flying.cpp
     void update_is_flying_5Hz(void);

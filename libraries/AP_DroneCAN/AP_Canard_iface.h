@@ -33,7 +33,7 @@ public:
     /// @return true if response was added to the queue
     bool respond(uint8_t destination_node_id, const Canard::Transfer &res_transfer) override;
 
-    void processTx();
+    void processTx(bool raw_commands_only);
     void processRx();
 
     void process(uint32_t duration);
@@ -63,6 +63,8 @@ private:
     uint8_t num_ifaces;
     HAL_EventHandle _event_handle;
     bool initialized;
-    HAL_Semaphore _sem;
+    HAL_Semaphore _sem_tx;
+    HAL_Semaphore _sem_rx;
+    CanardTxTransfer tx_transfer;
 };
 #endif // HAL_ENABLE_DRONECAN_DRIVERS

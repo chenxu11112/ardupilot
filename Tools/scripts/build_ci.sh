@@ -252,6 +252,14 @@ for t in $CI_BUILD_TARGET; do
         continue
     fi
 
+    if [ "$t" == "CubeRedPrimary-bootloader" ]; then
+        echo "Building CubeRedPrimary bootloader"
+        $waf configure --board CubeRedPrimary --bootloader
+        $waf clean
+        $waf bootloader
+        continue
+    fi
+
     if [ "$t" == "fmuv3-bootloader" ]; then
         echo "Building fmuv3 bootloader"
         $waf configure --board fmuv3 --bootloader
@@ -358,9 +366,11 @@ for t in $CI_BUILD_TARGET; do
     if [ "$t" == "replay" ]; then
         echo "Building replay"
         $waf configure --board sitl --debug --disable-scripting
+        
         $waf replay
         echo "Building AP_DAL standalone test"
         $waf configure --board sitl --debug --disable-scripting --no-gcs
+        
         $waf --target tool/AP_DAL_Standalone
         $waf clean
         continue
