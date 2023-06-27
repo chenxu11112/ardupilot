@@ -1,4 +1,25 @@
 {
     "cSpell.language": "en-GB",
-    "astyle.astylerc": "${workspaceFolder}/Tools/CodeStyle/astylerc"
+    "astyle.astylerc": "${workspaceFolder}/Tools/CodeStyle/astylerc",
+
+    "C_Cpp.formatting": "Default",
+    // 不包含的文件夹
+    "files.exclude": {
+        "AntennaTracker/": true,
+        "ArduCopter/": true,  // 如果使用的是多旋翼固件，则将此文件夹的隐藏设置为"false" 
+        "Rover/": false,
+        "Blimp/": true,
+        "ArduPlane/": true,
+        "ArduSub/": true,
+        "build/": false,
+        "docs/": true,
+        "logs/": true,
+        "mk/": true,
+        "terrain/": true,
+        "tests/": true
+    },
+    // APM固件代码风格，基于Google规范，但是tab是4个空格
+    "C_Cpp.clang_format_fallbackStyle": "{BasedOnStyle: Google, IndentWidth: 4 }",
+    // 粘贴时自动格式化
+    "editor.formatOnPaste": false,
 }
