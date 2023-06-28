@@ -573,6 +573,7 @@ void AP_SerialManager::init()
                     // Note init is handled by AP_MSP
                     break;
 #endif
+
                 default:
                     uart->begin(state[i].baudrate());
             }

@@ -6,8 +6,8 @@
     // 不包含的文件夹
     "files.exclude": {
         "AntennaTracker/": true,
-        "ArduCopter/": true,  // 如果使用的是多旋翼固件，则将此文件夹的隐藏设置为"false" 
-        "Rover/": false,
+        "ArduCopter/": false,  // 如果使用的是多旋翼固件，则将此文件夹的隐藏设置为"false" 
+        "Rover/": true,
         "Blimp/": true,
         "ArduPlane/": true,
         "ArduSub/": true,
@@ -22,4 +22,15 @@
     "C_Cpp.clang_format_fallbackStyle": "{BasedOnStyle: Google, IndentWidth: 4 }",
     // 粘贴时自动格式化
     "editor.formatOnPaste": false,
+    "files.associations": {
+        "*.dat": "cmake",
+        "*.world": "xml",
+        "*.inc": "cmake",
+        "*.parm": "cmake",
+        "array": "cpp",
+        "string": "cpp",
+        "string_view": "cpp",
+        "functional": "cpp",
+        "*.tcc": "cpp"
+    },
 }
