@@ -41,10 +41,10 @@ void AP_RMUART::init(const AP_SerialManager& serial_manager) {
                      AP_SERIALMANAGER_RMUART_BUFSIZE_TX);
     }
 
-    // if (SRV_Channels::get_channel_for(SRV_Channel::k_speedMotorLeftWheel) ==
-    // nullptr) {
-    //     return false;
-    // }
+    for (uint8_t i = 0; i < 4; i++) {
+        _rmuart.motor[i] = 1500;
+    }
+
 }
 
 void AP_RMUART::update() {
@@ -61,7 +61,7 @@ void AP_RMUART::update() {
             SRV_Channels::get_channel_for(SRV_Channel::Aux_servo_function_t(
                 SRV_Channel::k_speedMotorLeftWheel + i));
         if (out_chan == nullptr) {
-            printf("%d, nullptr\n", i);
+            // printf("%d, nullptr\n", i);
             continue;
         }
 
