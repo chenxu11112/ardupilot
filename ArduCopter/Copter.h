@@ -70,6 +70,8 @@
 #include <AP_ADSB/AP_ADSB.h>                // ADS-B RF based collision avoidance module library
 #include <AP_Proximity/AP_Proximity.h>      // ArduPilot proximity sensor library
 
+#include <AP_RMUART/AP_RMUART.h> // 新增rm
+
 // Configuration
 #include "defines.h"
 #include "config.h"
@@ -248,6 +250,8 @@ private:
     RC_Channel *channel_yaw;
 
     AP_Logger logger;
+
+    AP_RMUART rmuart{};
 
     // flight modes convenience array
     AP_Int8 *flight_modes;
@@ -688,6 +692,9 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
     bool get_rate_ef_targets(Vector3f& rate_ef_targets) const override;
+
+    void update_RMUART(void);
+
 
     // Attitude.cpp
     void update_throttle_hover();

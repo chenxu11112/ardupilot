@@ -104,7 +104,7 @@ GRTAGS
 GTAGS
 *.apj
 .gdbinit
-/.vscode
+# /.vscode
 /.history
 Parameters.html
 Parameters.md
