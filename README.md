@@ -15,7 +15,7 @@
   | Bytes      | Content  | default   |
   | --------   | -------- |--------   |
   | 2          | header   | 0xAA 0xAF |
-  | 1          | len      | 15        |
+  | 1          | len      | 0xAA 0xAF |
   | 4          | timestamp| 0         |
   | 2          | motor1   | 1500      |
   | 2          | motor2   | 1500      |
