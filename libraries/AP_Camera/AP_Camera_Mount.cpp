@@ -37,25 +37,33 @@ bool AP_Camera_Mount::set_zoom(ZoomType zoom_type, float zoom_value)
     return false;
 }
 
-// focus in, out or hold.  returns true on success
+// set focus specified as rate, percentage or auto
 // focus in = -1, focus hold = 0, focus out = 1
-bool AP_Camera_Mount::set_manual_focus_step(int8_t focus_step)
+bool AP_Camera_Mount::set_focus(FocusType focus_type, float focus_value)
 {
     AP_Mount* mount = AP::mount();
     if (mount != nullptr) {
-        return mount->set_manual_focus_step(0, focus_step);
+        return mount->set_focus(0, focus_type, focus_value);
     }
     return false;
 }
 
-// auto focus.  returns true on success
-bool AP_Camera_Mount::set_auto_focus()
+// send camera information message to GCS
+void AP_Camera_Mount::send_camera_information(mavlink_channel_t chan) const
 {
     AP_Mount* mount = AP::mount();
     if (mount != nullptr) {
-        return mount->set_auto_focus(0);
+        return mount->send_camera_information(chan);
     }
-    return false;
+}
+
+// send camera settings message to GCS
+void AP_Camera_Mount::send_camera_settings(mavlink_channel_t chan) const
+{
+    AP_Mount* mount = AP::mount();
+    if (mount != nullptr) {
+        return mount->send_camera_settings(chan);
+    }
 }
 
 #endif // AP_CAMERA_MOUNT_ENABLED

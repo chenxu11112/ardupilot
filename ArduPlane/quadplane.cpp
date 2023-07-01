@@ -2366,7 +2366,7 @@ void QuadPlane::vtol_position_controller(void)
 
     case QPOS_APPROACH:
         if (in_vtol_mode()) {
-            // this means we're not running update_transition() and
+            // this means we're not running transition update code and
             // thus not doing qassist checking, force POSITION1 mode
             // now. We don't expect this to trigger, it is a failsafe
             // for a logic error
@@ -2473,10 +2473,11 @@ void QuadPlane::vtol_position_controller(void)
         const uint32_t min_airbrake_ms = 1000;
         if (poscontrol.get_state() == QPOS_AIRBRAKE &&
             poscontrol.time_since_state_start_ms() > min_airbrake_ms &&
-            (aspeed < aspeed_threshold ||
-             fabsf(degrees(closing_vel.angle(desired_closing_vel))) > 60 ||
-             closing_speed > MAX(desired_closing_speed*1.2, desired_closing_speed+2) ||
-             labs(plane.ahrs.roll_sensor - plane.nav_roll_cd) > attitude_error_threshold_cd ||
+            (aspeed < aspeed_threshold || // too low airspeed
+             fabsf(degrees(closing_vel.angle(desired_closing_vel))) > 60 || // wrong direction
+             closing_speed > MAX(desired_closing_speed*1.2, desired_closing_speed+2) || // too fast
+             closing_speed < desired_closing_speed*0.5 || // too slow ground speed
+             labs(plane.ahrs.roll_sensor - plane.nav_roll_cd) > attitude_error_threshold_cd || // bad attitude
              labs(plane.ahrs.pitch_sensor - plane.nav_pitch_cd) > attitude_error_threshold_cd)) {
             gcs().send_text(MAV_SEVERITY_INFO,"VTOL position1 v=%.1f d=%.1f h=%.1f dc=%.1f",
                             (double)groundspeed,
@@ -2488,6 +2489,18 @@ void QuadPlane::vtol_position_controller(void)
 
             // switch to vfwd for throttle control
             vel_forward.integrator = SRV_Channels::get_output_scaled(SRV_Channel::k_throttle);
+
+            // adjust the initial forward throttle based on our desired and actual closing speed
+            // this allows for significant initial forward throttle
+            // when we have a strong headwind, but low throttle in the usual case where
+            // we want to slow down ready for POSITION2
+            vel_forward.integrator = linear_interpolate(0, vel_forward.integrator,
+                                                        closing_speed,
+                                                        1.2*desired_closing_speed, 0.5*desired_closing_speed);
+
+            // limit our initial forward throttle in POSITION1 to be 0.5 of cruise throttle
+            vel_forward.integrator = constrain_float(vel_forward.integrator, 0, plane.aparm.throttle_cruise*0.5);
+            
             vel_forward.last_ms = now_ms;
         }
 
@@ -2949,15 +2962,15 @@ void QuadPlane::takeoff_controller(void)
     // don't takeoff up until rudder is re-centered after rudder arming
     if (plane.arming.last_arm_method() == AP_Arming::Method::RUDDER &&
         (takeoff_last_run_ms == 0 ||
-         now - takeoff_last_run_ms < 1000) &&
+         now - takeoff_last_run_ms > 1000) &&
         !plane.seen_neutral_rudder &&
         spool_state <= AP_Motors::DesiredSpoolState::GROUND_IDLE) {
         // start motor spinning if not spinning already so user sees it is armed
         set_desired_spool_state(AP_Motors::DesiredSpoolState::GROUND_IDLE);
         takeoff_start_time_ms = now;
-        if (now - rudder_takeoff_warn_ms > 3000) {
-            gcs().send_text(MAV_SEVERITY_WARNING, "takeoff wait rudder release");
-            rudder_takeoff_warn_ms = now;
+        if (now - plane.takeoff_state.rudder_takeoff_warn_ms > TAKEOFF_RUDDER_WARNING_TIMEOUT) {
+            gcs().send_text(MAV_SEVERITY_WARNING, "Takeoff waiting for rudder release");
+            plane.takeoff_state.rudder_takeoff_warn_ms = now;
         }
         return;
     }
@@ -4097,6 +4110,10 @@ Vector2f QuadPlane::landing_desired_closing_velocity()
     float tecs_land_airspeed = plane.TECS_controller.get_land_airspeed();
     if (is_positive(tecs_land_airspeed)) {
         land_speed = tecs_land_airspeed;
+    } else {
+        // use half way between min airspeed and cruise if
+        // TECS_LAND_AIRSPEED not set
+        land_speed = 0.5*(land_speed+plane.aparm.airspeed_min);
     }
     target_speed = MIN(target_speed, eas2tas * land_speed);
 
@@ -4138,12 +4155,16 @@ float QuadPlane::get_land_airspeed(void)
         return approach_speed;
     }
 
+    if (qstate == QPOS_AIRBRAKE) {
+        // during airbraking ask TECS to slow us to stall speed
+        return plane.aparm.airspeed_min;
+    }
+    
     // calculate speed based on landing desired velocity
     Vector2f vel = landing_desired_closing_velocity();
-    const Vector3f wind = plane.ahrs.wind_estimate();
+    const Vector2f wind = plane.ahrs.wind_estimate().xy();
     const float eas2tas = plane.ahrs.get_EAS2TAS();
-    vel.x -= wind.x;
-    vel.y -= wind.y;
+    vel -= wind;
     vel /= eas2tas;
     return vel.length();
 }
@@ -4349,7 +4370,7 @@ MAV_VTOL_STATE SLT_Transition::get_mav_vtol_state() const
 }
 
 // Set FW roll and pitch limits and keep TECS informed
-void SLT_Transition::set_FW_roll_pitch(int32_t& nav_pitch_cd, int32_t& nav_roll_cd, bool& allow_stick_mixing)
+void SLT_Transition::set_FW_roll_pitch(int32_t& nav_pitch_cd, int32_t& nav_roll_cd)
 {
     if (quadplane.in_vtol_mode() || quadplane.in_vtol_airbrake()) {
         // not in FW flight
@@ -4526,6 +4547,17 @@ bool QuadPlane::abort_landing(void)
     }
     poscontrol.set_state(QuadPlane::QPOS_LAND_ABORT);
     return true;
+}
+
+// Should we allow stick mixing from the pilot
+bool QuadPlane::allow_stick_mixing() const
+{
+    if (!available()) {
+        // Quadplane not enabled
+        return true;
+    }
+    // Ask transition logic
+    return transition->allow_stick_mixing();
 }
 
 #endif  // HAL_QUADPLANE_ENABLED

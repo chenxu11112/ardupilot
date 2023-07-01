@@ -19,16 +19,22 @@
  */
 #pragma once
 
-#include "AP_Mount.h"
+#include "AP_Mount_config.h"
+
 #if HAL_MOUNT_ENABLED
+
+#include <GCS_MAVLink/GCS_MAVLink.h>
 #include <AP_Common/AP_Common.h>
+#include <AP_Common/Location.h>
 #include <RC_Channel/RC_Channel.h>
+#include <AP_Camera/AP_Camera_shareddefs.h>
+#include "AP_Mount_Params.h"
 
 class AP_Mount_Backend
 {
 public:
     // Constructor
-    AP_Mount_Backend(AP_Mount &frontend, AP_Mount_Params &params, uint8_t instance) :
+    AP_Mount_Backend(class AP_Mount &frontend, class AP_Mount_Params &params, uint8_t instance) :
         _frontend(frontend),
         _params(params),
         _instance(instance)
@@ -36,6 +42,9 @@ public:
 
     // init - performs any required initialisation for this instance
     virtual void init();
+
+    // set device id of this instance, for MNTx_DEVID parameter
+    void set_dev_id(uint32_t id);
 
     // update mount position - should be called periodically
     virtual void update() = 0;
@@ -45,6 +54,10 @@ public:
 
     // return true if healthy
     virtual bool healthy() const { return true; }
+
+    // return true if this mount accepts roll or pitch targets
+    virtual bool has_roll_control() const;
+    virtual bool has_pitch_control() const;
 
     // returns true if this mount can control its pan (required for multicopters)
     virtual bool has_pan_control() const = 0;
@@ -82,6 +95,10 @@ public:
 
     // handle do_mount_control command.  Returns MAV_RESULT_ACCEPTED on success
     MAV_RESULT handle_command_do_mount_control(const mavlink_command_long_t &packet);
+
+    // handle do_gimbal_manager_configure.  Returns MAV_RESULT_ACCEPTED on success
+    // requires original message in order to extract caller's sysid and compid
+    MAV_RESULT handle_command_do_gimbal_manager_configure(const mavlink_command_long_t &packet, const mavlink_message_t &msg);
     
     // process MOUNT_CONFIGURE messages received from GCS. deprecated.
     void handle_mount_configure(const mavlink_mount_configure_t &msg);
@@ -91,6 +108,15 @@ public:
 
     // send a GIMBAL_DEVICE_ATTITUDE_STATUS message to GCS
     void send_gimbal_device_attitude_status(mavlink_channel_t chan);
+
+    // return gimbal capabilities sent to GCS in the GIMBAL_MANAGER_INFORMATION
+    virtual uint32_t get_gimbal_manager_capability_flags() const;
+
+    // send a GIMBAL_MANAGER_INFORMATION message to GCS
+    void send_gimbal_manager_information(mavlink_channel_t chan);
+
+    // send a GIMBAL_MANAGER_STATUS message to GCS
+    void send_gimbal_manager_status(mavlink_channel_t chan);
 
     // handle a GIMBAL_REPORT message
     virtual void handle_gimbal_report(mavlink_channel_t chan, const mavlink_message_t &msg) {}
@@ -127,12 +153,15 @@ public:
     // set zoom specified as a rate or percentage
     virtual bool set_zoom(ZoomType zoom_type, float zoom_value) { return false; }
 
-    // set focus in, out or hold.  returns true on success
+    // set focus specified as rate, percentage or auto
     // focus in = -1, focus hold = 0, focus out = 1
-    virtual bool set_manual_focus_step(int8_t focus_step) { return false; }
+    virtual bool set_focus(FocusType focus_type, float focus_value) { return false; }
 
-    // auto focus.  returns true on success
-    virtual bool set_auto_focus() { return false; }
+    // send camera information message to GCS
+    virtual void send_camera_information(mavlink_channel_t chan) const {}
+
+    // send camera settings message to GCS
+    virtual void send_camera_settings(mavlink_channel_t chan) const {}
 
 protected:
 
@@ -147,6 +176,12 @@ protected:
         float pitch;
         float yaw;
         bool yaw_is_ef;
+
+        // return body-frame yaw angle from a mount target (in radians)
+        float get_bf_yaw() const;
+
+        // return earth-frame yaw angle from a mount target (in radians)
+        float get_ef_yaw() const;
     };
 
     // returns true if user has configured a valid yaw angle range
@@ -183,12 +218,6 @@ protected:
     // returns true on success, false on failure
     bool get_angle_target_to_sysid(MountTarget& angle_rad) const WARN_IF_UNUSED;
 
-    // return body-frame yaw angle from a mount target
-    float get_bf_yaw_angle(const MountTarget& angle_rad) const;
-
-    // return earth-frame yaw angle from a mount target
-    float get_ef_yaw_angle(const MountTarget& angle_rad) const;
-
     // update angle targets using a given rate target
     // the resulting angle_rad yaw frame will match the rate_rad yaw frame
     // assumes a 50hz update rate
@@ -222,6 +251,13 @@ protected:
     bool _target_sysid_location_set;// true if _target_sysid has been set
 
     uint32_t _last_warning_ms;      // system time of last warning sent to GCS
+
+    // structure holding mavlink sysid and compid of controller of this gimbal
+    // see MAV_CMD_DO_GIMBAL_MANAGER_CONFIGURE and GIMBAL_MANAGER_STATUS
+    struct {
+        uint8_t sysid;
+        uint8_t compid;
+    } mavlink_control_id;
 };
 
 #endif // HAL_MOUNT_ENABLED
