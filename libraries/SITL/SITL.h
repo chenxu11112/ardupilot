@@ -97,6 +97,7 @@ struct sitl_fdm {
 
 class SIM {
 public:
+    double hal_wheel_v[2];
 
     SIM() {
         AP_Param::setup_object_defaults(this, var_info);
@@ -508,6 +509,7 @@ public:
 
 namespace AP {
     SITL::SIM *sitl();
+    
 };
 
 #endif // AP_SIM_ENABLED

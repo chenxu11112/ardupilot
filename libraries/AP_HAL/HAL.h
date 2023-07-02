@@ -17,7 +17,6 @@ class AP_Param;
 #include "DSP.h"
 #include "CANIface.h"
 
-
 class AP_HAL::HAL {
 public:
     HAL(AP_HAL::UARTDriver* _uartA, // console
@@ -111,6 +110,8 @@ public:
     };
 
     virtual void run(int argc, char * const argv[], Callbacks* callbacks) const = 0;
+
+    double hal_wheel_v[2];
 
 private:
     // the uartX ports must be contiguous in ram for the serial() method to work
