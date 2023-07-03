@@ -146,6 +146,8 @@ public:
 
     float get_battery_voltage() const { return battery_voltage; }
 
+    double wheel_v[2];
+
 protected:
     SIM *sitl;
     // origin of position vector
@@ -331,6 +333,7 @@ private:
     IntelligentEnergy24 *ie24;
     SIM_Precland *precland;
     class I2C *i2c;
+
 };
 
 } // namespace SITL

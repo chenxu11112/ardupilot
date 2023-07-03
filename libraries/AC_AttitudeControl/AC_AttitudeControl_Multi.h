@@ -39,6 +39,22 @@
 #endif
 
 
+#define AR_ATTCONTROL_PITCH_THR_P       2.0
+#define AR_ATTCONTROL_PITCH_THR_I       0.1
+#define AR_ATTCONTROL_PITCH_THR_D       0.02
+#define AR_ATTCONTROL_PITCH_THR_IMAX    1.0f
+#define AR_ATTCONTROL_PITCH_THR_FILT    10.0f
+#define AR_ATTCONTROL_BAL_PITCH_FF      0.4f
+
+#define AR_VELOCITY_THR_P       0.3
+#define AR_VELOCITY_THR_I       0.01f
+#define AR_VELOCITY_THR_D       0.001f
+#define AAR_VELOCITY_THR_IMAX    1.0f
+#define AR_VELOCITY_THR_FILT    10.0f
+#define AR_VELOCITY_THR_PITCH_FF      0.4f
+
+#define AR_ATTCONTROL_TIMEOUT_MS        200
+
 class AC_AttitudeControl_Multi : public AC_AttitudeControl {
 public:
 	AC_AttitudeControl_Multi(AP_AHRS_View &ahrs, const AP_Vehicle::MultiCopter &aparm, AP_MotorsMulticopter& motors);
@@ -81,6 +97,9 @@ public:
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
+    float get_throttle_out_from_pitch(float desired_pitch, float pitch_max, bool motor_limit, float dt);
+
+
 protected:
 
     // update_throttle_rpy_mix - updates thr_low_comp value towards the target
@@ -93,6 +112,17 @@ protected:
     AC_PID                _pid_rate_roll;
     AC_PID                _pid_rate_pitch;
     AC_PID                _pid_rate_yaw;
+
+    // balancebot pitch control
+    uint32_t _balance_last_ms = 0;  // system time that get_throttle_out_from_pitch was last called
+    float _pitch_limit_low = 0;     // min desired pitch (in radians) used to protect against falling over
+    float _pitch_limit_high = 0;    // max desired pitch (in radians) used to protect against falling over
+    bool _pitch_limited = false;    // true if pitch was limited on last call to get_throttle_out_from_pitch
+
+    AC_PID                _pitch_to_throttle_pid;// balancebot pitch controller
+    AP_Float              _pitch_to_throttle_ff; // balancebot feed forward from current pitch angle
+    AC_PID                _vel_to_pitch_pid;// balancebot pitch controller
+    AP_Float              _vel_to_pitch_ff; // balancebot feed forward from current pitch angle
 
     AP_Float              _thr_mix_man;     // throttle vs attitude control prioritisation used when using manual throttle (higher values mean we prioritise attitude control over throttle)
     AP_Float              _thr_mix_min;     // throttle vs attitude control prioritisation used when landing (higher values mean we prioritise attitude control over throttle)

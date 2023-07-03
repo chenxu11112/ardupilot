@@ -22,6 +22,7 @@
 #include <AP_Math/AP_Math.h>
 #include "AP_MotorsTailsitter.h"
 #include <GCS_MAVLink/GCS.h>
+#include <stdio.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -47,21 +48,21 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorLeft, CH_4);
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeft, SERVO_OUTPUT_RANGE);
 
+    //rightwheel servo defaults to servo output 7
+    SRV_Channels::set_aux_channel_default(SRV_Channel::k_speedMotorRightWheel, CH_5);
+    SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, 1000);
+
+    //leftwheel servo defaults to servo output 8
+    SRV_Channels::set_aux_channel_default(SRV_Channel::k_speedMotorLeftWheel, CH_6);
+    SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, 1000);
+
     //rightjoint servo defaults to servo output 5
-    SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorRightJoint, CH_5);
+    SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorRightJoint, CH_7);
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorRightJoint, SERVO_OUTPUT_RANGE);
 
     //leftjoint servo defaults to servo output 6
-    SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorLeftJoint,CH_6);
+    SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorLeftJoint,CH_8);
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeftJoint,SERVO_OUTPUT_RANGE);
-
-    //rightwheel servo defaults to servo output 7
-    SRV_Channels::set_aux_channel_default(SRV_Channel::k_speedMotorRightWheel, CH_7);
-    SRV_Channels::set_angle(SRV_Channel::k_speedMotorRightWheel, SERVO_OUTPUT_RANGE);
-
-    //leftwheel servo defaults to servo output 8
-    SRV_Channels::set_aux_channel_default(SRV_Channel::k_speedMotorLeftWheel, CH_8);
-    SRV_Channels::set_angle(SRV_Channel::k_speedMotorLeftWheel, SERVO_OUTPUT_RANGE);
 
     _mav_type = MAV_TYPE_VTOL_DUOROTOR;
 
@@ -125,11 +126,23 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_speedMotorLeftWheel, _speed_leftwheel*SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_speedMotorRightWheel, _speed_rightwheel*SERVO_OUTPUT_RANGE);
+    // 平衡车 电机的输出范围: 0~2000
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftJoint,_tilt_leftjoint*SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightJoint,_tilt_rightjoint*SERVO_OUTPUT_RANGE);
+    // 直立环 _balancebot_throttle_in 输出范围: -1~1， 这里 _balancebot_throttle_in_factor 为放大系数
+    const float _balancebot_throttle_in_factor = 500;
+    SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, 1000 + _balancebot_throttle_in * _balancebot_throttle_in_factor);
+    SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, 1000 + _balancebot_throttle_in *  _balancebot_throttle_in_factor);
+
+    // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, 500);
+    // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, 500);
+
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_speedMotorLeftWheel, _speed_leftwheel*SERVO_OUTPUT_RANGE);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_speedMotorRightWheel, _speed_rightwheel*SERVO_OUTPUT_RANGE);
+
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftJoint,_tilt_leftjoint*SERVO_OUTPUT_RANGE);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightJoint,_tilt_rightjoint*SERVO_OUTPUT_RANGE);
+
+
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -265,19 +278,19 @@ void AP_MotorsTailsitter::_output_test_seq(uint8_t motor_seq, int16_t pwm)
             break;
         case 5:
             //right joint tilt servo
-            SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorRightJoint, pwm);  //添加左右关节舵机输出的pwm
+            SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, pwm);  //添加左右关节舵机输出的pwm
             break;
         case 6:
             //right wheel speed servo
-            SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, pwm);
+            SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, pwm);
             break;
         case 7:
             //left joint tilt servo
-            SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorLeftJoint, pwm);  //添加左右足部电机输出的pwm
+            SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorRightJoint, pwm);  //添加左右足部电机输出的pwm
             break; 
         case 8:
             //left wheel speed servo
-            SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, pwm);
+            SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorLeftJoint, pwm);
             break;
 
         default:

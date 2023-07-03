@@ -272,6 +272,8 @@ public:
     // write log, to be called at 10hz
     virtual void Log_Write() {};
 
+    void                set_balancebot_throttle(float balancebot_throttle_in) { _balancebot_throttle_in = balancebot_throttle_in; };        // range -1 ~ +1
+
 protected:
     // output functions that should be overloaded by child classes
     virtual void        output_armed_stabilizing() = 0;
@@ -312,6 +314,8 @@ protected:
     LowPassFilterFloat  _throttle_filter;           // throttle input filter
     DesiredSpoolState   _spool_desired;             // desired spool state
     SpoolState          _spool_state;               // current spool mode
+
+    float               _balancebot_throttle_in;    // desired balancebot, -1 ~ +1
 
     // air pressure compensation variables
     float               _air_density_ratio;     // air density / sea level density - decreases in altitude
