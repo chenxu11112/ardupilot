@@ -456,14 +456,9 @@ void AC_AttitudeControl_Multi::rate_controller_run()
 
     control_monitor_update();
 
-    static int cnt=0;
-
-    cnt++;
-    if(cnt>5)
-    {
-        cnt=0;
-        _motors.set_balancebot_throttle(get_throttle_out_from_pitch(0, radians(45), 1, 0.01));
-    }
+    // 这里是平衡车部分的控制代码
+    // 现在加入了直立环  
+    _motors.set_balancebot_throttle(get_throttle_out_from_pitch(0, radians(45), 1, _dt));
 }
 
 // sanity check parameters.  should be called once before takeoff
@@ -513,13 +508,13 @@ float AC_AttitudeControl_Multi::get_throttle_out_from_pitch(float desired_pitch,
     _balance_last_ms = now;
 
     
-    _pitch_to_throttle_pid.kP(AR_ATTCONTROL_PITCH_THR_P);
-    _pitch_to_throttle_pid.kI(AR_ATTCONTROL_PITCH_THR_I);
-    _pitch_to_throttle_pid.kD(AR_ATTCONTROL_PITCH_THR_D);
+    // _pitch_to_throttle_pid.kP(AR_ATTCONTROL_PITCH_THR_P);
+    // _pitch_to_throttle_pid.kI(AR_ATTCONTROL_PITCH_THR_I);
+    // _pitch_to_throttle_pid.kD(AR_ATTCONTROL_PITCH_THR_D);
 
-    _vel_to_pitch_pid.kP(AR_VELOCITY_THR_P);
-    _vel_to_pitch_pid.kI(AR_VELOCITY_THR_I);
-    _vel_to_pitch_pid.kD(AR_VELOCITY_THR_D);
+    // _vel_to_pitch_pid.kP(AR_VELOCITY_THR_P);
+    // _vel_to_pitch_pid.kI(AR_VELOCITY_THR_I);
+    // _vel_to_pitch_pid.kD(AR_VELOCITY_THR_D);
 
     // float total_vel = (AP::sitl()->hal_wheel_v[0] + AP::sitl()->hal_wheel_v[1])*0.005f;
 
@@ -527,11 +522,11 @@ float AC_AttitudeControl_Multi::get_throttle_out_from_pitch(float desired_pitch,
 
     // initialise output to feed forward from current pitch angle
     const float pitch_rad = AP::ahrs().pitch;
-    float output = sinf(pitch_rad) * _pitch_to_throttle_ff *0;
+    float output = sinf(pitch_rad) * _pitch_to_throttle_ff;
 
     // add regular PID control
     output += _pitch_to_throttle_pid.update_all(0, pitch_rad, dt, motor_limit);
-    // output += _pitch_to_throttle_pid.get_ff();
+    output += _pitch_to_throttle_pid.get_ff();
 
     // constrain and return final output
     return output;
