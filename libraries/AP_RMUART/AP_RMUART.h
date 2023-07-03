@@ -17,35 +17,38 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 
-#define RMUART_MAX_LEN 15
- 
+#define BALANCEBOT_MOTOR_NUM 2
+#define BALANCEBOT_SERVO_NUM 2
 class AP_RMUART {
-   public:
+public:
     AP_RMUART();
 
     /* Do not allow copies */
-    AP_RMUART(const AP_RMUART &other) = delete;
-    AP_RMUART &operator=(const AP_RMUART &) = delete;
+    AP_RMUART(const AP_RMUART& other) = delete;
+    AP_RMUART& operator=(const AP_RMUART&) = delete;
 
     // init - perform require initialisation including detecting which protocol
     // to use
-    void init(const AP_SerialManager &serial_manager);
+    void init(const AP_SerialManager& serial_manager);
 
     // update flight control mode. The control mode is vehicle type specific
     void update(void);
 
-    union rmuart_t {
-        struct PACKED {
-            uint8_t header[2];
-            uint8_t len;
-            uint32_t timestamp_ms;
-            uint16_t motor[4];
-        };
-        uint8_t bits[RMUART_MAX_LEN];
+    struct PACKED rmuart_struct {
+        uint8_t header[2];
+        uint8_t len;
+        uint32_t timestamp_ms;
+        uint16_t motor[BALANCEBOT_MOTOR_NUM];
+        uint16_t servo[BALANCEBOT_SERVO_NUM];
     };
 
-   private:
-    AP_HAL::UARTDriver *_port;  // UART used to send data to receiver
+    union rmuart_t {
+        struct rmuart_struct rmuart_s;
+        uint8_t bits[sizeof(struct rmuart_struct)];
+    };
+
+private:
+    AP_HAL::UARTDriver* _port; // UART used to send data to receiver
 
     rmuart_t _rmuart;
 };

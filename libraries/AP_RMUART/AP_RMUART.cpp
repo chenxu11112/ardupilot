@@ -15,7 +15,7 @@
    OpenMV library
 */
 
-#define AP_SERIALMANAGER_RMUART_BAUD 115200
+#define AP_SERIALMANAGER_RMUART_BAUD       115200
 #define AP_SERIALMANAGER_RMUART_BUFSIZE_RX 64
 #define AP_SERIALMANAGER_RMUART_BUFSIZE_TX 64
 
@@ -30,7 +30,8 @@ AP_RMUART::AP_RMUART(void) { _port = NULL; }
 
 // init - perform require initialisation including detecting which protocol to
 // use
-void AP_RMUART::init(const AP_SerialManager& serial_manager) {
+void AP_RMUART::init(const AP_SerialManager& serial_manager)
+{
     // check for DEVO_DPort
     if ((_port = serial_manager.find_serial(
              AP_SerialManager::SerialProtocol_RMUART, 0))) {
@@ -41,34 +42,42 @@ void AP_RMUART::init(const AP_SerialManager& serial_manager) {
                      AP_SERIALMANAGER_RMUART_BUFSIZE_TX);
     }
 
-    for (uint8_t i = 0; i < 4; i++) {
-        _rmuart.motor[i] = 1500;
+    for (uint8_t i = 0; i < BALANCEBOT_MOTOR_NUM; i++) {
+        _rmuart.rmuart_s.motor[i] = 1000;
     }
-
+    for (uint8_t i = 0; i < BALANCEBOT_SERVO_NUM; i++) {
+        _rmuart.rmuart_s.servo[i] = 1500;
+    }
 }
 
-void AP_RMUART::update() {
-    if (_port == NULL) return;
+void AP_RMUART::update()
+{
+    if (_port == NULL)
+        return;
 
-    _rmuart.header[0] = 0xAA;
-    _rmuart.header[1] = 0xAF;
-    _rmuart.timestamp_ms = AP_HAL::millis();
+    _rmuart.rmuart_s.header[0] = 0xAA;
+    _rmuart.rmuart_s.header[1] = 0xAF;
+    _rmuart.rmuart_s.timestamp_ms = AP_HAL::millis();
 
     SRV_Channel* out_chan;
 
-    for (uint8_t i = 0; i < 4; i++) {
-        out_chan =
-            SRV_Channels::get_channel_for(SRV_Channel::Aux_servo_function_t(
-                SRV_Channel::k_speedMotorLeftWheel + i));
+    for (uint8_t i = 0; i < BALANCEBOT_MOTOR_NUM; i++) {
+        out_chan = SRV_Channels::get_channel_for(SRV_Channel::Aux_servo_function_t(SRV_Channel::k_speedMotorRightWheel + i));
         if (out_chan == nullptr) {
-            // printf("%d, nullptr\n", i);
             continue;
         }
-
-        _rmuart.motor[i] = out_chan->get_output_pwm();
+        _rmuart.rmuart_s.motor[i] = out_chan->get_output_pwm();
     }
 
-    _rmuart.len = RMUART_MAX_LEN;
+    for (uint8_t i = 0; i < BALANCEBOT_SERVO_NUM; i++) {
+        out_chan = SRV_Channels::get_channel_for(SRV_Channel::Aux_servo_function_t(SRV_Channel::k_tiltMotorRightJoint + i));
+        if (out_chan == nullptr) {
+            continue;
+        }
+        _rmuart.rmuart_s.servo[i] = out_chan->get_output_pwm();
+    }
 
-    _port->write(_rmuart.bits, RMUART_MAX_LEN);
+    _rmuart.rmuart_s.len = sizeof(struct rmuart_struct);
+
+    _port->write(_rmuart.bits, sizeof(struct rmuart_struct));
 }
