@@ -278,7 +278,7 @@ void AP_MotorsTailsitter::_output_test_seq(uint8_t motor_seq, int16_t pwm)
             break;
         case 5:
             //right joint tilt servo
-            SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, pwm);  //添加左右关节舵机输出的pwm
+            SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, pwm);  //添加左右关节舵机输出的pwm
             break;
         case 6:
             //right wheel speed servo
