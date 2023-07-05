@@ -1,0 +1,28 @@
+# PWM input to Hardpoint output trigger firmware
+
+include ../f103-periph/hwdef.inc
+
+# setup build for a peripheral firmware
+env AP_PERIPH 1
+
+
+define CAN_APP_NODE_NAME "gwind.pwm"
+
+# no I2C
+undef I2C_ORDER
+undef I2C1
+
+undef PA4
+PC14 LED OUTPUT LOW
+
+undef HAL_LED_ON
+define HAL_LED_ON 0
+
+# setup for 4 PWM
+PA0 TIM2_CH1 TIM2 PWM(1) GPIO(50)
+PA1 TIM2_CH2 TIM2 PWM(2) GPIO(51)
+PA2 TIM2_CH3 TIM2 PWM(3) GPIO(52)
+PA3 TIM2_CH4 TIM2 PWM(4) GPIO(53)
+
+undef HAL_NO_RCOUT_THREAD
+define HAL_PERIPH_ENABLE_RC_OUT
