@@ -254,9 +254,12 @@ void AP_Periph_FW::init()
     hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
     hal.rcout->serial_led_send(4);
     hal.rcout->serial_led_send(5);
-
 #endif
 
+#ifdef HAL_FCU_PWR_ENABLED
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_PIN, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_PIN, HAL_FCU_PWR_PIN_OPEN);
+#endif
 }
 
 #if (defined(HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY) && HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY == 8) || defined(HAL_PERIPH_ENABLE_NOTIFY)
