@@ -2,4 +2,6 @@
 
 ./waf configure --board=TSDPilot-S4-FCU
 
-./waf copter --upload
+./waf copter 
+
+./waf --target bin/arducopter --upload
