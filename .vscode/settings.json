@@ -18,5 +18,14 @@
         "utility": "cpp",
         "variant": "cpp",
         "*.tcc": "cpp"
+    },
+    "editor.defaultFormatter": "xaver.clang-format",
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
+
+    "clang-format.executable": "/home/apm/.vscode/extensions/ms-vscode.cpptools-1.16.3-linux-x64/LLVM/bin/clang-format",
+    "[cpp]": {
+        "editor.defaultFormatter": "xaver.clang-format"
     }
 }

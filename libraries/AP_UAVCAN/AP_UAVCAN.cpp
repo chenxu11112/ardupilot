@@ -501,7 +501,10 @@ void AP_UAVCAN::loop(void)
         rtcm_stream_send();
         safety_state_send();
         notify_state_send();
+
+#ifdef UAVCAN_ESC_CONTROL
         esc_control_send();
+#endif
         send_parameter_request();
         send_parameter_save_request();
         _dna_server->verify_nodes();
