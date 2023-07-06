@@ -13,10 +13,10 @@ env AP_PERIPH 1
 FLASH_SIZE_KB 128
 
 # bootloader starts firmware at 20k + 4k (STORAGE_FLASH)
-FLASH_RESERVE_START_KB 28
+FLASH_RESERVE_START_KB 22
 
 # store parameters in pages 
-STORAGE_FLASH_PAGE 8
+STORAGE_FLASH_PAGE 9
 define HAL_STORAGE_SIZE 800
 
 # ChibiOS system timer
