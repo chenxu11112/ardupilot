@@ -4,4 +4,4 @@
 
 ./waf copter 
 
-./waf --target bin/arducopter --upload
+# ./waf --target bin/arducopter --upload
