@@ -60,6 +60,7 @@ void AP_RMUART::update()
         return;
 
     Send();
+    Receive();
 }
 
 void AP_RMUART::Receive(void)
