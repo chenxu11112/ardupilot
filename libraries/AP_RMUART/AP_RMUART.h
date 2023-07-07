@@ -34,6 +34,10 @@ public:
     // update flight control mode. The control mode is vehicle type specific
     void update(void);
 
+    void Receive(void);
+
+    void Send(void);
+
     struct PACKED rmuart_struct {
         uint8_t header[2];
         uint8_t len;
@@ -47,8 +51,25 @@ public:
         uint8_t bits[sizeof(struct rmuart_struct)];
     };
 
+    struct PACKED ardupilot_struct {
+        uint8_t header[2];
+        uint8_t len;
+        uint32_t timestamp_ms;
+        int16_t wheel_speed[BALANCEBOT_MOTOR_NUM];
+    };
+    union ardupilot_t {
+        struct ardupilot_struct ardupilot_s;
+
+        uint8_t bits[sizeof(struct ardupilot_struct)];
+    };
+
 private:
     AP_HAL::UARTDriver* _port; // UART used to send data to receiver
 
     rmuart_t _rmuart;
+    ardupilot_t ardupilot_rx;
+
+    uint8_t  _rx_step;
+
+    uint8_t receive_buff[20];
 };
