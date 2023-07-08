@@ -38,6 +38,12 @@ public:
 
     void Send(void);
 
+    void getWheelSpeed(int32_t* wheel1, int32_t* wheel2)
+    {
+        *wheel1 = ardupilot_rx.ardupilot_s.wheel_speed[0];
+        *wheel2 = ardupilot_rx.ardupilot_s.wheel_speed[1];
+    }
+
     struct PACKED rmuart_struct {
         uint8_t header[2];
         uint8_t len;
@@ -68,7 +74,7 @@ private:
     rmuart_t _rmuart;
     ardupilot_t ardupilot_rx;
 
-    uint8_t  _rx_step;
+    uint8_t _rx_step;
 
     uint8_t receive_buff[20];
 };
