@@ -19,6 +19,8 @@
 
 #define BALANCEBOT_MOTOR_NUM 2
 #define BALANCEBOT_SERVO_NUM 2
+
+#define MAX_BALANCE_MAX_SPEED 10000.0f // 电机最大转速
 class AP_RMUART {
 public:
     AP_RMUART();
@@ -38,10 +40,10 @@ public:
 
     void Send(void);
 
-    void getWheelSpeed(int32_t* wheel1, int32_t* wheel2)
+    void getWheelSpeed(float& wheel1, float& wheel2)
     {
-        *wheel1 = ardupilot_rx.ardupilot_s.wheel_speed[0];
-        *wheel2 = ardupilot_rx.ardupilot_s.wheel_speed[1];
+        wheel1 = (float)(ardupilot_rx.ardupilot_s.wheel_speed[0]) / MAX_BALANCE_MAX_SPEED;
+        wheel2 = (float)(ardupilot_rx.ardupilot_s.wheel_speed[1]) / MAX_BALANCE_MAX_SPEED;
     }
 
     struct PACKED rmuart_struct {
@@ -60,7 +62,7 @@ public:
     struct PACKED ardupilot_struct {
         uint8_t header[2];
         uint8_t len;
-        uint32_t timestamp_ms;
+        // uint32_t timestamp_ms;
         int16_t wheel_speed[BALANCEBOT_MOTOR_NUM];
     };
     union ardupilot_t {

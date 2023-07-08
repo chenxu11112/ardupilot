@@ -63,6 +63,8 @@ void AP_RMUART::update()
     Receive();
 }
 
+float wheel1, wheel2;
+
 void AP_RMUART::Receive(void)
 {
     uint8_t numc = _port->available();
@@ -103,6 +105,8 @@ void AP_RMUART::Receive(void)
                 count = 0;
 
                 memcpy(ardupilot_rx.bits, receive_buff, sizeof(struct ardupilot_struct));
+
+                getWheelSpeed(wheel1, wheel2);
 
                 gcs().send_text(MAV_SEVERITY_NOTICE, "wheel1=%d, wheel2=%d", ardupilot_rx.ardupilot_s.wheel_speed[0], ardupilot_rx.ardupilot_s.wheel_speed[1]);
             }

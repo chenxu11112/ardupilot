@@ -322,6 +322,8 @@ const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
 
     AP_GROUPINFO("BAL_VEL_FF", 10, AC_AttitudeControl_Multi, _vel_to_pitch_ff, AR_VELOCITY_THR_PITCH_FF),
 
+    AP_GROUPINFO("BAL_ZERO", 11, AC_AttitudeControl_Multi, _zero_angle, ZERO_ANGLE),
+
     AP_GROUPEND
 };
 
@@ -458,7 +460,7 @@ void AC_AttitudeControl_Multi::rate_controller_run()
 
     // 这里是平衡车部分的控制代码
     // 现在加入了直立环  
-    _motors.set_balancebot_throttle(get_throttle_out_from_pitch(0, radians(45), 1, _dt));
+    _motors.set_balancebot_throttle(get_throttle_out_from_pitch(0, radians(45), true, _dt));
 }
 
 // sanity check parameters.  should be called once before takeoff
@@ -507,25 +509,19 @@ float AC_AttitudeControl_Multi::get_throttle_out_from_pitch(float desired_pitch,
     }
     _balance_last_ms = now;
 
-    
-    // _pitch_to_throttle_pid.kP(AR_ATTCONTROL_PITCH_THR_P);
-    // _pitch_to_throttle_pid.kI(AR_ATTCONTROL_PITCH_THR_I);
-    // _pitch_to_throttle_pid.kD(AR_ATTCONTROL_PITCH_THR_D);
+    // 转速环: 获取转速
+    extern float wheel1, wheel2;
+    float total_wheel_speed = wheel1 + wheel2; 
 
-    // _vel_to_pitch_pid.kP(AR_VELOCITY_THR_P);
-    // _vel_to_pitch_pid.kI(AR_VELOCITY_THR_I);
-    // _vel_to_pitch_pid.kD(AR_VELOCITY_THR_D);
+    // 转速环: 这里注意正负号，转速环控制应该是正反馈，向前倒则应该往前转得更快
+    float out_vel =  -_vel_to_pitch_pid.update_all(0, total_wheel_speed, dt, motor_limit); 
 
-    // float total_vel = (AP::sitl()->hal_wheel_v[0] + AP::sitl()->hal_wheel_v[1])*0.005f;
-
-    // float out_vel =  -_vel_to_pitch_pid.update_all(0, total_vel, dt);
-
-    // initialise output to feed forward from current pitch angle
+    // 角度环: 获取角度
     const float pitch_rad = AP::ahrs().pitch;
-    float output = sinf(pitch_rad) * _pitch_to_throttle_ff;
 
-    // add regular PID control
-    output += _pitch_to_throttle_pid.update_all(0, pitch_rad, dt, motor_limit);
+    // 角度环控制
+    float output = sinf(pitch_rad) * _pitch_to_throttle_ff;
+    output += _pitch_to_throttle_pid.update_all(out_vel + _zero_angle, pitch_rad, dt, motor_limit);
     output += _pitch_to_throttle_pid.get_ff();
 
     // constrain and return final output

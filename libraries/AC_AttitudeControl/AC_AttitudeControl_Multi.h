@@ -46,14 +46,17 @@
 #define AR_ATTCONTROL_PITCH_THR_FILT    10.0f
 #define AR_ATTCONTROL_BAL_PITCH_FF      0.4f
 
-#define AR_VELOCITY_THR_P       0.3
-#define AR_VELOCITY_THR_I       0.01f
-#define AR_VELOCITY_THR_D       0.001f
+#define AR_VELOCITY_THR_P        0.3
+#define AR_VELOCITY_THR_I        0.01f
+#define AR_VELOCITY_THR_D        0.001f
 #define AAR_VELOCITY_THR_IMAX    1.0f
-#define AR_VELOCITY_THR_FILT    10.0f
-#define AR_VELOCITY_THR_PITCH_FF      0.4f
+#define AR_VELOCITY_THR_FILT     10.0f
+#define AR_VELOCITY_THR_PITCH_FF 0.4f
 
-#define AR_ATTCONTROL_TIMEOUT_MS        200
+#define AR_ATTCONTROL_TIMEOUT_MS 200
+
+#define ZERO_ANGLE 0.0f
+
 
 class AC_AttitudeControl_Multi : public AC_AttitudeControl {
 public:
@@ -123,6 +126,9 @@ protected:
     AP_Float              _pitch_to_throttle_ff; // balancebot feed forward from current pitch angle
     AC_PID                _vel_to_pitch_pid;// balancebot pitch controller
     AP_Float              _vel_to_pitch_ff; // balancebot feed forward from current pitch angle
+
+    AP_Float              _zero_angle; // 机械零值
+
 
     AP_Float              _thr_mix_man;     // throttle vs attitude control prioritisation used when using manual throttle (higher values mean we prioritise attitude control over throttle)
     AP_Float              _thr_mix_min;     // throttle vs attitude control prioritisation used when landing (higher values mean we prioritise attitude control over throttle)
