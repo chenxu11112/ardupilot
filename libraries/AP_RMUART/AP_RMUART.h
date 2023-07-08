@@ -62,10 +62,7 @@ public:
     struct PACKED ardupilot_struct {
         uint8_t header[2];
         uint8_t len;
-balanceCopter-4.3.7
-
         // uint32_t timestamp_ms;
-balanceCopter-4.3.7
         int16_t wheel_speed[BALANCEBOT_MOTOR_NUM];
     };
     union ardupilot_t {
