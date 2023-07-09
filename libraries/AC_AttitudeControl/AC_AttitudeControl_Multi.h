@@ -100,7 +100,7 @@ public:
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
-    float get_throttle_out_from_pitch(float desired_pitch, float pitch_max, bool motor_limit, float dt);
+    float get_throttle_out_from_pitch(float pitch_max, bool motor_limit, float dt);
 
 
 protected:
