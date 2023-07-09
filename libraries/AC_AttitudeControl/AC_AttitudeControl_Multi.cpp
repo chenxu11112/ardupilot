@@ -512,7 +512,7 @@ float AC_AttitudeControl_Multi::get_throttle_out_from_pitch(float pitch_max, boo
     _balance_last_ms = now;
 
     // 
-    int16_t pwm_value = hal.rcin->read(CH_8);
+    int16_t pwm_value = hal.rcin->read(CH_7);
 
     float desired_speed = (float)(pwm_value - 1500) / 1000;
 
