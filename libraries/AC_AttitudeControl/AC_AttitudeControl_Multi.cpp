@@ -462,7 +462,7 @@ void AC_AttitudeControl_Multi::rate_controller_run()
 
     // 这里是平衡车部分的控制代码
     // 现在加入了直立环  
-    _motors.set_balancebot_throttle(get_throttle_out_from_pitch(radians(45), true, _dt));
+    _motors.set_balancebot_throttle(get_throttle_out_from_pitch(radians(3), true, _dt));
 }
 
 // sanity check parameters.  should be called once before takeoff
@@ -514,7 +514,7 @@ float AC_AttitudeControl_Multi::get_throttle_out_from_pitch(float pitch_max, boo
     // 
     int16_t pwm_value = hal.rcin->read(CH_7);
 
-    float desired_speed = (float)(pwm_value - 1500) / 1000;
+    float desired_speed = (float)(pwm_value - 1500) / 500;
 
     // 转速环: 获取转速
     extern float wheel1, wheel2;

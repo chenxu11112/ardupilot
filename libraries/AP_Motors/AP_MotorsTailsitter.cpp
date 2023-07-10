@@ -246,8 +246,8 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     _tilt_left  = pitch_thrust - yaw_thrust;
     _tilt_right = pitch_thrust + yaw_thrust;
 
-    _speed_leftwheel = pitch_thrust * 0.5f - yaw_thrust * 0.5f;  //添加左右两个足部电机
-    _speed_rightwheel = pitch_thrust * 0.5f + yaw_thrust * 0.5f;
+    _speed_leftwheel = pitch_thrust * 0.3f - yaw_thrust * 0.5f;  //添加左右两个足部电机
+    _speed_rightwheel = pitch_thrust * 0.3f + yaw_thrust * 0.5f;
     _tilt_leftjoint = pitch_thrust * 0.5f - yaw_thrust * 0.5f;  //添加左右两个关节舵机
     _tilt_rightjoint = pitch_thrust * 0.5f + yaw_thrust * 0.5f;
 
