@@ -104,10 +104,6 @@ void Copter::init_ardupilot()
     gps.set_log_gps_bit(MASK_LOG_GPS);
     gps.init(serial_manager);
 
-    // 新增rm
-    rmuart.init(serial_manager);
-
-
     AP::compass().set_log_bit(MASK_LOG_COMPASS);
     AP::compass().init();
 
@@ -533,6 +529,10 @@ void Copter::allocate_motors(void)
     // convert PRX to PRX1_ parameters
     convert_prx_parameters();
 #endif
+
+    balanceControl = new AC_BalanceControl(*motors, *ahrs_view, rmuart);
+    AP_Param::load_object_from_eeprom(balanceControl, balanceControl->var_info);
+
 
     // param count could have changed
     AP_Param::invalidate_count();

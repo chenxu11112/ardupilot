@@ -129,9 +129,9 @@ void AP_MotorsTailsitter::output_to_motors()
     // 平衡车 电机的输出范围: 0~2000
 
     // 直立环 _balancebot_throttle_in 输出范围: -1~1， 这里 _balancebot_throttle_in_factor 为放大系数
-    const float _balancebot_throttle_in_factor = 500;
-    SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, 1000 + _balancebot_throttle_in * _balancebot_throttle_in_factor);
-    SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, 1000 + _balancebot_throttle_in *  _balancebot_throttle_in_factor);
+    // const float _balancebot_throttle_in_factor = 500;
+    // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, 1000 + _balancebot_throttle_in * _balancebot_throttle_in_factor);
+    // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, 1000 + _balancebot_throttle_in *  _balancebot_throttle_in_factor);
 
     // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, 500);
     // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, 500);

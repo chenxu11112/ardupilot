@@ -200,7 +200,6 @@ public:
         k_param_circle_nav,
         k_param_loiter_nav,     // 105
         k_param_custom_control,
-
         // 110: Telemetry control
         //
         k_param_gcs0 = 110,
@@ -373,6 +372,8 @@ public:
         k_param_autotune_min_d, // remove
         k_param_arming, // 252  - AP_Arming
         k_param_logger = 253, // 253 - Logging Group
+
+        k_param_balanceControl,
 
         // 254,255: reserved
 

@@ -17,9 +17,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 
-#define BALANCEBOT_MOTOR_NUM 2
-#define BALANCEBOT_SERVO_NUM 2
-
 #define MAX_BALANCE_MAX_SPEED 10000.0f // 电机最大转速
 class AP_RMUART {
 public:
@@ -40,20 +37,24 @@ public:
 
     void Send(void);
 
-    void getWheelSpeed(float& wheel1, float& wheel2)
+    void getWheelSpeed(float& wheelleft, float& wheelright)
     {
-        wheel1 = (float)(ardupilot_rx.ardupilot_s.wheel_speed[0]) / MAX_BALANCE_MAX_SPEED;
-        wheel2 = (float)(ardupilot_rx.ardupilot_s.wheel_speed[1]) / MAX_BALANCE_MAX_SPEED;
+        wheelleft = (float)(ardupilot_rx.ardupilot_s.wheel_left_speed) / MAX_BALANCE_MAX_SPEED;
+        wheelright = (float)(ardupilot_rx.ardupilot_s.wheel_right_speed) / MAX_BALANCE_MAX_SPEED;
+    }
+
+    void setWheelSpeed(float& wheelleft, float& wheelright)
+    {
+        _rmuart.rmuart_s.wheel_left = (int16_t)(wheelleft*MAX_BALANCE_MAX_SPEED);
+        _rmuart.rmuart_s.wheel_right = (int16_t)(wheelright*MAX_BALANCE_MAX_SPEED);
     }
 
     struct PACKED rmuart_struct {
         uint8_t header[2];
         uint8_t len;
-        uint32_t timestamp_ms;
-        uint16_t motor[BALANCEBOT_MOTOR_NUM];
-        uint16_t servo[BALANCEBOT_SERVO_NUM];
+        int16_t wheel_left;
+        int16_t wheel_right;
     };
-
     union rmuart_t {
         struct rmuart_struct rmuart_s;
         uint8_t bits[sizeof(struct rmuart_struct)];
@@ -62,8 +63,8 @@ public:
     struct PACKED ardupilot_struct {
         uint8_t header[2];
         uint8_t len;
-        // uint32_t timestamp_ms;
-        int16_t wheel_speed[BALANCEBOT_MOTOR_NUM];
+        int16_t wheel_left_speed;
+        int16_t wheel_right_speed;
     };
     union ardupilot_t {
         struct ardupilot_struct ardupilot_s;

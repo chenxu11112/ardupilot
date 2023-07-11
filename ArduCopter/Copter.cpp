@@ -190,7 +190,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_Notify,            &copter.notify,              update,          50,  90,  78),
     SCHED_TASK(one_hz_loop,            1,    100,  81),
     
-    SCHED_TASK(update_RMUART,        400,    100, 82),
+    // SCHED_TASK(update_RMUART,        400,    100, 82),
 
     SCHED_TASK(ekf_check,             10,     75,  84),
     SCHED_TASK(check_vibration,       10,     50,  87),
@@ -635,10 +635,10 @@ void Copter::one_hz_loop()
     AP_Notify::flags.flying = !ap.land_complete;
 }
 
-void Copter::update_RMUART()
-{
-    rmuart.update();
-}
+// void Copter::update_RMUART()
+// {
+//     rmuart.update();
+// }
 
 void Copter::init_simple_bearing()
 {

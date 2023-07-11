@@ -71,6 +71,7 @@
 #include <AP_Proximity/AP_Proximity.h>      // ArduPilot proximity sensor library
 
 #include <AP_RMUART/AP_RMUART.h> // 新增rm
+#include <AC_BalanceControl/AC_BalanceControl.h>
 
 // Configuration
 #include "defines.h"
@@ -252,6 +253,7 @@ private:
     AP_Logger logger;
 
     AP_RMUART rmuart{};
+    AC_BalanceControl *balanceControl;
 
     // flight modes convenience array
     AP_Int8 *flight_modes;
@@ -692,9 +694,6 @@ private:
     bool get_wp_bearing_deg(float &bearing) const override;
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
     bool get_rate_ef_targets(Vector3f& rate_ef_targets) const override;
-
-    void update_RMUART(void);
-
 
     // Attitude.cpp
     void update_throttle_hover();
