@@ -108,7 +108,7 @@ void AP_RMUART::Receive(void)
 
                 getWheelSpeed(wheel1, wheel2);
 
-                gcs().send_text(MAV_SEVERITY_NOTICE, "wheel1=%d, wheel2=%d", ardupilot_rx.ardupilot_s.wheel_speed[0], ardupilot_rx.ardupilot_s.wheel_speed[1]);
+                // gcs().send_text(MAV_SEVERITY_NOTICE, "wheel1=%d, wheel2=%d", ardupilot_rx.ardupilot_s.wheel_speed[0], ardupilot_rx.ardupilot_s.wheel_speed[1]);
             }
             break;
 

@@ -693,9 +693,6 @@ private:
     bool get_wp_crosstrack_error_m(float &xtrack_error) const override;
     bool get_rate_ef_targets(Vector3f& rate_ef_targets) const override;
 
-    void update_RMUART(void);
-
-
     // Attitude.cpp
     void update_throttle_hover();
     float get_pilot_desired_climb_rate(float throttle_control);
