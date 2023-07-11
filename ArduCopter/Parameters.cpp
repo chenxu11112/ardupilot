@@ -724,7 +724,7 @@ const AP_Param::Info Copter::var_info[] = {
     GOBJECT(custom_control, "CC", AC_CustomControl),
 #endif
 
-    GOBJECT(balanceControl, "BALA_", AC_BalanceControl),
+    GOBJECTPTR(balanceControl, "BALA_", AC_BalanceControl),
 
     // @Group:
     // @Path: Parameters.cpp
