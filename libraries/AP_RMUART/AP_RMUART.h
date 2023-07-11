@@ -37,12 +37,14 @@ public:
 
     void Send(void);
 
+    // 从电机转速映射到【-1~1】
     void getWheelSpeed(float& wheelleft, float& wheelright)
     {
         wheelleft = (float)(ardupilot_rx.ardupilot_s.wheel_left_speed) / MAX_BALANCE_MAX_SPEED;
         wheelright = (float)(ardupilot_rx.ardupilot_s.wheel_right_speed) / MAX_BALANCE_MAX_SPEED;
     }
 
+    // 从【-1~1】映射到电机转速
     void setWheelSpeed(float& wheelleft, float& wheelright)
     {
         _rmuart.rmuart_s.wheel_left = (int16_t)(wheelleft*MAX_BALANCE_MAX_SPEED);

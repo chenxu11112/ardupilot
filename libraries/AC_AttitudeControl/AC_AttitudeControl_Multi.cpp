@@ -368,9 +368,11 @@ void AC_AttitudeControl_Multi::rate_controller_run()
 
     control_monitor_update();
 
+
     // // 这里是平衡车部分的控制代码
     // // 现在加入了直立环  
-    // _motors.set_balancebot_throttle(get_throttle_out_from_pitch(radians(45), true, _dt));
+    // _motors.set_balancebot_throttle(get_throttle_out_from_pitch(radians(3), true, _dt));
+
 }
 
 // sanity check parameters.  should be called once before takeoff
@@ -396,49 +398,3 @@ void AC_AttitudeControl_Multi::parameter_sanity_check()
     }
 }
 
-
-// // balancebot pitch to throttle controller
-// // returns a throttle output from -1 to +1 given a desired pitch angle (in radians)
-// // pitch_max should be the user defined max pitch angle (in radians)
-// // motor_limit should be true if the motors have hit their upper or lower limit
-// float AC_AttitudeControl_Multi::get_throttle_out_from_pitch(float pitch_max, bool motor_limit, float dt)
-// {
-//     // sanity check dt
-//     dt = constrain_float(dt, 0.0f, 1.0f);
-
-//     // if not called recently, reset input filter
-//     const uint32_t now = AP_HAL::millis();
-//     if ((_balance_last_ms == 0) || ((now - _balance_last_ms) > AR_ATTCONTROL_TIMEOUT_MS)) {
-//         _pitch_to_throttle_pid.reset_filter();
-//         _pitch_to_throttle_pid.reset_I();
-//         _pitch_limit_low = -pitch_max;
-//         _pitch_limit_high = pitch_max;
-
-//         _vel_to_pitch_pid.reset_filter();
-//         _vel_to_pitch_pid.reset_I();
-//     }
-//     _balance_last_ms = now;
-
-//     // 
-//     int16_t pwm_value = hal.rcin->read(CH_8);
-
-//     float desired_speed = (float)(pwm_value - 1500) / 1000;
-
-//     // 转速环: 获取转速
-//     extern float wheel1, wheel2;
-//     float total_wheel_speed = wheel1 + wheel2; 
-
-//     // 转速环: 这里注意正负号，转速环控制应该是正反馈，向前倒则应该往前转得更快
-//     float out_vel =  -_vel_to_pitch_pid.update_all(desired_speed, total_wheel_speed, dt, motor_limit); 
-
-//     // 角度环: 获取角度
-//     const float pitch_rad = AP::ahrs().pitch;
-
-//     // 角度环控制
-//     float output = sinf(pitch_rad) * _pitch_to_throttle_ff;
-//     output += _pitch_to_throttle_pid.update_all(out_vel + _zero_angle, pitch_rad, dt, motor_limit);
-//     output += _pitch_to_throttle_pid.get_ff();
-
-//     // constrain and return final output
-//     return output;
-// }
