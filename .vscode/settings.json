@@ -7,9 +7,9 @@
     "files.exclude": {
         "AntennaTracker/": true,
         "ArduCopter/": false,  // 如果使用的是多旋翼固件，则将此文件夹的隐藏设置为"false" 
-        "Rover/": false,
+        "Rover/": true,
         "Blimp/": true,
-        "ArduPlane/": false,
+        "ArduPlane/": true,
         "ArduSub/": true,
         "build/": false,
         "docs/": true,

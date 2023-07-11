@@ -530,6 +530,10 @@ void Copter::allocate_motors(void)
     convert_prx_parameters();
 #endif
 
+    balanceControl = new AC_BalanceControl(*motors, *ahrs_view, rmuart);
+    // AP_Param::load_object_from_eeprom(balanceControl, balanceControl->var_info);
+
+
     // param count could have changed
     AP_Param::invalidate_count();
 }

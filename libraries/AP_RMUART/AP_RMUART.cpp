@@ -46,12 +46,9 @@ void AP_RMUART::init(const AP_SerialManager& serial_manager)
                      AP_SERIALMANAGER_RMUART_BUFSIZE_TX);
     }
 
-    for (uint8_t i = 0; i < BALANCEBOT_MOTOR_NUM; i++) {
-        _rmuart.rmuart_s.motor[i] = 1000;
-    }
-    for (uint8_t i = 0; i < BALANCEBOT_SERVO_NUM; i++) {
-        _rmuart.rmuart_s.servo[i] = 1500;
-    }
+    _rmuart.rmuart_s.wheel_left = 0;
+    _rmuart.rmuart_s.wheel_right = 0;
+
 }
 
 void AP_RMUART::update()
@@ -66,7 +63,10 @@ void AP_RMUART::update()
 float wheel1, wheel2;
 
 void AP_RMUART::Receive(void)
-{
+{    
+    if (_port == NULL)
+        return;
+        
     uint8_t numc = _port->available();
     uint8_t data = 0;
     uint8_t count = 0;
@@ -106,7 +106,7 @@ void AP_RMUART::Receive(void)
 
                 memcpy(ardupilot_rx.bits, receive_buff, sizeof(struct ardupilot_struct));
 
-                getWheelSpeed(wheel1, wheel2);
+                // getWheelSpeed(wheel1, wheel2);
 
                 // gcs().send_text(MAV_SEVERITY_NOTICE, "wheel1=%d, wheel2=%d", ardupilot_rx.ardupilot_s.wheel_speed[0], ardupilot_rx.ardupilot_s.wheel_speed[1]);
             }
@@ -121,28 +121,12 @@ void AP_RMUART::Receive(void)
 }
 
 void AP_RMUART::Send(void)
-{
+{    
+    if (_port == NULL)
+        return;
+        
     _rmuart.rmuart_s.header[0] = 0xAA;
     _rmuart.rmuart_s.header[1] = 0xAF;
-    _rmuart.rmuart_s.timestamp_ms = AP_HAL::millis();
-
-    SRV_Channel* out_chan;
-
-    for (uint8_t i = 0; i < BALANCEBOT_MOTOR_NUM; i++) {
-        out_chan = SRV_Channels::get_channel_for(SRV_Channel::Aux_servo_function_t(SRV_Channel::k_speedMotorRightWheel + i));
-        if (out_chan == nullptr) {
-            continue;
-        }
-        _rmuart.rmuart_s.motor[i] = out_chan->get_output_pwm();
-    }
-
-    for (uint8_t i = 0; i < BALANCEBOT_SERVO_NUM; i++) {
-        out_chan = SRV_Channels::get_channel_for(SRV_Channel::Aux_servo_function_t(SRV_Channel::k_tiltMotorRightJoint + i));
-        if (out_chan == nullptr) {
-            continue;
-        }
-        _rmuart.rmuart_s.servo[i] = out_chan->get_output_pwm();
-    }
 
     _rmuart.rmuart_s.len = sizeof(struct rmuart_struct);
 

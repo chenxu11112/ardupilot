@@ -71,6 +71,7 @@
 #include <AP_Proximity/AP_Proximity.h>      // ArduPilot proximity sensor library
 
 #include <AP_RMUART/AP_RMUART.h> // 新增rm
+#include <AC_BalanceControl/AC_BalanceControl.h>
 
 // Configuration
 #include "defines.h"
@@ -252,6 +253,7 @@ private:
     AP_Logger logger;
 
     AP_RMUART rmuart{};
+    AC_BalanceControl *balanceControl;
 
     // flight modes convenience array
     AP_Int8 *flight_modes;

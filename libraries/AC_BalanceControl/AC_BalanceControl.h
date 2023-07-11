@@ -13,20 +13,17 @@
 
 // default rate controller PID gains
 
-#define AC_BALANCE_BALANCE_P 0.3
-#define AC_BALANCE_BALANCE_D 0.001f
+#define AC_BALANCE_BALANCE_P 0.5
+#define AC_BALANCE_BALANCE_D 0.1f
 
-#define AC_BALANCE_VELOCITY_P    1.0f
-#define AC_BALANCE_VELOCITY_I    10.0f
-#define AC_BALANCE_VELOCITY_IMAX 0.01f
+#define AC_BALANCE_VELOCITY_P    0.5f
+#define AC_BALANCE_VELOCITY_I    0.05f
+#define AC_BALANCE_VELOCITY_IMAX 1.0f
 
-#define AC_BALANCE_TURN_P    1.0f
-#define AC_BALANCE_TURN_I    10.0f
-#define AC_BALANCE_TURN_D    0.4f
-#define AC_BALANCE_TURN_IMAX 0.01f
-#define AC_BALANCE_TURN_FILT 0.01f
+#define AC_BALANCE_TURN_P    0.3f
+#define AC_BALANCE_TURN_D    0.1f
 
-#define ZERO_ANGLE 0.0f
+#define AC_BALANCE_ZERO_ANGLE 0.0f
 
 class AC_BalanceControl {
 public:
@@ -72,4 +69,10 @@ protected:
     float Encoder_bias_filter; // 一阶低通滤波器
 
     uint8_t _moveflag;
+
+    float motor_Left,motor_Right;
+    float control_balance, control_velocity, control_turn;
+
+    
+
 };

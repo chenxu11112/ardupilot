@@ -236,96 +236,6 @@ const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("THR_MIX_MAN", 6, AC_AttitudeControl_Multi, _thr_mix_man, AC_ATTITUDE_CONTROL_MAN_DEFAULT),
 
-    // @Param: _BAL_P
-    // @DisplayName: Pitch control P gain
-    // @Description: Pitch control P gain for BalanceBots.  Converts the error between the desired pitch (in radians) and actual pitch to a motor output (in the range -1 to +1)
-    // @Range: 0.000 2.000
-    // @Increment: 0.01
-    // @User: Standard
-
-    // @Param: _BAL_I
-    // @DisplayName: Pitch control I gain
-    // @Description: Pitch control I gain for BalanceBots.  Corrects long term error between the desired pitch (in radians) and actual pitch
-    // @Range: 0.000 2.000
-    // @Increment: 0.01
-    // @User: Standard
-
-    // @Param: _BAL_IMAX
-    // @DisplayName: Pitch control I gain maximum
-    // @Description: Pitch control I gain maximum.  Constrains the maximum motor output (range -1 to +1) that the I term will generate
-    // @Range: 0.000 1.000
-    // @Increment: 0.01
-    // @User: Standard
-
-    // @Param: _BAL_D
-    // @DisplayName: Pitch control D gain
-    // @Description: Pitch control D gain.  Compensates for short-term change in desired pitch vs actual
-    // @Range: 0.000 0.100
-    // @Increment: 0.001
-    // @User: Standard
-
-    // @Param: _BAL_FF
-    // @DisplayName: Pitch control feed forward
-    // @Description: Pitch control feed forward
-    // @Range: 0.000 0.500
-    // @Increment: 0.001
-    // @User: Standard
-
-    // @Param: _BAL_FILT
-    // @DisplayName: Pitch control filter frequency
-    // @Description: Pitch control input filter.  Lower values reduce noise but add delay.
-    // @Range: 0.000 100.000
-    // @Increment: 0.1
-    // @Units: Hz
-    // @User: Standard
-
-    // @Param: _BAL_FLTT
-    // @DisplayName: Pitch control Target filter frequency in Hz
-    // @Description: Pitch control Target filter frequency in Hz
-    // @Range: 0.000 100.000
-    // @Increment: 0.1
-    // @Units: Hz
-    // @User: Standard
-
-    // @Param: _BAL_FLTE
-    // @DisplayName: Pitch control Error filter frequency in Hz
-    // @Description: Pitch control Error filter frequency in Hz
-    // @Range: 0.000 100.000
-    // @Increment: 0.1
-    // @Units: Hz
-    // @User: Standard
-
-    // @Param: _BAL_FLTD
-    // @DisplayName: Pitch control Derivative term filter frequency in Hz
-    // @Description: Pitch control Derivative filter frequency in Hz
-    // @Range: 0.000 100.000
-    // @Increment: 0.1
-    // @Units: Hz
-    // @User: Standard
-
-    // @Param: _BAL_SMAX
-    // @DisplayName: Pitch control slew rate limit
-    // @Description: Pitch control upper limit on the slew rate produced by the combined P and D gains. If the amplitude of the control action produced by the rate feedback exceeds this value, then the D+P gain is reduced to respect the limit. This limits the amplitude of high frequency oscillations caused by an excessive gain. The limit should be set to no more than 25% of the actuators maximum slew rate to allow for load effects. Note: The gain will not be reduced to less than 10% of the nominal value. A value of zero will disable this feature.
-    // @Range: 0 200
-    // @Increment: 0.5
-    // @User: Advanced
-
-    AP_SUBGROUPINFO(_pitch_to_throttle_pid, "BAL_PIT", 7, AC_AttitudeControl_Multi, AC_PID),
-
-    // @Param: _BAL_PIT_FF
-    // @DisplayName: Pitch control feed forward from current pitch angle
-    // @Description: Pitch control feed forward from current pitch angle
-    // @Range: 0.0 1.0
-    // @Increment: 0.01
-    // @User: Standard
-    AP_GROUPINFO("BAL_PIT_FF", 8, AC_AttitudeControl_Multi, _pitch_to_throttle_ff, AR_ATTCONTROL_BAL_PITCH_FF),
-
-    AP_SUBGROUPINFO(_vel_to_pitch_pid, "BAL_VEL", 9, AC_AttitudeControl_Multi, AC_PID),
-
-    AP_GROUPINFO("BAL_VEL_FF", 10, AC_AttitudeControl_Multi, _vel_to_pitch_ff, AR_VELOCITY_THR_PITCH_FF),
-
-    AP_GROUPINFO("BAL_ZERO", 11, AC_AttitudeControl_Multi, _zero_angle, ZERO_ANGLE),
-
     AP_GROUPEND
 };
 
@@ -334,11 +244,9 @@ AC_AttitudeControl_Multi::AC_AttitudeControl_Multi(AP_AHRS_View &ahrs, const AP_
     _motors_multi(motors),
     _pid_rate_roll(AC_ATC_MULTI_RATE_RP_P, AC_ATC_MULTI_RATE_RP_I, AC_ATC_MULTI_RATE_RP_D, 0.0f, AC_ATC_MULTI_RATE_RP_IMAX, AC_ATC_MULTI_RATE_RP_FILT_HZ, 0.0f, AC_ATC_MULTI_RATE_RP_FILT_HZ),
     _pid_rate_pitch(AC_ATC_MULTI_RATE_RP_P, AC_ATC_MULTI_RATE_RP_I, AC_ATC_MULTI_RATE_RP_D, 0.0f, AC_ATC_MULTI_RATE_RP_IMAX, AC_ATC_MULTI_RATE_RP_FILT_HZ, 0.0f, AC_ATC_MULTI_RATE_RP_FILT_HZ),
-    _pid_rate_yaw(AC_ATC_MULTI_RATE_YAW_P, AC_ATC_MULTI_RATE_YAW_I, AC_ATC_MULTI_RATE_YAW_D, 0.0f, AC_ATC_MULTI_RATE_YAW_IMAX, AC_ATC_MULTI_RATE_RP_FILT_HZ, AC_ATC_MULTI_RATE_YAW_FILT_HZ, 0.0f),
-    _pitch_to_throttle_pid(AR_ATTCONTROL_PITCH_THR_P, AR_ATTCONTROL_PITCH_THR_I, AR_ATTCONTROL_PITCH_THR_D, 0.0f, AR_ATTCONTROL_PITCH_THR_IMAX, 0.0f, AR_ATTCONTROL_PITCH_THR_FILT, 0.0f),
-    _vel_to_pitch_pid(AR_VELOCITY_THR_P, AR_VELOCITY_THR_I, AR_VELOCITY_THR_D, 0.0f, AAR_VELOCITY_THR_IMAX, 0.0f, AR_VELOCITY_THR_FILT, 0.0f)
+    _pid_rate_yaw(AC_ATC_MULTI_RATE_YAW_P, AC_ATC_MULTI_RATE_YAW_I, AC_ATC_MULTI_RATE_YAW_D, 0.0f, AC_ATC_MULTI_RATE_YAW_IMAX, AC_ATC_MULTI_RATE_RP_FILT_HZ, AC_ATC_MULTI_RATE_YAW_FILT_HZ, 0.0f)
 {
-    AP_Param::setup_object_defaults(this, var_info);
+        AP_Param::setup_object_defaults(this, var_info);
 }
 
 // Update Alt_Hold angle maximum
@@ -460,9 +368,9 @@ void AC_AttitudeControl_Multi::rate_controller_run()
 
     control_monitor_update();
 
-    // 这里是平衡车部分的控制代码
-    // 现在加入了直立环  
-    _motors.set_balancebot_throttle(get_throttle_out_from_pitch(radians(45), true, _dt));
+    // // 这里是平衡车部分的控制代码
+    // // 现在加入了直立环  
+    // _motors.set_balancebot_throttle(get_throttle_out_from_pitch(radians(45), true, _dt));
 }
 
 // sanity check parameters.  should be called once before takeoff
@@ -489,48 +397,48 @@ void AC_AttitudeControl_Multi::parameter_sanity_check()
 }
 
 
-// balancebot pitch to throttle controller
-// returns a throttle output from -1 to +1 given a desired pitch angle (in radians)
-// pitch_max should be the user defined max pitch angle (in radians)
-// motor_limit should be true if the motors have hit their upper or lower limit
-float AC_AttitudeControl_Multi::get_throttle_out_from_pitch(float pitch_max, bool motor_limit, float dt)
-{
-    // sanity check dt
-    dt = constrain_float(dt, 0.0f, 1.0f);
+// // balancebot pitch to throttle controller
+// // returns a throttle output from -1 to +1 given a desired pitch angle (in radians)
+// // pitch_max should be the user defined max pitch angle (in radians)
+// // motor_limit should be true if the motors have hit their upper or lower limit
+// float AC_AttitudeControl_Multi::get_throttle_out_from_pitch(float pitch_max, bool motor_limit, float dt)
+// {
+//     // sanity check dt
+//     dt = constrain_float(dt, 0.0f, 1.0f);
 
-    // if not called recently, reset input filter
-    const uint32_t now = AP_HAL::millis();
-    if ((_balance_last_ms == 0) || ((now - _balance_last_ms) > AR_ATTCONTROL_TIMEOUT_MS)) {
-        _pitch_to_throttle_pid.reset_filter();
-        _pitch_to_throttle_pid.reset_I();
-        _pitch_limit_low = -pitch_max;
-        _pitch_limit_high = pitch_max;
+//     // if not called recently, reset input filter
+//     const uint32_t now = AP_HAL::millis();
+//     if ((_balance_last_ms == 0) || ((now - _balance_last_ms) > AR_ATTCONTROL_TIMEOUT_MS)) {
+//         _pitch_to_throttle_pid.reset_filter();
+//         _pitch_to_throttle_pid.reset_I();
+//         _pitch_limit_low = -pitch_max;
+//         _pitch_limit_high = pitch_max;
 
-        _vel_to_pitch_pid.reset_filter();
-        _vel_to_pitch_pid.reset_I();
-    }
-    _balance_last_ms = now;
+//         _vel_to_pitch_pid.reset_filter();
+//         _vel_to_pitch_pid.reset_I();
+//     }
+//     _balance_last_ms = now;
 
-    // 
-    int16_t pwm_value = hal.rcin->read(CH_8);
+//     // 
+//     int16_t pwm_value = hal.rcin->read(CH_8);
 
-    float desired_speed = (float)(pwm_value - 1500) / 1000;
+//     float desired_speed = (float)(pwm_value - 1500) / 1000;
 
-    // 转速环: 获取转速
-    extern float wheel1, wheel2;
-    float total_wheel_speed = wheel1 + wheel2; 
+//     // 转速环: 获取转速
+//     extern float wheel1, wheel2;
+//     float total_wheel_speed = wheel1 + wheel2; 
 
-    // 转速环: 这里注意正负号，转速环控制应该是正反馈，向前倒则应该往前转得更快
-    float out_vel =  -_vel_to_pitch_pid.update_all(desired_speed, total_wheel_speed, dt, motor_limit); 
+//     // 转速环: 这里注意正负号，转速环控制应该是正反馈，向前倒则应该往前转得更快
+//     float out_vel =  -_vel_to_pitch_pid.update_all(desired_speed, total_wheel_speed, dt, motor_limit); 
 
-    // 角度环: 获取角度
-    const float pitch_rad = AP::ahrs().pitch;
+//     // 角度环: 获取角度
+//     const float pitch_rad = AP::ahrs().pitch;
 
-    // 角度环控制
-    float output = sinf(pitch_rad) * _pitch_to_throttle_ff;
-    output += _pitch_to_throttle_pid.update_all(out_vel + _zero_angle, pitch_rad, dt, motor_limit);
-    output += _pitch_to_throttle_pid.get_ff();
+//     // 角度环控制
+//     float output = sinf(pitch_rad) * _pitch_to_throttle_ff;
+//     output += _pitch_to_throttle_pid.update_all(out_vel + _zero_angle, pitch_rad, dt, motor_limit);
+//     output += _pitch_to_throttle_pid.get_ff();
 
-    // constrain and return final output
-    return output;
-}
+//     // constrain and return final output
+//     return output;
+// }

@@ -6,21 +6,21 @@ extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
 const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
-    AP_GROUPINFO("BAL_BAL_P", 0, AC_BalanceControl, _balance_bal_p, AC_BALANCE_BALANCE_P),
+    AP_GROUPINFO("BAL_P", 0, AC_BalanceControl, _balance_bal_p, AC_BALANCE_BALANCE_P),
 
-    AP_GROUPINFO("BAL_BAL_D", 1, AC_BalanceControl, _balance_bal_d, AC_BALANCE_BALANCE_D),
+    AP_GROUPINFO("BAL_D", 1, AC_BalanceControl, _balance_bal_d, AC_BALANCE_BALANCE_D),
 
-    AP_GROUPINFO("BAL_VEL_P", 2, AC_BalanceControl, _balance_velocity_p, AC_BALANCE_VELOCITY_P),
+    AP_GROUPINFO("VEL_P", 2, AC_BalanceControl, _balance_velocity_p, AC_BALANCE_VELOCITY_P),
 
-    AP_GROUPINFO("BAL_VEL_I", 3, AC_BalanceControl, _balance_velocity_i, AC_BALANCE_VELOCITY_I),
+    AP_GROUPINFO("VEL_I", 3, AC_BalanceControl, _balance_velocity_i, AC_BALANCE_VELOCITY_I),
 
-    AP_GROUPINFO("BAL_VEL_IMAX", 4, AC_BalanceControl, _balance_velocity_imax, AC_BALANCE_VELOCITY_IMAX),
+    AP_GROUPINFO("VEL_IMAX", 4, AC_BalanceControl, _balance_velocity_imax, AC_BALANCE_VELOCITY_IMAX),
 
-    AP_GROUPINFO("BAL_TURN_P", 5, AC_BalanceControl, _balance_bal_p, AC_BALANCE_BALANCE_P),
+    AP_GROUPINFO("TURN_P", 5, AC_BalanceControl, _balance_turn_p, AC_BALANCE_TURN_P),
 
-    AP_GROUPINFO("BAL_TURN_D", 6, AC_BalanceControl, _balance_bal_d, AC_BALANCE_BALANCE_D),
+    AP_GROUPINFO("TURN_D", 6, AC_BalanceControl, _balance_turn_d, AC_BALANCE_TURN_D),
 
-    AP_GROUPINFO("BAL_ZERO", 7, AC_BalanceControl, _zero_angle, ZERO_ANGLE),
+    AP_GROUPINFO("ZERO", 7, AC_BalanceControl, _zero_angle, AC_BALANCE_ZERO_ANGLE),
 
     AP_GROUPEND
 };
@@ -129,21 +129,24 @@ float AC_BalanceControl::Turn(float gyro)
 
 void AC_BalanceControl::balance_all_control(void)
 {
-    float control_balance, control_velocity, control_turn;
-    float wheel_left, wheel_right;
-    float angle_y, gyroy, gyro_z;
+    static float wheel_left, wheel_right;
+    static float angle_y, gyro_y, gyro_z;
 
     _rmuart.getWheelSpeed(wheel_left, wheel_right);
 
     angle_y = _ahrs.pitch;
-    gyroy = _ahrs.get_gyro_latest()[1];
+    gyro_y = _ahrs.get_gyro_latest()[1];
     gyro_z = _ahrs.get_gyro_latest()[2];
 
-    control_balance = Balance(angle_y, gyroy);            // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
+    control_balance = Balance(angle_y, gyro_y);           // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
     control_velocity = Velocity(wheel_left, wheel_right); // 速度环PID控制	记住，速度反馈是正反馈，就是小车快的时候要慢下来就需要再跑快一点
     control_turn = Turn(gyro_z);                          // 转向环PID控制
 
-    // PWM值正数使小车前进，负数使小车后退
-    Motor_Left = control_balance + control_velocity + control_turn;  // 计算左轮电机最终PWM
-    Motor_Right = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
+    // motor值正数使小车前进，负数使小车后退, 范围【-1，1】
+    motor_Left = control_balance + control_velocity + control_turn;  // 计算左轮电机最终PWM
+    motor_Right = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
+
+    _rmuart.setWheelSpeed(motor_Left, motor_Right);
+
+    printf("_balance_turn_p=%f\n",_balance_turn_p.get());
 }
