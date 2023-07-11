@@ -33,6 +33,8 @@ AC_BalanceControl::AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_R
     AP_Param::setup_object_defaults(this, var_info);
 
     Encoder_bias_filter = 0.84f;
+
+    _moveflag = moveFlag::none;
 }
 
 /**************************************************************************
@@ -148,5 +150,5 @@ void AC_BalanceControl::balance_all_control(void)
 
     _rmuart.setWheelSpeed(motor_Left, motor_Right);
 
-    printf("_balance_turn_p=%f\n",_balance_turn_p.get());
+    // printf("_balance_turn_p=%f\n",_balance_turn_p.get());
 }
