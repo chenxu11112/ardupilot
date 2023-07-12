@@ -17,9 +17,6 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 
-#define MAX_BALANCE_MAX_SPEED   10000.0f // 电机最大转速
-#define MAX_BALANCE_MAX_CURRENT 10000.0f // 电机最大电流
-
 class AP_RMUART {
 public:
     AP_RMUART();
@@ -40,17 +37,17 @@ public:
     void Send(void);
 
     // 从电机转速映射到【-1~1】
-    void getWheelSpeed(float& wheelleft_f, float& wheelright_f)
+    void getWheelSpeed(int16_t& wheelleft_f, int16_t& wheelright_f)
     {
-        wheelleft_f = (float)(stm32_2_apm.stm32_2_apm_t.wheel_left_int) / MAX_BALANCE_MAX_SPEED;
-        wheelright_f = (float)(stm32_2_apm.stm32_2_apm_t.wheel_right_int) / MAX_BALANCE_MAX_SPEED;
+        wheelleft_f = (stm32_2_apm.stm32_2_apm_t.wheel_left_int);
+        wheelright_f = (stm32_2_apm.stm32_2_apm_t.wheel_right_int);
     }
 
     // 从【-1~1】映射到电机转速
-    void setWheelSpeed(float& wheelleft_f, float& wheelright_f)
+    void setWheelSpeed(int16_t& wheelleft_f, int16_t& wheelright_f)
     {
-        apm_2_stm32.apm_2_stm32_t.wheel_left_int = (int16_t)(wheelleft_f * MAX_BALANCE_MAX_CURRENT);
-        apm_2_stm32.apm_2_stm32_t.wheel_right_int = (int16_t)(wheelright_f * MAX_BALANCE_MAX_CURRENT);
+        apm_2_stm32.apm_2_stm32_t.wheel_left_int = (int16_t)(wheelleft_f);
+        apm_2_stm32.apm_2_stm32_t.wheel_right_int = (int16_t)(wheelright_f);
     }
 
     struct PACKED apm_2_stm32_struct {
