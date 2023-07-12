@@ -46,9 +46,12 @@ void AP_RMUART::init(const AP_SerialManager& serial_manager)
                      AP_SERIALMANAGER_RMUART_BUFSIZE_TX);
     }
 
-    _rmuart.rmuart_s.wheel_left = 0;
-    _rmuart.rmuart_s.wheel_right = 0;
+    memset(apm_2_stm32.bits, 0, sizeof(struct apm_2_stm32_struct));
+    memset(stm32_2_apm.bits, 0, sizeof(struct stm32_2_apm_struct));
 
+    apm_2_stm32.apm_2_stm32_t.header[0] = 0xAA;
+    apm_2_stm32.apm_2_stm32_t.header[1] = 0xAF;
+    apm_2_stm32.apm_2_stm32_t.len = sizeof(struct apm_2_stm32_struct);
 }
 
 void AP_RMUART::update()
@@ -63,10 +66,10 @@ void AP_RMUART::update()
 float wheel1, wheel2;
 
 void AP_RMUART::Receive(void)
-{    
+{
     if (_port == NULL)
         return;
-        
+
     uint8_t numc = _port->available();
     uint8_t data = 0;
     uint8_t count = 0;
@@ -91,7 +94,7 @@ void AP_RMUART::Receive(void)
             break;
 
         case 2:
-            if (data == sizeof(struct ardupilot_struct)) {
+            if (data == sizeof(struct stm32_2_apm_struct)) {
                 receive_buff[count++] = data;
                 _rx_step = 3;
             } else
@@ -100,11 +103,11 @@ void AP_RMUART::Receive(void)
 
         case 3:
             receive_buff[count++] = data;
-            if (count >= sizeof(struct ardupilot_struct)) {
+            if (count >= sizeof(struct stm32_2_apm_struct)) {
                 _rx_step = 0;
                 count = 0;
 
-                memcpy(ardupilot_rx.bits, receive_buff, sizeof(struct ardupilot_struct));
+                memcpy(stm32_2_apm.bits, receive_buff, sizeof(struct stm32_2_apm_struct));
 
                 // printf("wheel_left_speed=%d\n", ardupilot_rx.ardupilot_s.wheel_left_speed);
                 // gcs().send_text(MAV_SEVERITY_INFO,"wheel_left_speed=%d\n", ardupilot_rx.ardupilot_s.wheel_left_speed );
@@ -121,14 +124,11 @@ void AP_RMUART::Receive(void)
 }
 
 void AP_RMUART::Send(void)
-{    
+{
     if (_port == NULL)
         return;
-        
-    _rmuart.rmuart_s.header[0] = 0xAA;
-    _rmuart.rmuart_s.header[1] = 0xAF;
 
-    _rmuart.rmuart_s.len = sizeof(struct rmuart_struct);
+    apm_2_stm32.apm_2_stm32_t.len = sizeof(struct apm_2_stm32_struct);
 
-    _port->write(_rmuart.bits, sizeof(struct rmuart_struct));
+    _port->write(apm_2_stm32.bits, sizeof(struct apm_2_stm32_struct));
 }

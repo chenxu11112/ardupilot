@@ -17,7 +17,9 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 
-#define MAX_BALANCE_MAX_SPEED 10000.0f // 电机最大转速
+#define MAX_BALANCE_MAX_SPEED   10000.0f // 电机最大转速
+#define MAX_BALANCE_MAX_CURRENT 10000.0f // 电机最大电流
+
 class AP_RMUART {
 public:
     AP_RMUART();
@@ -38,47 +40,47 @@ public:
     void Send(void);
 
     // 从电机转速映射到【-1~1】
-    void getWheelSpeed(float& wheelleft, float& wheelright)
+    void getWheelSpeed(float& wheelleft_f, float& wheelright_f)
     {
-        wheelleft = (float)(ardupilot_rx.ardupilot_s.wheel_left_speed) / MAX_BALANCE_MAX_SPEED;
-        wheelright = (float)(ardupilot_rx.ardupilot_s.wheel_right_speed) / MAX_BALANCE_MAX_SPEED;
+        wheelleft_f = (float)(stm32_2_apm.stm32_2_apm_t.wheel_left_int) / MAX_BALANCE_MAX_SPEED;
+        wheelright_f = (float)(stm32_2_apm.stm32_2_apm_t.wheel_right_int) / MAX_BALANCE_MAX_SPEED;
     }
 
     // 从【-1~1】映射到电机转速
-    void setWheelSpeed(float& wheelleft, float& wheelright)
+    void setWheelSpeed(float& wheelleft_f, float& wheelright_f)
     {
-        _rmuart.rmuart_s.wheel_left = (int16_t)(wheelleft*MAX_BALANCE_MAX_SPEED);
-        _rmuart.rmuart_s.wheel_right = (int16_t)(wheelright*MAX_BALANCE_MAX_SPEED);
+        apm_2_stm32.apm_2_stm32_t.wheel_left_int = (int16_t)(wheelleft_f * MAX_BALANCE_MAX_CURRENT);
+        apm_2_stm32.apm_2_stm32_t.wheel_right_int = (int16_t)(wheelright_f * MAX_BALANCE_MAX_CURRENT);
     }
 
-    struct PACKED rmuart_struct {
+    struct PACKED apm_2_stm32_struct {
         uint8_t header[2];
         uint8_t len;
-        int16_t wheel_left;
-        int16_t wheel_right;
+        int16_t wheel_left_int;
+        int16_t wheel_right_int;
     };
-    union rmuart_t {
-        struct rmuart_struct rmuart_s;
-        uint8_t bits[sizeof(struct rmuart_struct)];
+    union apm_2_stm32_union {
+        struct apm_2_stm32_struct apm_2_stm32_t;
+        uint8_t bits[sizeof(struct apm_2_stm32_struct)];
     };
 
-    struct PACKED ardupilot_struct {
+    struct PACKED stm32_2_apm_struct {
         uint8_t header[2];
         uint8_t len;
-        int16_t wheel_left_speed;
-        int16_t wheel_right_speed;
+        int16_t wheel_left_int;
+        int16_t wheel_right_int;
     };
-    union ardupilot_t {
-        struct ardupilot_struct ardupilot_s;
+    union stm32_2_apm_union {
+        struct stm32_2_apm_struct stm32_2_apm_t;
 
-        uint8_t bits[sizeof(struct ardupilot_struct)];
+        uint8_t bits[sizeof(struct stm32_2_apm_struct)];
     };
 
 private:
     AP_HAL::UARTDriver* _port; // UART used to send data to receiver
 
-    rmuart_t _rmuart;
-    ardupilot_t ardupilot_rx;
+    apm_2_stm32_union apm_2_stm32;
+    stm32_2_apm_union stm32_2_apm;
 
     uint8_t _rx_step;
 
