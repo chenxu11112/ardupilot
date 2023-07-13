@@ -22,6 +22,12 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
 
     AP_GROUPINFO("ZERO", 7, AC_BalanceControl, _zero_angle, AC_BALANCE_ZERO_ANGLE),
 
+    AP_GROUPINFO("MAX_SPEED", 8, AC_BalanceControl, _max_speed, AC_BALANCE_MAX_SPEED),
+
+    AP_GROUPINFO("TAR_SPEED_X", 9, AC_BalanceControl, Target_Velocity_X, AC_BALANCE_TARGET_X_SPEED),
+
+    AP_GROUPINFO("TAR_SPEED_Z", 10, AC_BalanceControl, Target_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
+
     AP_GROUPEND
 };
 
@@ -34,7 +40,9 @@ AC_BalanceControl::AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_R
 
     Encoder_bias_filter = 0.84f;
 
-    _moveflag = moveFlag::none;
+    _moveflag_x = moveFlag::none;
+        _moveflag_z = moveFlag::none;
+
 }
 
 /**************************************************************************
@@ -64,28 +72,28 @@ Output  : Speed control PWM
 返回  值：速度控制PWM
 **************************************************************************/
 // 修改前进后退速度，请修改Target_Velocity，比如，改成60就比较慢了
-float AC_BalanceControl::Velocity(int encoder_left, int encoder_right)
+float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
 {
     static float velocity, Encoder_Least, Encoder_bias, Movement;
-    static float Encoder_Integral, Target_Velocity = 0.1;
+    static float Encoder_Integral;
 
     //================遥控前进后退部分====================//
-    if (_moveflag == moveFlag::moveFront) {
-        Movement = Target_Velocity;  // 收到前进信号
-    } else if (_moveflag == moveFlag::moveBack) {
-        Movement = -Target_Velocity; // 收到后退信号
+    if (_moveflag_x == moveFlag::moveFront) {
+        Movement = Target_Velocity_X;  // 收到前进信号
+    } else if (_moveflag_x == moveFlag::moveBack) {
+        Movement = -Target_Velocity_X; // 收到后退信号
     } else {
         Movement = 0;
     }
 
     //================速度PI控制器=====================//
-    Encoder_Least = 0 - (encoder_left + encoder_right);        // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
+    Encoder_Least = Movement - (encoder_left + encoder_right);        // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
 
     Encoder_bias *= Encoder_bias_filter;                       // 一阶低通滤波器
     Encoder_bias += Encoder_Least * (1 - Encoder_bias_filter); // 一阶低通滤波器，减缓速度变化
 
     Encoder_Integral += Encoder_bias;                          // 积分出位移 积分时间：10ms
-    Encoder_Integral = Encoder_Integral + Movement;            // 接收遥控器数据，控制前进后退
+    Encoder_Integral = Encoder_Integral;            // 接收遥控器数据，控制前进后退
 
     if (Encoder_Integral > AC_BALANCE_VELOCITY_IMAX)
         Encoder_Integral = AC_BALANCE_VELOCITY_IMAX;                                        // 积分限幅
@@ -107,21 +115,23 @@ Output  : Turn control PWM
 **************************************************************************/
 float AC_BalanceControl::Turn(float gyro)
 {
-    static float Turn_Target, turn, Turn_Amplitude = 0.2;
+    static float Turn_Target, turn;
     float Kp = _balance_turn_p, Kd; // 修改转向速度，请修改Turn_Amplitude即可
 
     //===================遥控左右旋转部分=================//
-    if (_moveflag == moveFlag::moveLeft)
-        Turn_Target = -Turn_Amplitude;
-    else if (_moveflag == moveFlag::moveRight)
-        Turn_Target = Turn_Amplitude;
+    if (_moveflag_z == moveFlag::moveLeft)
+        Turn_Target = -Target_Velocity_Z;
+    else if (_moveflag_z == moveFlag::moveRight)
+        Turn_Target = Target_Velocity_Z;
     else
         Turn_Target = 0;
 
-    if (_moveflag == moveFlag::moveFront || _moveflag == moveFlag::moveBack)
-        Kd = _balance_turn_d;
-    else
-        Kd = 0; // 转向的时候取消陀螺仪的纠正 有点模糊PID的思想
+    // if (_moveflag == moveFlag::moveFront || _moveflag == moveFlag::moveBack)
+    //     Kd = _balance_turn_d;
+    // else
+    //     Kd = 0; // 转向的时候取消陀螺仪的纠正 有点模糊PID的思想
+
+    Kd = _balance_turn_d;
 
     //===================转向PD控制器=================//
     turn = Turn_Target * Kp + gyro * Kd; // 结合Z轴陀螺仪进行PD控制
@@ -131,24 +141,53 @@ float AC_BalanceControl::Turn(float gyro)
 
 void AC_BalanceControl::balance_all_control(void)
 {
-    static float wheel_left, wheel_right;
+    static int16_t _wheel_left_int, _wheel_right_int;
+    static float _wheel_left_f, _wheel_right_f;
+    static float motor_target_left_f,motor_target_right_f;
+    static int16_t motor_target_left_int, motor_target_right_int;
+
     static float angle_y, gyro_y, gyro_z;
 
-    _rmuart.getWheelSpeed(wheel_left, wheel_right);
+    _rmuart.getWheelSpeed(_wheel_left_int, _wheel_right_int);
+    _wheel_left_f = (float)_wheel_left_int / _max_speed;
+    _wheel_right_f = (float)_wheel_right_int / _max_speed;
 
     angle_y = _ahrs.pitch;
     gyro_y = _ahrs.get_gyro_latest()[1];
     gyro_z = _ahrs.get_gyro_latest()[2];
 
     control_balance = Balance(angle_y, gyro_y);           // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
-    control_velocity = Velocity(wheel_left, wheel_right); // 速度环PID控制	记住，速度反馈是正反馈，就是小车快的时候要慢下来就需要再跑快一点
+    control_velocity = Velocity(_wheel_left_f, _wheel_right_f); // 速度环PID控制	记住，速度反馈是正反馈，就是小车快的时候要慢下来就需要再跑快一点
     control_turn = Turn(gyro_z);                          // 转向环PID控制
 
     // motor值正数使小车前进，负数使小车后退, 范围【-1，1】
-    motor_Left = control_balance + control_velocity + control_turn;  // 计算左轮电机最终PWM
-    motor_Right = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
+    motor_target_left_f = control_balance + control_velocity + control_turn;  // 计算左轮电机最终PWM
+    motor_target_right_f = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
 
-    _rmuart.setWheelSpeed(motor_Left, motor_Right);
+    motor_target_left_int = (int16_t)(motor_target_left_f * _max_speed);
+    motor_target_right_int = (int16_t)(motor_target_right_f * _max_speed);
 
-    // printf("_balance_turn_p=%f\n",_balance_turn_p.get());
+    _rmuart.setWheelSpeed(motor_target_left_int, motor_target_right_int);
+
+    uint16_t pwm_x = hal.rcin->read(CH_7);
+    uint16_t pwm_z = hal.rcin->read(CH_6);
+
+    if(pwm_x < 1300) {
+        _moveflag_x =  moveFlag::moveBack;
+    } else if(pwm_x > 1700) {
+        _moveflag_x =  moveFlag::moveFront;
+    } else {
+        _moveflag_x = moveFlag::none;
+    }
+    
+    if(pwm_z < 1300) {
+        _moveflag_z =  moveFlag::moveLeft;
+    } else if(pwm_z > 1700) {
+        _moveflag_z =  moveFlag::moveRight;
+    } else {
+        _moveflag_z = moveFlag::none;
+    }
+
+
+
 }

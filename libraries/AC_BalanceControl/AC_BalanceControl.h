@@ -25,6 +25,11 @@
 
 #define AC_BALANCE_ZERO_ANGLE 0.0f
 
+#define AC_BALANCE_MAX_SPEED 10000.0f
+
+#define AC_BALANCE_TARGET_X_SPEED 1.0f
+#define AC_BALANCE_TARGET_Z_SPEED 1.0f
+
 class AC_BalanceControl {
 public:
     AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_RMUART& _rmuart);
@@ -33,7 +38,7 @@ public:
     virtual ~AC_BalanceControl() { }
 
     float Balance(float Angle, float Gyro);
-    float Velocity(int encoder_left, int encoder_right);
+    float Velocity(float encoder_left, float encoder_right);
     float Turn(float gyro);
 
     void balance_all_control(void);
@@ -66,11 +71,16 @@ protected:
 
     AP_Float _zero_angle;      // 机械零值
 
+    AP_Float _max_speed;  
+
+    AP_Float Target_Velocity_X;
+    AP_Float Target_Velocity_Z;
+
     float Encoder_bias_filter; // 一阶低通滤波器
 
-    uint8_t _moveflag;
+    uint8_t _moveflag_x;
+    uint8_t _moveflag_z;
 
-    float motor_Left,motor_Right;
     float control_balance, control_velocity, control_turn;
 
     

@@ -82,6 +82,7 @@ void AP_RMUART::Receive(void)
             if (data == 0xAA) {
                 receive_buff[count++] = data;
                 _rx_step = 1;
+                count = 0;
             }
             break;
 
@@ -89,16 +90,20 @@ void AP_RMUART::Receive(void)
             if (data == 0xAC) {
                 receive_buff[count++] = data;
                 _rx_step = 2;
-            } else
+            } else  {
                 _rx_step = 0;
+                count = 0;
+            }
             break;
 
         case 2:
             if (data == sizeof(struct stm32_2_apm_struct)) {
                 receive_buff[count++] = data;
                 _rx_step = 3;
-            } else
+            } else  {
                 _rx_step = 0;
+                count = 0;
+            }
             break;
 
         case 3:
