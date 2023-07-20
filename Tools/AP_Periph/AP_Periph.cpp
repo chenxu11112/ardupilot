@@ -259,6 +259,25 @@ void AP_Periph_FW::init()
 #if AP_SCRIPTING_ENABLED
     scripting.init();
 #endif
+
+#ifdef HAL_GPIO_ESC_ENABLED
+    hal.gpio->pinMode(HAL_GPIO_ESC_PIN, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_ESC_PIN, HAL_GPIO_ESC_CLOSE);
+#endif
+
+
+#ifdef HAL_RGB_FlIGHT_STAT
+    hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
+    hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
+    hal.rcout->serial_led_send(4);
+    hal.rcout->serial_led_send(5);
+#endif
+
+#ifdef HAL_FCU_PWR_ENABLED
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_PIN, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_PIN, HAL_FCU_PWR_PIN_OPEN);
+#endif
+
     start_ms = AP_HAL::native_millis();
 }
 
@@ -469,7 +488,52 @@ void AP_Periph_FW::update()
 #ifdef HAL_PERIPH_ENABLE_ADSB
     adsb_update();
 #endif
+
+#ifdef HAL_RGB_FlIGHT_STAT
+    RGB_FlIGHT_STAT_update();
+#endif
 }
+
+#ifdef HAL_RGB_FlIGHT_STAT
+void AP_Periph_FW::RGB_FlIGHT_STAT_update()
+{
+    time_cur_ms = AP_HAL::millis();
+    if((time_cur_ms - time_last_ms) < 25) {
+       return;
+    }
+
+    time_last_ms = time_cur_ms;
+
+    flight_stat_cnt++;
+
+    switch(flight_stat_cnt) {
+    case 50:
+        hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
+        hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
+        hal.rcout->serial_led_send(4);
+        hal.rcout->serial_led_send(5);
+    break;
+
+    case 60:
+        hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
+        hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
+        hal.rcout->serial_led_send(4);
+        hal.rcout->serial_led_send(5);
+    break;
+
+    case 61:
+        flight_stat_cnt = 0;
+    break;
+
+    default:
+        hal.rcout->set_serial_led_rgb_data(4, -1, 0, 0, 0);
+        hal.rcout->set_serial_led_rgb_data(5, -1, 0, 0, 0);
+        hal.rcout->serial_led_send(4);
+        hal.rcout->serial_led_send(5);
+    break;        
+    }
+}
+#endif
 
 #ifdef HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT
 // check for uploader.py reboot command

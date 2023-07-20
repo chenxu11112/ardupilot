@@ -142,6 +142,10 @@ public:
     // THIS IS NOT A THREAD SAFE API!
     void send_reboot_request(uint8_t node_id);
 
+#ifdef UAVCAN_ESC_CONTROL
+    void esc_control_send();
+#endif
+
     // set param value
     bool set_parameter_on_node(uint8_t node_id, const char *name, float value, ParamGetSetFloatCb *cb);
     bool set_parameter_on_node(uint8_t node_id, const char *name, int32_t value, ParamGetSetIntCb *cb);

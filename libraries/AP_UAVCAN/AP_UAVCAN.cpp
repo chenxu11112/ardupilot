@@ -70,6 +70,10 @@
 #include "AP_UAVCAN_pool.h"
 #include <AP_Proximity/AP_Proximity_DroneCAN.h>
 
+#ifdef UAVCAN_ESC_CONTROL
+#include <uavcan/protocol/debug/KeyValue.hpp>
+#endif
+
 #define LED_DELAY_US 50000
 
 extern const AP_HAL::HAL& hal;
@@ -187,6 +191,10 @@ static uavcan::Publisher<ardupilot::gnss::Status>* gnss_status[HAL_MAX_CAN_PROTO
 #endif
 static uavcan::Publisher<uavcan::equipment::gnss::RTCMStream>* rtcm_stream[HAL_MAX_CAN_PROTOCOL_DRIVERS];
 static uavcan::Publisher<ardupilot::indication::NotifyState>* notify_state[HAL_MAX_CAN_PROTOCOL_DRIVERS];
+
+#ifdef UAVCAN_ESC_CONTROL
+static uavcan::Publisher<uavcan::protocol::debug::KeyValue>* debug_key_value[HAL_MAX_CAN_PROTOCOL_DRIVERS];
+#endif
 
 // Clients
 UC_CLIENT_CALL_REGISTRY_BINDER(ParamGetSetCb, uavcan::protocol::param::GetSet);
@@ -439,6 +447,12 @@ void AP_UAVCAN::init(uint8_t driver_index, bool enable_filters)
     notify_state[driver_index]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
     notify_state[driver_index]->setPriority(uavcan::TransferPriority::OneHigherThanLowest);
 
+#ifdef UAVCAN_ESC_CONTROL
+    debug_key_value[driver_index] = new uavcan::Publisher<uavcan::protocol::debug::KeyValue>(*_node);
+    debug_key_value[driver_index]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(50));
+    debug_key_value[driver_index]->setPriority(uavcan::TransferPriority::OneHigherThanLowest);
+#endif
+
     param_get_set_client[driver_index] = new uavcan::ServiceClient<uavcan::protocol::param::GetSet, ParamGetSetCb>(*_node, ParamGetSetCb(this, &AP_UAVCAN::handle_param_get_set_response));
 
     param_execute_opcode_client[driver_index] = new uavcan::ServiceClient<uavcan::protocol::param::ExecuteOpcode, ParamExecuteOpcodeCb>(*_node, ParamExecuteOpcodeCb(this, &AP_UAVCAN::handle_param_save_response));
@@ -551,6 +565,10 @@ void AP_UAVCAN::loop(void)
         _dna_server->verify_nodes();
 #if AP_OPENDRONEID_ENABLED
         AP::opendroneid().dronecan_send(this);
+#endif
+
+#ifdef UAVCAN_ESC_CONTROL
+        esc_control_send();
 #endif
 
 #if AP_DRONECAN_SEND_GPS
@@ -781,6 +799,33 @@ void AP_UAVCAN::set_buzzer_tone(float frequency, float duration_s)
     _buzzer.duration = duration_s;
     _buzzer.pending_mask = 0xFF;
 }
+
+#ifdef UAVCAN_ESC_CONTROL
+// esc_control send
+void AP_UAVCAN::esc_control_send()
+{    
+    uint32_t now = AP_HAL::native_millis();
+    if (now - _last_esc_control_ms < 500) {
+        // update at 2Hz
+        return;
+    }
+
+    _last_esc_control_ms = now;
+    uavcan::protocol::debug::KeyValue msg;
+
+    uint16_t pwm_value = hal.rcin->read(UAVCAN_ESC_CONTROL_RC_CH);
+    if (pwm_value > 1500){ 
+        msg.value = HAL_GPIO_ESC_OPEN_NUM;
+    }
+    else {
+        msg.value = HAL_GPIO_ESC_CLOSE_NUM;
+    }
+    msg.key = "esc_control";
+
+    debug_key_value[_driver_index]->broadcast(msg);
+}
+#endif
+
 
 // notify state send
 void AP_UAVCAN::notify_state_send()
