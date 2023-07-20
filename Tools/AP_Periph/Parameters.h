@@ -70,6 +70,8 @@ public:
         k_param_proximity_port,
         k_param_proximity_max_rate,
         k_param_nmea,
+        k_param_temperature_copter_sensor,
+
     };
 
     AP_Int16 format_version;

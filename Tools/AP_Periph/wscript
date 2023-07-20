@@ -54,6 +54,7 @@ def build(bld):
                      'AP_RangeFinder',
                      'AP_ROMFS',
                      'AP_TemperatureSensor',
+                     'AP_TemperatureCopterSensor',
                      'AP_MSP',
                      'SRV_Channel',
                      'AP_Notify',
