@@ -228,3 +228,7 @@ AP_HW_SWBOOMBOARD_PERIPH             1403
 # OpenDroneID enabled boards. Use 10000 + the base board ID
 AP_HW_CubeOrange_ODID               10140
 AP_HW_Pixhawk6_ODID                 10053
+
+AP_HW_TSDPilot_FCU_S4_ODID          10200
+AP_HW_TSDPilot_PDU_S4_ODID          10201
+
