@@ -63,7 +63,7 @@ public:
 
 protected:
     // parameters
-    AP_TemperatureCopterSensor_Params _params[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
+    AP_TemperatureCopterSensor_Params _params[AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES];
 
 private:
     static AP_TemperatureCopterSensor *_singleton;
@@ -76,8 +76,10 @@ private:
         uint8_t     instance;                  // instance number
     };
 
-    TemperatureSensor_State _state[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
-    AP_TemperatureCopterSensor_Backend *drivers[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
+    TemperatureSensor_State _state[AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES];
+    AP_TemperatureCopterSensor_Backend *drivers[AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES];
+
+    static const struct AP_Param::GroupInfo *backend_var_info[AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES];
 
     uint8_t     _num_instances;         // number of temperature sensors
 

@@ -52,11 +52,8 @@ void AP_TemperatureCopterSensor_Backend::Log_Write_TEMP() const
 
 void AP_TemperatureCopterSensor_Backend::set_temperature(const float temperature)
 {
-    {
-        WITH_SEMAPHORE(_sem);
-        _state.temperature = temperature;
-        _state.last_time_ms = AP_HAL::millis();
-    }
+    _state.temperature = temperature;
+    _state.last_time_ms = AP_HAL::millis();
 }
 
 

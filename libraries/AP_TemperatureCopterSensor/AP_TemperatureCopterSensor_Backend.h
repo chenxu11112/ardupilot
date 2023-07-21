@@ -26,6 +26,10 @@ public:
     // constructor. This incorporates initialisation as well.
     AP_TemperatureCopterSensor_Backend(AP_TemperatureCopterSensor &front, AP_TemperatureCopterSensor::TemperatureSensor_State &state, AP_TemperatureCopterSensor_Params &params);
 
+    // we declare a virtual destructor so that BattMonitor driver can
+    // override with a custom destructor if need be
+    virtual ~AP_TemperatureCopterSensor_Backend(void) {}
+
     // initialise
     virtual void init() {};
 
@@ -38,9 +42,6 @@ public:
     // logging functions
     void Log_Write_TEMP() const;
 
-    AP_HAL::OwnPtr<AP_HAL::Device> _dev;
-
-
 protected:
 
     void set_temperature(const float temperature);
@@ -48,9 +49,6 @@ protected:
     AP_TemperatureCopterSensor                            &_front;    // reference to front-end
     AP_TemperatureCopterSensor::TemperatureSensor_State   &_state;    // reference to this instance's state (held in the front-end)
     AP_TemperatureCopterSensor_Params                     &_params;   // reference to this instance's parameters (held in the front-end)
-
-private:
-    HAL_Semaphore _sem; // used to copy from backend to frontend
 };
 
 #endif // AP_TEMPERATURE_COPTER_SENSOR_ENABLED

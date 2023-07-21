@@ -71,6 +71,7 @@
 #include <AP_Proximity/AP_Proximity.h>      // ArduPilot proximity sensor library
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_Winch/AP_Winch_config.h>
+#include <AP_TemperatureCopterSensor/AP_TemperatureCopterSensor.h>  // Battery monitor library
 
 // Configuration
 #include "defines.h"
@@ -446,6 +447,8 @@ private:
     AP_BattMonitor battery{MASK_LOG_CURRENT,
                            FUNCTOR_BIND_MEMBER(&Copter::handle_battery_failsafe, void, const char*, const int8_t),
                            _failsafe_priorities};
+
+    AP_TemperatureCopterSensor temperatureCopterSensor;
 
 #if OSD_ENABLED || OSD_PARAM_ENABLED
     AP_OSD osd;

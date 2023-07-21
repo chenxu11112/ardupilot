@@ -33,60 +33,61 @@ const AP_Param::GroupInfo AP_TemperatureCopterSensor::var_info[] = {
     // @Description: Enables temperature sensor logging
     // @Values: 0:Disabled, 1:Enabled
     // @User: Standard
-    AP_GROUPINFO("_LOG", 1, AP_TemperatureCopterSensor, _log_flag, 0),
+    AP_GROUPINFO("_LOG", 3, AP_TemperatureCopterSensor, _log_flag, 0),
 
     // SKIP Index 2-9 to be for parameters that apply to every sensor
 
     // @Group: 1_
     // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[0], "1_", 10, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+    AP_SUBGROUPINFO(_params[0], "1_", 4, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
 
-#if AP_TEMPERATURE_SENSOR_MAX_INSTANCES >= 2
+    AP_SUBGROUPVARPTR(drivers[0], "1_", 5, AP_TemperatureCopterSensor, backend_var_info[0]),
+
+#if AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES >= 2
     // @Group: 2_
     // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[1], "2_", 11, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+    AP_SUBGROUPINFO(_params[1], "2_", 6, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+
+    AP_SUBGROUPVARPTR(drivers[1], "2_", 7, AP_TemperatureCopterSensor, backend_var_info[1]),
+
 #endif
 
-#if AP_TEMPERATURE_SENSOR_MAX_INSTANCES >= 3
+#if AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES >= 3
     // @Group: 3_
     // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[2], "3_", 12, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+    AP_SUBGROUPINFO(_params[2], "3_", 8, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+
+    AP_SUBGROUPVARPTR(drivers[2], "3_", 9, AP_TemperatureCopterSensor, backend_var_info[2]),
 #endif
 
-#if AP_TEMPERATURE_SENSOR_MAX_INSTANCES >= 4
+#if AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES >= 4
     // @Group: 4_
     // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[3], "4_", 13, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+    AP_SUBGROUPINFO(_params[3], "4_", 10, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+
+    AP_SUBGROUPVARPTR(drivers[3], "4_", 11, AP_TemperatureCopterSensor, backend_var_info[3]),
+
 #endif
 
-#if AP_TEMPERATURE_SENSOR_MAX_INSTANCES >= 5
+#if AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES >= 5
     // @Group: 5_
     // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[4], "5_", 14, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+    AP_SUBGROUPINFO(_params[4], "5_", 12, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
+
+    AP_SUBGROUPVARPTR(drivers[4], "5_", 13, AP_TemperatureCopterSensor, backend_var_info[4]),
 #endif
-#if AP_TEMPERATURE_SENSOR_MAX_INSTANCES >= 6
+#if AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES >= 6
     // @Group: 6_
     // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[5], "6_", 15, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
-#endif
-#if AP_TEMPERATURE_SENSOR_MAX_INSTANCES >= 7
-    // @Group: 7_
-    // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[6], "7_", 16, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
-#endif
-#if AP_TEMPERATURE_SENSOR_MAX_INSTANCES >= 8
-    // @Group: 8_
-    // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[7], "8_", 17, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
-#endif
-#if AP_TEMPERATURE_SENSOR_MAX_INSTANCES >= 9
-    // @Group: 9_
-    // @Path: AP_TemperatureCopterSensor_Params.cpp
-    AP_SUBGROUPINFO(_params[8], "9_", 18, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
-#endif
+    AP_SUBGROUPINFO(_params[5], "6_", 14, AP_TemperatureCopterSensor, AP_TemperatureCopterSensor_Params),
 
+    AP_SUBGROUPVARPTR(drivers[5], "6_", 15, AP_TemperatureCopterSensor, backend_var_info[5]),
+
+#endif
     AP_GROUPEND
 };
+
+const AP_Param::GroupInfo *AP_TemperatureCopterSensor::backend_var_info[AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES];
 
 // Default Constructor
 AP_TemperatureCopterSensor::AP_TemperatureCopterSensor()
@@ -108,7 +109,7 @@ void AP_TemperatureCopterSensor::init()
     }
 
     // create each instance
-    for (uint8_t instance = 0; instance < AP_TEMPERATURE_SENSOR_MAX_INSTANCES; instance++) {
+    for (uint8_t instance = 0; instance < AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES; instance++) {
 
         switch (get_type(instance)) {
 #if AP_TEMPERATURE_COPTER_SENSOR_ANALOG_ENABLED
@@ -119,6 +120,15 @@ void AP_TemperatureCopterSensor::init()
             case AP_TemperatureCopterSensor_Params::Type::NONE:
             default:
                 break;
+        }
+
+        // if the backend has some local parameters then make those available in the tree
+        if (drivers[instance] && _state[instance].var_info) {
+            backend_var_info[instance] = _state[instance].var_info;
+            AP_Param::load_object_from_eeprom(drivers[instance], backend_var_info[instance]);
+
+            // param count could have changed
+            AP_Param::invalidate_count();
         }
 
         // call init function for each backend
@@ -133,10 +143,10 @@ void AP_TemperatureCopterSensor::init()
         }
     }
     
-    if (_num_instances > 0) {
-        // param count could have changed
-        AP_Param::invalidate_count();
-    }
+    // if (_num_instances > 0) {
+    //     // param count could have changed
+    //     AP_Param::invalidate_count();
+    // }
 }
 
 // update: - For all active instances update temperature and log TEMP
@@ -158,7 +168,7 @@ void AP_TemperatureCopterSensor::update()
 
 AP_TemperatureCopterSensor_Params::Type AP_TemperatureCopterSensor::get_type(const uint8_t instance) const
 {
-    if (instance >= AP_TEMPERATURE_SENSOR_MAX_INSTANCES) {
+    if (instance >= AP_TEMPERATURE_COPTER_SENSOR_MAX_INSTANCES) {
         return AP_TemperatureCopterSensor_Params::Type::NONE;
     }
     return (AP_TemperatureCopterSensor_Params::Type)_params[instance].type.get();

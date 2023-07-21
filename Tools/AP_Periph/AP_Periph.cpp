@@ -159,6 +159,10 @@ void AP_Periph_FW::init()
     battery.lib.init();
 #endif
 
+#if AP_TEMPERATURE_COPTER_SENSOR_ENABLED
+    temperature_copter_sensor.init();
+#endif
+
 #if defined(HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY) || defined(HAL_PERIPH_ENABLE_RC_OUT)
     hal.rcout->init();
 #endif

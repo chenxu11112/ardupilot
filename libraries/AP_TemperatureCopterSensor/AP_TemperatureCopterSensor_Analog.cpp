@@ -30,20 +30,20 @@ const AP_Param::GroupInfo AP_TemperatureCopterSensor_Analog::var_info[] = {
     // @Values: -1:Disabled, 2:Pixhawk/Pixracer/Navio2/Pixhawk2_PM1, 5:Navigator, 13:Pixhawk2_PM2/CubeOrange_PM2, 14:CubeOrange, 16:Durandal, 100:PX4-v1
     // @User: Standard
     // @RebootRequired: True
-    AP_GROUPINFO("VOLT_PIN", 1, AP_TemperatureCopterSensor_Analog, _volt_pin, AP_BATT_VOLT_PIN),
+    AP_GROUPINFO("_PIN", 1, AP_TemperatureCopterSensor_Analog, _volt_pin, AP_BATT_VOLT_PIN),
 
     // @Param: VOLT_MULT
     // @DisplayName: Voltage Multiplier
     // @Description: Used to convert the voltage of the voltage sensing pin (@PREFIX@VOLT_PIN) to the actual battery's voltage (pin_voltage * VOLT_MULT). For the 3DR Power brick with a Pixhawk, this should be set to 10.1. For the Pixhawk with the 3DR 4in1 ESC this should be 12.02. For the PX using the PX4IO power supply this should be set to 1.
     // @User: Advanced
-    AP_GROUPINFO("VOLT_MULT", 3, AP_TemperatureCopterSensor_Analog, _volt_multiplier, AP_BATT_VOLTDIVIDER_DEFAULT),
+    AP_GROUPINFO("_MULT", 2, AP_TemperatureCopterSensor_Analog, _volt_multiplier, AP_BATT_VOLTDIVIDER_DEFAULT),
 
     // @Param: VLT_OFFSET
     // @DisplayName: Voltage offset
     // @Description: Voltage offset on voltage pin. This allows for an offset due to a diode. This voltage is subtracted before the scaling is applied.
     // @Units: V
     // @User: Advanced
-    AP_GROUPINFO("VLT_OFFSET", 6, AP_TemperatureCopterSensor_Analog, _volt_offset, 0),
+    AP_GROUPINFO("_OFFSET", 3, AP_TemperatureCopterSensor_Analog, _volt_offset, 0),
     
     // Param indexes must be less than 10 to avoid conflict with other battery monitor param tables loaded by pointer
 
