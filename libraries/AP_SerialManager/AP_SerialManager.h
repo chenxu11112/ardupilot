@@ -51,13 +51,13 @@
 
 
  // console default baud rates and buffer sizes
-#ifdef HAL_SERIAL0_BAUD_DEFAULT
-# define AP_SERIALMANAGER_CONSOLE_BAUD          HAL_SERIAL0_BAUD_DEFAULT
+#ifdef DEFAULT_SERIAL0_BAUD
+#define AP_SERIALMANAGER_CONSOLE_BAUD          DEFAULT_SERIAL0_BAUD
 #else
-# define AP_SERIALMANAGER_CONSOLE_BAUD          115200
+#define AP_SERIALMANAGER_CONSOLE_BAUD          115200
 #endif
-# define AP_SERIALMANAGER_CONSOLE_BUFSIZE_RX    128
-# define AP_SERIALMANAGER_CONSOLE_BUFSIZE_TX    512
+#define AP_SERIALMANAGER_CONSOLE_BUFSIZE_RX    128
+#define AP_SERIALMANAGER_CONSOLE_BUFSIZE_TX    512
 
 // mavlink default baud rates and buffer sizes
 #define AP_SERIALMANAGER_MAVLINK_BAUD           57600
@@ -169,6 +169,7 @@ public:
         SerialProtocol_MSP_DisplayPort = 42,
         SerialProtocol_MAVLinkHL = 43,
         SerialProtocol_Tramp = 44,
+        SerialProtocol_DDS_XRCE = 45,
         SerialProtocol_NumProtocols                    // must be the last value
     };
 
@@ -199,9 +200,6 @@ public:
 
     // find_portnum - find port number (SERIALn index) for a protocol and instance, -1 for not found
     int8_t find_portnum(enum SerialProtocol protocol, uint8_t instance) const;
-
-    // set_blocking_writes_all - sets block_writes on or off for all serial channels
-    void set_blocking_writes_all(bool blocking);
 
     // get the passthru ports if enabled
     bool get_passthru(AP_HAL::UARTDriver *&port1, AP_HAL::UARTDriver *&port2, uint8_t &timeout_s,

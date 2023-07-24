@@ -12,8 +12,8 @@ void AP_Mount_Alexmos::init()
         _initialised = true;
         get_boardinfo();
         read_params(0); //we request parameters for profile 0 and therfore get global and profile parameters
-        set_mode((enum MAV_MOUNT_MODE)_params.default_mode.get());
     }
+    AP_Mount_Backend::init();
 }
 
 // update mount position - should be called periodically
@@ -161,7 +161,7 @@ void AP_Mount_Alexmos::control_axis(const MountTarget& angle_target_rad)
     outgoing_buffer.angle_speed.speed_pitch = DEGREE_PER_SEC_TO_VALUE(AP_MOUNT_ALEXMOS_SPEED);
     outgoing_buffer.angle_speed.angle_pitch = DEGREE_TO_VALUE(degrees(angle_target_rad.pitch));
     outgoing_buffer.angle_speed.speed_yaw = DEGREE_PER_SEC_TO_VALUE(AP_MOUNT_ALEXMOS_SPEED);
-    outgoing_buffer.angle_speed.angle_yaw = DEGREE_TO_VALUE(degrees(get_bf_yaw_angle(angle_target_rad)));
+    outgoing_buffer.angle_speed.angle_yaw = DEGREE_TO_VALUE(angle_target_rad.get_bf_yaw());
     send_command(CMD_CONTROL, (uint8_t *)&outgoing_buffer.angle_speed, sizeof(alexmos_angles_speed));
 }
 

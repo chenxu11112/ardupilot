@@ -320,27 +320,13 @@ class AutoTestRover(AutoTest):
             self.start_subtest("Checking mavlink commands")
             self.change_mode("MANUAL")
             self.progress("Starting Sprayer")
-            self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SPRAYER,
-                         1,  # p1
-                         0,  # p2
-                         0,  # p3
-                         0,  # p4
-                         0,  # p5
-                         0,  # p6
-                         0)  # p7
+            self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SPRAYER, p1=1)
 
             self.progress("Testing speed-ramping")
             self.set_rc(3, 1700) # start driving forward
             self.wait_servo_channel_value(pump_ch, 1690, timeout=60, comparator=operator.gt)
             self.start_subtest("Stopping Sprayer")
-            self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SPRAYER,
-                         0,  # p1
-                         0,  # p2
-                         0,  # p3
-                         0,  # p4
-                         0,  # p5
-                         0,  # p6
-                         0)  # p7
+            self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SPRAYER, p1=0)
             self.wait_servo_channel_value(pump_ch, pump_ch_min)
             self.set_rc(3, 1000) # start driving forward
 
@@ -624,8 +610,9 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
     def MAVProxy_SetModeUsingSwitch(self):
         """Set modes via mavproxy switch"""
+        port = self.sitl_rcin_port(offset=1)
         self.customise_SITL_commandline([
-            "--rc-in-port", "5502",
+            "--rc-in-port", str(port),
         ])
         ex = None
         try:
@@ -637,7 +624,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                     (4, 'AUTO'),
                     (5, 'AUTO'),  # non-existant mode, should stay in RTL
                     (6, 'MANUAL')]
-            mavproxy = self.start_mavproxy()
+            mavproxy = self.start_mavproxy(sitl_rcin_port=port)
             for (num, expected) in fnoo:
                 mavproxy.send('switch %u\n' % num)
                 self.wait_mode(expected)
@@ -1194,7 +1181,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.do_set_mode_via_command_long("HOLD")
         self.do_set_mode_via_command_long("MANUAL")
 
-    def InitialMode(self):
+    def RoverInitialMode(self):
         '''test INITIAL_MODE parameter works'''
         # from mavproxy_rc.py
         self.wait_ready_to_arm()
@@ -1295,17 +1282,21 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.wait_ready_to_arm()
         self.arm_vehicle()
 
+        # calculate early to avoid round-trips while vehicle is moving:
+        accuracy = self.get_parameter("WP_RADIUS")
+
         self.reach_heading_manual(10)
         self.reach_distance_manual(50)
 
         self.change_mode("RTL")
+
         # location copied in from rover-test-rally.txt:
         loc = mavutil.location(40.071553,
                                -105.229401,
                                0,
                                0)
-        accuracy = self.get_parameter("WP_RADIUS")
-        self.wait_location(loc, accuracy=accuracy, minimum_duration=10)
+
+        self.wait_location(loc, accuracy=accuracy, minimum_duration=10, timeout=45)
         self.disarm_vehicle()
 
     def fence_with_bad_frame(self, target_system=1, target_component=1):
@@ -4768,13 +4759,12 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.wait_ready_to_arm()
         self.run_cmd(
             mavutil.mavlink.MAV_CMD_DO_MOTOR_TEST,
-            1, # p1 - motor instance
-            mavutil.mavlink.MOTOR_TEST_THROTTLE_PWM, # p2 - throttle type
-            magic_throttle_value, # p3 - throttle
-            5, # p4 - timeout
-            1, # p5 - motor count
-            0, # p6 - test order (see MOTOR_TEST_ORDER)
-            0, # p7
+            p1=1, # motor instance
+            p2=mavutil.mavlink.MOTOR_TEST_THROTTLE_PWM, # throttle type
+            p3=magic_throttle_value, # throttle
+            p4=5, # timeout
+            p5=1, # motor count
+            p6=0, # test order (see MOTOR_TEST_ORDER)
         )
         self.wait_armed()
         self.progress("Waiting for magic throttle value")
@@ -5216,15 +5206,19 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
         self.context_push()
 
-        test_scripts = ["scripting_test.lua", "math.lua", "strings.lua"]
-        success_text = ["Internal tests passed", "Math tests passed", "String tests passed"]
+        test_scripts = ["scripting_test.lua", "math.lua", "strings.lua", "mavlink_test.lua"]
+        success_text = ["Internal tests passed", "Math tests passed", "String tests passed", "Received heartbeat from"]
+        named_value_float_types = ["test"]
 
         messages = []
+        named_value_float = []
 
         def my_message_hook(mav, message):
-            if message.get_type() != 'STATUSTEXT':
-                return
-            messages.append(message)
+            if message.get_type() == 'STATUSTEXT':
+                messages.append(message)
+            # also sniff for named value float messages
+            if message.get_type() == 'NAMED_VALUE_FLOAT':
+                named_value_float.append(message)
 
         self.install_message_hook_context(my_message_hook)
         self.set_parameters({
@@ -5232,6 +5226,8 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             "SCR_HEAP_SIZE": 1024000,
             "SCR_VM_I_COUNT": 1000000,
         })
+        self.install_test_modules_context()
+        self.install_mavlink_module_context()
         for script in test_scripts:
             self.install_test_script_context(script)
         self.reboot_sitl()
@@ -5249,9 +5245,21 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                 if text in m.text:
                     script_success = True
             success = script_success and success
-        self.progress("Success")
         if not success:
-            raise NotAchievedException("Scripting internal test failed")
+            raise NotAchievedException("Failed to receive STATUS_TEXT")
+        else:
+            self.progress("Success STATUS_TEXT")
+
+        for type in named_value_float_types:
+            script_success = False
+            for m in named_value_float:
+                if type == m.name:
+                    script_success = True
+            success = script_success and success
+        if not success:
+            raise NotAchievedException("Failed to receive NAMED_VALUE_FLOAT")
+        else:
+            self.progress("Success NAMED_VALUE_FLOAT")
 
     def test_scripting_hello_world(self):
         self.start_subtest("Scripting hello world")
@@ -5906,18 +5914,14 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
 
         self.set_current_waypoint_using_mav_cmd_do_set_mission_current(2)
 
-        self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SET_MISSION_CURRENT,
-                     17,
-                     0,
-                     0,
-                     0,
-                     0,
-                     0,
-                     0,
-                     timeout=1,
-                     target_sysid=target_sysid,
-                     target_compid=target_compid,
-                     want_result=mavutil.mavlink.MAV_RESULT_FAILED)
+        self.run_cmd(
+            mavutil.mavlink.MAV_CMD_DO_SET_MISSION_CURRENT,
+            p1=17,
+            timeout=1,
+            target_sysid=target_sysid,
+            target_compid=target_compid,
+            want_result=mavutil.mavlink.MAV_RESULT_FAILED,
+        )
 
     def FlashStorage(self):
         '''Test flash storage (for parameters etc)'''
@@ -6071,8 +6075,9 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         })
         self.set_rc(9, 2000)
         self.reboot_sitl()
-        self.delay_sim_time(10)
-        self.assert_prearm_failure("Motors Emergency Stopped")
+        self.assert_prearm_failure(
+            "Motors Emergency Stopped",
+            other_prearm_failures_fatal=False)
         self.context_pop()
         self.reboot_sitl()
 
@@ -6175,7 +6180,8 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
     def PrivateChannel(self):
         '''test the serial option bit specifying a mavlink channel as private'''
         global mav2
-        mav2 = mavutil.mavlink_connection("tcp:localhost:5763",
+        port = self.adjust_ardupilot_port(5763)
+        mav2 = mavutil.mavlink_connection("tcp:localhost:%u" % port,
                                           robust_parsing=True,
                                           source_system=7,
                                           source_component=7)
@@ -6289,7 +6295,6 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             self.DriveRTL,
             self.SmartRTL,
             self.DriveSquare,
-            self.DriveMaxRCIN,
             self.DriveMission,
             # self.DriveBrake,  # disabled due to frequent failures
             self.GetBanner,
@@ -6347,8 +6352,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             self.AutoDock,
             self.PrivateChannel,
             self.GCSFailsafe,
-            self.InitialMode,
+            self.RoverInitialMode,
             self.DriveMaxRCIN,
+            self.NoArmWithoutMissionItems,
+            self.CompassPrearms,
         ])
         return ret
 

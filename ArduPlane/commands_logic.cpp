@@ -344,7 +344,7 @@ void Plane::do_RTL(int32_t rtl_altitude_AMSL_cm)
     auto_state.next_wp_crosstrack = false;
     auto_state.crosstrack = false;
     prev_WP_loc = current_loc;
-    next_WP_loc = rally.calc_best_rally_or_home_location(current_loc, rtl_altitude_AMSL_cm);
+    next_WP_loc = calc_best_rally_or_home_location(current_loc, rtl_altitude_AMSL_cm);
     setup_terrain_target_alt(next_WP_loc);
     set_target_altitude_location(next_WP_loc);
 
@@ -358,6 +358,17 @@ void Plane::do_RTL(int32_t rtl_altitude_AMSL_cm)
     setup_turn_angle();
 
     logger.Write_Mode(control_mode->mode_number(), control_mode_reason);
+}
+
+Location Plane::calc_best_rally_or_home_location(const Location &_current_loc, float rtl_home_alt_amsl_cm) const
+{
+#if HAL_RALLY_ENABLED
+    return plane.rally.calc_best_rally_or_home_location(_current_loc, rtl_home_alt_amsl_cm);
+#else
+    Location destination = plane.home;
+    destination.set_alt_cm(rtl_home_alt_amsl_cm, Location::AltFrame::ABSOLUTE);
+    return destination;
+#endif
 }
 
 /*
@@ -1051,7 +1062,7 @@ bool Plane::verify_landing_vtol_approach(const AP_Mission::Mission_Command &cmd)
             {
                 // validate that the vehicle is at least the expected distance away from the loiter point
                 // require an angle total of at least 2 centidegrees, due to special casing of 1 centidegree
-                if (((fabsf(cmd.content.location.get_distance(current_loc) - abs_radius) > 5.0f) &&
+                if (((fabsF(cmd.content.location.get_distance(current_loc) - abs_radius) > 5.0f) &&
                       (cmd.content.location.get_distance(current_loc) < abs_radius)) ||
                     (labs(loiter.sum_cd) < 2)) {
                     nav_controller->update_loiter(cmd.content.location, abs_radius, direction);
@@ -1067,7 +1078,7 @@ bool Plane::verify_landing_vtol_approach(const AP_Mission::Mission_Command &cmd)
                 const float breakout_direction_rad = radians(vtol_approach_s.approach_direction_deg + (direction > 0 ? 270 : 90));
 
                 // breakout when within 5 degrees of the opposite direction
-                if (fabsf(wrap_PI(ahrs.yaw - breakout_direction_rad)) < radians(5.0f)) {
+                if (fabsF(wrap_PI(ahrs.yaw - breakout_direction_rad)) < radians(5.0f)) {
                     gcs().send_text(MAV_SEVERITY_INFO, "Starting VTOL land approach path");
                     vtol_approach_s.approach_stage = APPROACH_LINE;
                     set_next_WP(cmd.content.location);

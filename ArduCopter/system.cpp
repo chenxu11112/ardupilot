@@ -94,7 +94,9 @@ void Copter::init_ardupilot()
     // motors initialised so parameters can be sent
     ap.initialised_params = true;
 
+#if AP_RELAY_ENABLED
     relay.init();
+#endif
 
     /*
      *  setup the 'main loop is dead' check. Note that this relies on
@@ -134,7 +136,7 @@ void Copter::init_ardupilot()
     camera.init();
 #endif
 
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
     // initialise precision landing
     init_precland();
 #endif
@@ -161,7 +163,7 @@ void Copter::init_ardupilot()
     g2.proximity.init();
 #endif
 
-#if BEACON_ENABLED == ENABLED
+#if AP_BEACON_ENABLED
     // init beacons used for non-gps position estimation
     g2.beacon.init();
 #endif
@@ -198,20 +200,12 @@ void Copter::init_ardupilot()
     set_land_complete(true);
     set_land_complete_maybe(true);
 
-    // we don't want writes to the serial port to cause us to pause
-    // mid-flight, so set the serial ports non-blocking once we are
-    // ready to fly
-    serial_manager.set_blocking_writes_all(false);
-
     // enable CPU failsafe
     failsafe_enable();
 
     ins.set_log_raw_bit(MASK_LOG_IMU_RAW);
 
-    // enable output to motors
-    if (arming.rc_calibration_checks(true)) {
-        enable_motor_output();
-    }
+    motors->output_min();  // output lowest possible value to motors
 
     // attempt to set the intial_mode, else set to STABILIZE
     if (!set_mode((enum Mode::Number)g.initial_mode.get(), ModeReason::INITIALISED)) {

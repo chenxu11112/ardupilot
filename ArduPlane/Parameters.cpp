@@ -424,8 +424,8 @@ const AP_Param::Info Plane::var_info[] = {
 
     // @Param: FS_LONG_ACTN
     // @DisplayName: Long failsafe action
-    // @Description: The action to take on a long (FS_LONG_TIMEOUT seconds) failsafe event. If the aircraft was in a stabilization or manual mode when failsafe started and a long failsafe occurs then it will change to RTL mode if FS_LONG_ACTN is 0 or 1, and will change to FBWA if FS_LONG_ACTN is set to 2. If the aircraft was in an auto mode (such as AUTO or GUIDED) when the failsafe started then it will continue in the auto mode if FS_LONG_ACTN is set to 0, will change to RTL mode if FS_LONG_ACTN is set to 1 and will change to FBWA mode if FS_LONG_ACTN is set to 2. If FS_LONG_ACTION is set to 3, the parachute will be deployed (make sure the chute is configured and enabled). 
-    // @Values: 0:Continue,1:ReturnToLaunch,2:Glide,3:Deploy Parachute
+    // @Description: The action to take on a long (FS_LONG_TIMEOUT seconds) failsafe event. If the aircraft was in a stabilization or manual mode when failsafe started and a long failsafe occurs then it will change to RTL mode if FS_LONG_ACTN is 0 or 1, and will change to FBWA if FS_LONG_ACTN is set to 2. If the aircraft was in an auto mode (such as AUTO or GUIDED) when the failsafe started then it will continue in the auto mode if FS_LONG_ACTN is set to 0, will change to RTL mode if FS_LONG_ACTN is set to 1 and will change to FBWA mode if FS_LONG_ACTN is set to 2. If FS_LONG_ACTN is set to 3, the parachute will be deployed (make sure the chute is configured and enabled). If FS_LONG_ACTN is set to 4 the aircraft will switch to mode AUTO with the current waypoint if it is not already in mode AUTO, unless it is in the middle of a landing sequence.
+    // @Values: 0:Continue,1:ReturnToLaunch,2:Glide,3:Deploy Parachute,4:Auto
     // @User: Standard
     GSCALAR(fs_action_long,         "FS_LONG_ACTN",   FS_ACTION_LONG_CONTINUE),
 
@@ -605,17 +605,10 @@ const AP_Param::Info Plane::var_info[] = {
     // @User: Standard
     GSCALAR(dspoiler_rud_rate,      "DSPOILR_RUD_RATE",  DSPOILR_RUD_RATE_DEFAULT),
 
-    // @Param: SYS_NUM_RESETS
-    // @DisplayName: Num Resets
-    // @Description: Number of APM board resets
-    // @ReadOnly: True
-    // @User: Advanced
-    GSCALAR(num_resets,             "SYS_NUM_RESETS", 0),
-
     // @Param: LOG_BITMASK
     // @DisplayName: Log bitmask
     // @Description: Bitmap of what on-board log types to enable. This value is made up of the sum of each of the log types you want to be saved. It is usually best just to enable all basic log types by setting this to 65535.
-    // @Bitmask: 0:Fast Attitude,1:Medium Attitude,2:GPS,3:Performance,4:Control Tuning,5:Navigation Tuning,7:IMU,8:Mission Commands,9:Battery Monitor,10:Compass,11:TECS,12:Camera,13:RC Input-Output,14:Rangefinder,19:Raw IMU,20:Fullrate Attitude,21:Video Stabilization
+    // @Bitmask: 0:Fast Attitude,1:Medium Attitude,2:GPS,3:Performance,4:Control Tuning,5:Navigation Tuning,7:IMU,8:Mission Commands,9:Battery Monitor,10:Compass,11:TECS,12:Camera,13:RC Input-Output,14:Rangefinder,19:Raw IMU,20:Fullrate Attitude,21:Video Stabilization,22:Fullrate Notch
     // @User: Advanced
     GSCALAR(log_bitmask,            "LOG_BITMASK",    DEFAULT_LOG_BITMASK),
 
@@ -754,9 +747,11 @@ const AP_Param::Info Plane::var_info[] = {
     // @Path: AP_Arming.cpp,../libraries/AP_Arming/AP_Arming.cpp
     GOBJECT(arming,                 "ARMING_", AP_Arming_Plane),
 
+#if AP_RELAY_ENABLED
     // @Group: RELAY_
     // @Path: ../libraries/AP_Relay/AP_Relay.cpp
     GOBJECT(relay,                  "RELAY_", AP_Relay),
+#endif
 
 #if PARACHUTE == ENABLED
 	// @Group: CHUTE_
@@ -943,9 +938,11 @@ const AP_Param::Info Plane::var_info[] = {
     // @Path: ../libraries/AP_Mission/AP_Mission.cpp
     GOBJECT(mission, "MIS_",       AP_Mission),
 
+#if HAL_RALLY_ENABLED
     // @Group: RALLY_
     // @Path: ../libraries/AP_Rally/AP_Rally.cpp
     GOBJECT(rally,  "RALLY_",       AP_Rally),
+#endif
 
 #if HAL_NAVEKF2_AVAILABLE
     // @Group: EK2_
@@ -1090,6 +1087,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     // @Bitmask: 10: Adjust mid-throttle to be TRIM_THROTTLE in non-auto throttle modes except MANUAL
     // @Bitmask: 11: Disable suppression of fixed wing rate gains in ground mode
     // @Bitmask: 12: Enable FBWB style loiter altitude control
+    // @Bitmask: 13: Indicate takeoff waiting for neutral rudder with flight control surfaces
     // @User: Advanced
     AP_GROUPINFO("FLIGHT_OPTIONS", 13, ParametersG2, flight_options, 0),
 
@@ -1257,9 +1255,6 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
 ParametersG2::ParametersG2(void) :
     unused_integer{1}
-#if AP_ICENGINE_ENABLED
-    ,ice_control(plane.rpm_sensor)
-#endif
 #if HAL_SOARING_ENABLED
     ,soaring_controller(plane.TECS_controller, plane.aparm)
 #endif

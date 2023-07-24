@@ -526,7 +526,7 @@ public:
     // temperature calibration handling
     AP_TempCalibration temp_calibration;
 
-#if BEACON_ENABLED == ENABLED
+#if AP_BEACON_ENABLED
     // beacon (non-GPS positioning) library
     AP_Beacon beacon;
 #endif
@@ -679,8 +679,10 @@ public:
 
     // ramp time of throttle during take-off
     AP_Float takeoff_throttle_slew_time;
+    AP_Float takeoff_throttle_max;
 #if HAL_WITH_ESC_TELEM && FRAME_CONFIG != HELI_FRAME
     AP_Int16 takeoff_rpm_min;
+    AP_Int16 takeoff_rpm_max;
 #endif
 
 #if WEATHERVANE_ENABLED == ENABLED

@@ -9,6 +9,7 @@
 #include <AP_Gripper/AP_Gripper_config.h>
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
+#include <AP_ServoRelayEvents/AP_ServoRelayEvents_config.h>
 
 const AP_Param::GroupInfo AP_Mission::var_info[] = {
 
@@ -267,8 +268,8 @@ void AP_Mission::reset()
 ///     returns true if mission was running so it could not be cleared
 bool AP_Mission::clear()
 {
-    // do not allow clearing the mission while it is running
-    if (_flags.state == MISSION_RUNNING) {
+    // do not allow clearing the mission while it is running unless disarmed
+    if (hal.util->get_soft_armed() && _flags.state == MISSION_RUNNING) {
         return false;
     }
 
@@ -280,7 +281,7 @@ bool AP_Mission::clear()
     _do_cmd.index = AP_MISSION_CMD_INDEX_NONE;
     _flags.nav_cmd_loaded = false;
     _flags.do_cmd_loaded = false;
-
+    _flags.state = MISSION_STOPPED;
     // return success
     return true;
 }
@@ -404,11 +405,13 @@ bool AP_Mission::start_command(const Mission_Command& cmd)
     case MAV_CMD_DO_GRIPPER:
         return start_command_do_gripper(cmd);
 #endif
+#if AP_SERVORELAYEVENTS_ENABLED
     case MAV_CMD_DO_SET_SERVO:
     case MAV_CMD_DO_SET_RELAY:
     case MAV_CMD_DO_REPEAT_SERVO:
     case MAV_CMD_DO_REPEAT_RELAY:
         return start_command_do_servorelayevents(cmd);
+#endif
 #if AP_CAMERA_ENABLED
     case MAV_CMD_DO_DIGICAM_CONFIGURE:
     case MAV_CMD_DO_DIGICAM_CONTROL:

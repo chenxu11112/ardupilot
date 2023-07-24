@@ -173,16 +173,10 @@ void AP_MotorsHeli::init(motor_frame_class frame_class, motor_frame_type frame_t
     _throttle_radio_passthrough = 0.5f;
 
     // initialise Servo/PWM ranges and endpoints
-    if (!init_outputs()) {
-        // don't set initialised_ok
-        return;
-    }
+    init_outputs();
 
     // calculate all scalars
     calculate_scalars();
-
-    // record successful initialisation if what we setup was the desired frame_class
-    set_initialised_ok(frame_class == MOTOR_FRAME_HELI);
 
     // set flag to true so targets are initialized once aircraft is armed for first time
     _heliflags.init_targets_on_arming = true;
@@ -509,16 +503,6 @@ bool AP_MotorsHeli::parameter_check(bool display_msg) const
     return true;
 }
 
-// reset_swash_servo
-void AP_MotorsHeli::reset_swash_servo(SRV_Channel::Aux_servo_function_t function)
-{
-    // outputs are defined on a -500 to 500 range for swash servos
-    SRV_Channels::set_range(function, 1000);
-
-    // swash servos always use full endpoints as restricting them would lead to scaling errors
-    SRV_Channels::set_output_min_max(function, 1000, 2000);
-}
-
 // update the throttle input filter
 void AP_MotorsHeli::update_throttle_filter()
 {
@@ -539,17 +523,6 @@ void AP_MotorsHeli::reset_flight_controls()
     _servo_mode.set(SERVO_CONTROL_MODE_AUTOMATED);
     init_outputs();
     calculate_scalars();
-}
-
-// convert input in -1 to +1 range to pwm output for swashplate servo.
-// The value 0 corresponds to the trim value of the servo. Swashplate
-// servo travel range is fixed to 1000 pwm and therefore the input is
-// multiplied by 500 to get PWM output.
-void AP_MotorsHeli::rc_write_swash(uint8_t chan, float swash_in)
-{
-    uint16_t pwm = (uint16_t)(1500 + 500 * swash_in);
-    SRV_Channel::Aux_servo_function_t function = SRV_Channels::get_motor_function(chan);
-    SRV_Channels::set_output_pwm_trimmed(function, pwm);
 }
 
 // update the collective input filter.  should be called at 100hz
@@ -616,4 +589,24 @@ bool AP_MotorsHeli::arming_checks(size_t buflen, char *buffer) const
     }
 
     return true;
+}
+
+// Tell user motor test is disabled on heli
+bool AP_MotorsHeli::motor_test_checks(size_t buflen, char *buffer) const
+{
+    hal.util->snprintf(buffer, buflen, "Disabled on heli");
+    return false;
+}
+
+// get_motor_mask - returns a bitmask of which outputs are being used for motors or servos (1 means being used)
+//  this can be used to ensure other pwm outputs (i.e. for servos) do not conflict
+uint32_t AP_MotorsHeli::get_motor_mask()
+{
+    return _main_rotor.get_output_mask();
+}
+
+// set_desired_rotor_speed
+void AP_MotorsHeli::set_desired_rotor_speed(float desired_speed)
+{
+    _main_rotor.set_desired_speed(desired_speed);
 }

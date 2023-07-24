@@ -368,7 +368,7 @@ const AP_Param::GroupInfo NavEKF3::var_info[] = {
     // @Param: ABIAS_P_NSE
     // @DisplayName: Accelerometer bias stability (m/s^3)
     // @Description: This noise controls the growth of the vertical accelerometer delta velocity bias state error estimate. Increasing it makes accelerometer bias estimation faster and noisier.
-    // @Range: 0.00001 0.005
+    // @Range: 0.00001 0.02
     // @User: Advanced
     // @Units: m/s/s/s
     AP_GROUPINFO("ABIAS_P_NSE", 28, NavEKF3, _accelBiasProcessNoise, ABIAS_P_NSE_DEFAULT),
@@ -1407,6 +1407,26 @@ bool NavEKF3::setOriginLLH(const Location &loc)
     // return true if any core accepts the new origin
     return ret;
 }
+
+bool NavEKF3::setLatLng(const Location &loc, float posAccuracy, uint32_t timestamp_ms)
+{
+#if EK3_FEATURE_POSITION_RESET
+    AP::dal().log_SetLatLng(loc, posAccuracy, timestamp_ms);
+
+    if (!core) {
+        return false;
+    }
+    bool ret = false;
+    for (uint8_t i=0; i<num_cores; i++) {
+        ret |= core[i].setLatLng(loc, posAccuracy, timestamp_ms);
+    }
+    // return true if any core accepts the new origin
+    return ret;
+#else
+    return false;
+#endif // EK3_FEATURE_POSITION_RESET
+}
+
 
 // return estimated height above ground level
 // return false if ground height is not being estimated.

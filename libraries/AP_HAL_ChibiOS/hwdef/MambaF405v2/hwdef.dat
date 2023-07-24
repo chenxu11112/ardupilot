@@ -79,8 +79,8 @@ PA0 LED_EXT1 OUTPUT GPIO(30)
 # Buzzer
 PA8 BUZZER OUTPUT GPIO(80) LOW
 define HAL_BUZZER_PIN 80
-define HAL_BUZZER_ON 1
-define HAL_BUZZER_OFF 0
+
+
 
 # Note that this board needs PULLUP on I2C pins
 PB6 I2C1_SCL I2C1 PULLUP
@@ -159,3 +159,4 @@ ROMFS_WILDCARD libraries/AP_OSD/fonts/font*.bin
 
 # minimal drivers to reduce flash usage
 include ../include/minimal.inc
+include ../include/no_bootloader_DFU.inc

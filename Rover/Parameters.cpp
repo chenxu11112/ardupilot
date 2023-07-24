@@ -221,9 +221,11 @@ const AP_Param::Info Rover::var_info[] = {
     // @Path: ../libraries/AP_Baro/AP_Baro.cpp
     GOBJECT(barometer, "BARO", AP_Baro),
 
+#if AP_RELAY_ENABLED
     // @Group: RELAY_
     // @Path: ../libraries/AP_Relay/AP_Relay.cpp
     GOBJECT(relay,                  "RELAY_", AP_Relay),
+#endif
 
     // @Group: RCMAP_
     // @Path: ../libraries/AP_RCMapper/AP_RCMapper.cpp
@@ -297,7 +299,7 @@ const AP_Param::Info Rover::var_info[] = {
     GOBJECT(camera, "CAM", AP_Camera),
 #endif
 
-#if PRECISION_LANDING == ENABLED
+#if AC_PRECLAND_ENABLED
     // @Group: PLND_
     // @Path: ../libraries/AC_PrecLand/AC_PrecLand.cpp
     GOBJECT(precland,                "PLND_", AC_PrecLand),
@@ -425,9 +427,11 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(afs, "AFS_", 5, ParametersG2, AP_AdvancedFailsafe),
 #endif
 
+#if AP_BEACON_ENABLED
     // @Group: BCN
     // @Path: ../libraries/AP_Beacon/AP_Beacon.cpp
     AP_SUBGROUPINFO(beacon, "BCN", 6, ParametersG2, AP_Beacon),
+#endif
 
     // 7 was used by AP_VisualOdometry
 
@@ -734,8 +738,10 @@ ParametersG2::ParametersG2(void)
 #if ADVANCED_FAILSAFE == ENABLED
     afs(),
 #endif
+#if AP_BEACON_ENABLED
     beacon(),
-    motors(rover.ServoRelayEvents, wheel_rate_control),
+#endif
+    motors(wheel_rate_control),
     wheel_rate_control(wheel_encoder),
     attitude_control(),
     smart_rtl(),

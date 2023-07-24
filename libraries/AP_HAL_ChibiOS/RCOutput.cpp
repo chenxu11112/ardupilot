@@ -266,7 +266,7 @@ void RCOutput::rcout_thread()
     }
 }
 
-__RAMFUNC__ void RCOutput::dshot_update_tick(void* p)
+__RAMFUNC__ void RCOutput::dshot_update_tick(virtual_timer_t* vt, void* p)
 {
     chSysLockFromISR();
     RCOutput* rcout = (RCOutput*)p;
@@ -314,7 +314,7 @@ void RCOutput::dshot_collect_dma_locks(uint64_t time_out_us, bool led_thread)
             const uint32_t max_delay_us = led_thread ? LED_OUTPUT_PERIOD_US : _dshot_period_us;
             const uint32_t min_delay_us = 10; // matches our CH_CFG_ST_TIMEDELTA
             wait_us = constrain_uint32(wait_us, min_delay_us, max_delay_us);
-            mask = chEvtWaitOneTimeout(group.dshot_event_mask, chTimeUS2I(wait_us));
+            mask = chEvtWaitOneTimeout(group.dshot_event_mask, MIN(TIME_MAX_INTERVAL, chTimeUS2I(wait_us)));
 
             // no time left cancel and restart
             if (!mask) {
@@ -539,6 +539,7 @@ void RCOutput::set_dshot_esc_type(DshotEscType dshot_esc_type)
     _dshot_esc_type = dshot_esc_type;
     switch (_dshot_esc_type) {
         case DSHOT_ESC_BLHELI_S:
+        case DSHOT_ESC_BLHELI_EDT_S:
             DSHOT_BIT_WIDTH_TICKS = DSHOT_BIT_WIDTH_TICKS_S;
             DSHOT_BIT_0_TICKS = DSHOT_BIT_0_TICKS_S;
             DSHOT_BIT_1_TICKS = DSHOT_BIT_1_TICKS_S;
@@ -1531,15 +1532,9 @@ void RCOutput::dshot_send(pwm_group &group, uint64_t time_out_us)
         uint8_t chan = group.chan[i];
         if (group.is_chan_enabled(i)) {
 #ifdef HAL_WITH_BIDIR_DSHOT
-            // retrieve the last erpm values
-            const uint16_t erpm = group.bdshot.erpm[i];
-#if HAL_WITH_ESC_TELEM
-            // update the ESC telemetry data
-            if (erpm < 0xFFFF && group.bdshot.enabled) {
-                update_rpm(chan, erpm * 200 / _bdshot.motor_poles, get_erpm_error_rate(chan));
+            if (group.bdshot.enabled) {
+                bdshot_decode_telemetry_from_erpm(group.bdshot.erpm[i], chan);
             }
-#endif
-            _bdshot.erpm[chan] = erpm;
 #endif
             if (safety_on && !(safety_mask & (1U<<(chan+chan_offset)))) {
                 // safety is on, don't output anything
@@ -1691,7 +1686,7 @@ void RCOutput::send_pulses_DMAR(pwm_group &group, uint32_t buffer_length)
 /*
   unlock DMA channel after a dshot send completes and no return value is expected
  */
-__RAMFUNC__ void RCOutput::dma_unlock(void *p)
+__RAMFUNC__ void RCOutput::dma_unlock(virtual_timer_t* vt, void *p)
 {
     chSysLockFromISR();
     pwm_group *group = (pwm_group *)p;
@@ -1964,7 +1959,7 @@ void RCOutput::serial_bit_irq(void)
 /*
   timeout a byte read
  */
-void RCOutput::serial_byte_timeout(void *ctx)
+void RCOutput::serial_byte_timeout(virtual_timer_t* vt, void *ctx)
 {
     chSysLockFromISR();
     irq.timed_out = true;
