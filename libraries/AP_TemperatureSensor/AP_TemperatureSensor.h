@@ -25,13 +25,14 @@ class AP_TemperatureSensor_Backend;
 class AP_TemperatureSensor_TSYS01;
 class AP_TemperatureSensor_MCP9600;
 class AP_TemperatureSensor_MAX31865;
-
+class AP_TemperatureSensor_Analog;
 class AP_TemperatureSensor
 {
     friend class AP_TemperatureSensor_Backend;
     friend class AP_TemperatureSensor_TSYS01;
     friend class AP_TemperatureSensor_MCP9600;
     friend class AP_TemperatureSensor_MAX31865;
+    friend class AP_TemperatureSensor_Analog;
 
 public:
 
@@ -74,10 +75,13 @@ private:
         uint32_t    last_time_ms;              // time when the sensor was last read in milliseconds
         float       temperature;               // temperature (deg C)
         uint8_t     instance;                  // instance number
+
+        const struct AP_Param::GroupInfo *var_info;
     };
 
     TemperatureSensor_State _state[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
     AP_TemperatureSensor_Backend *drivers[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
+    static const struct AP_Param::GroupInfo *backend_var_info[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
 
     uint8_t     _num_instances;         // number of temperature sensors
 

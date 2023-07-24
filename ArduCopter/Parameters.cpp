@@ -713,8 +713,6 @@ const AP_Param::Info Copter::var_info[] = {
     GOBJECT(custom_control, "CC", AC_CustomControl),
 #endif
 
-    GOBJECT(temperatureCopterSensor,                "TEMPC",         AP_TemperatureCopterSensor),
-
     // @Group:
     // @Path: Parameters.cpp
     GOBJECT(g2, "",  ParametersG2),

@@ -381,7 +381,6 @@ public:
         k_param_logger = 253, // 253 - Logging Group
 
         // 254,255: reserved
-        k_param_temperatureCopterSensor = 254,
 
         k_param_vehicle = 257, // vehicle common block of parameters
 

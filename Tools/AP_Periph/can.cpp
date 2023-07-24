@@ -1856,6 +1856,42 @@ void AP_Periph_FW::apd_esc_telem_update()
 #endif // HAL_PERIPH_ENABLE_ESC_APD
 #endif // HAL_PERIPH_ENABLE_RC_OUT
 
+#ifdef HAL_PERIPH_ENABLE_ESC_TEMPATURE
+void AP_Periph_FW::esc_tempature_update()
+{
+    // float tmmp;
+    static uint32_t last=0;
+    uint32_t now = AP_HAL::native_millis();
+    if((now - last) <1000)
+    {
+        return;
+    }
+    last = now;
+
+    for(uint8_t i = 0; i < 6; i++) {
+        uavcan_equipment_esc_Status pkt {};
+        pkt.esc_index = i;
+        pkt.voltage = 0;
+        pkt.current = 0;
+
+        // temperature_sensor.get_temperature(tmmp, i);
+        pkt.temperature = -200+i*10;
+        pkt.rpm = 0;
+      
+        uint8_t buffer[UAVCAN_EQUIPMENT_ESC_STATUS_MAX_SIZE] {};
+
+        uint16_t total_size = uavcan_equipment_esc_Status_encode(&pkt, buffer, !periph.canfdout());
+        canard_broadcast(UAVCAN_EQUIPMENT_ESC_STATUS_SIGNATURE,
+                        UAVCAN_EQUIPMENT_ESC_STATUS_ID,
+                        CANARD_TRANSFER_PRIORITY_LOW,
+                        &buffer[0],
+                        total_size);
+    }
+
+}
+#endif // 
+
+
 void AP_Periph_FW::can_update()
 {
     const uint32_t now = AP_HAL::native_millis();
@@ -1920,6 +1956,9 @@ void AP_Periph_FW::can_update()
     #endif
 #ifdef HAL_PERIPH_ENABLE_ESC_APD
         apd_esc_telem_update();
+#endif
+#ifdef HAL_PERIPH_ENABLE_ESC_TEMPATURE
+        esc_tempature_update();
 #endif
     #ifdef HAL_PERIPH_ENABLE_MSP
         msp_sensor_update();

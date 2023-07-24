@@ -18,23 +18,18 @@
  */
 
 #pragma once
-#include "AP_TemperatureCopterSensor_Backend.h"
+#include "AP_TemperatureSensor_Backend.h"
 
-#ifndef AP_TEMPERATURE_COPTER_SENSOR_ANALOG_ENABLED
-#define AP_TEMPERATURE_COPTER_SENSOR_ANALOG_ENABLED AP_TEMPERATURE_COPTER_SENSOR_ENABLED
-#endif
+#if AP_TEMPERATURE_SENSOR_ANALOG_ENABLED
 
-#if AP_TEMPERATURE_COPTER_SENSOR_ANALOG_ENABLED
+#define AP_BATT_VOLT_PIN            -1
+#define AP_BATT_VOLTDIVIDER_DEFAULT -1
 
-#define AP_BATT_VOLT_PIN                  -1
-#define AP_BATT_VOLTDIVIDER_DEFAULT                  -1
-
-class AP_TemperatureCopterSensor_Analog : public AP_TemperatureCopterSensor_Backend {
+class AP_TemperatureSensor_Analog : public AP_TemperatureSensor_Backend {
 public:
-    /// Constructor
-    AP_TemperatureCopterSensor_Analog(AP_TemperatureCopterSensor &mon, 
-                                        AP_TemperatureCopterSensor::TemperatureSensor_State &mon_state,
-                                        AP_TemperatureCopterSensor_Params &params);
+    AP_TemperatureSensor_Analog(AP_TemperatureSensor &mon, 
+                                AP_TemperatureSensor::TemperatureSensor_State &mon_state,
+                                AP_TemperatureSensor_Params &params);
 
     void init(void) override {};
 
@@ -47,9 +42,15 @@ protected:
     AP_HAL::AnalogSource *_volt_pin_analog_source;
     
     // Parameters
+    AP_Float _Rp; 
+    AP_Float _T2;    
+    AP_Float _B;
+    AP_Float _Vcc; 
+
     AP_Float _volt_multiplier;          /// voltage on volt pin multiplied by this to calculate battery voltage
     AP_Float _volt_offset;              /// offset voltage that is subtracted from voltage pin before conversion
     AP_Int8  _volt_pin;                 /// board pin used to measure battery voltage
+
 };
 
 

@@ -114,7 +114,6 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
     'AP_AIS',
     'AP_OpenDroneID',
     'AP_CheckFirmware',
-    'AP_TemperatureCopterSensor',
 
 ]
 

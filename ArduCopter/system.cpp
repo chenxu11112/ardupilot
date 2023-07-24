@@ -43,8 +43,6 @@ void Copter::init_ardupilot()
     // initialise battery monitor
     battery.init();
 
-    temperatureCopterSensor.init();
-
     // Init RSSI
     rssi.init();
     

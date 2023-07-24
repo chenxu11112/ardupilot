@@ -17,7 +17,6 @@
 #include <AP_MSP/AP_MSP.h>
 #include <AP_MSP/msp.h>
 #include <AP_TemperatureSensor/AP_TemperatureSensor.h>
-#include <AP_TemperatureCopterSensor/AP_TemperatureCopterSensor.h>
 
 #include "../AP_Bootloader/app_comms.h"
 #include <AP_CheckFirmware/AP_CheckFirmware.h>
@@ -276,9 +275,8 @@ public:
 #if AP_TEMPERATURE_SENSOR_ENABLED
     AP_TemperatureSensor temperature_sensor;
 #endif
-
-#if AP_TEMPERATURE_COPTER_SENSOR_ENABLED
-    AP_TemperatureCopterSensor temperature_copter_sensor;
+#ifdef HAL_PERIPH_ENABLE_ESC_TEMPATURE
+    void esc_tempature_update();
 #endif
 
 #if defined(HAL_PERIPH_ENABLE_NOTIFY) || defined(HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY)
