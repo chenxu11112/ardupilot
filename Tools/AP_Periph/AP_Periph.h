@@ -364,6 +364,11 @@ public:
         bool locked;
     } uart_monitor;
 #endif
+
+#ifdef HAL_RGB_FlIGHT_STAT_ENABLED
+    void RGB_FlIGHT_STAT_update(void);
+#endif
+
 };
 
 namespace AP

@@ -273,22 +273,31 @@ void AP_Periph_FW::init()
     scripting.init();
 #endif
 
-#ifdef HAL_GPIO_ESC_ENABLED
-    hal.gpio->pinMode(HAL_GPIO_ESC_PIN, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_GPIO_ESC_PIN, HAL_GPIO_ESC_CLOSE);
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
+    hal.gpio->pinMode(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_CLOSE);
 #endif
 
-
-#ifdef HAL_RGB_FlIGHT_STAT
+#ifdef HAL_RGB_FlIGHT_STAT_ENABLED
     hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
     hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
     hal.rcout->serial_led_send(4);
     hal.rcout->serial_led_send(5);
 #endif
 
-#ifdef HAL_FCU_PWR_ENABLED
-    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_PIN, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_GPIO_FCU_PWR_PIN, HAL_FCU_PWR_PIN_OPEN);
+#ifdef HAL_FCU_PWR_CTRL_ENABLED
+#   ifdef FCU_PWR_CTRL1 
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL1, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL1, HAL_FCU_PWR_PIN_OPEN);
+#   endif
+#   ifdef FCU_PWR_CTRL2
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL2, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL2, HAL_FCU_PWR_PIN_OPEN);
+#   endif
+#   ifdef FCU_PWR_CTRL3
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL3, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL3, HAL_FCU_PWR_PIN_OPEN);
+#   endif
 #endif
 
     start_ms = AP_HAL::native_millis();
@@ -502,31 +511,28 @@ void AP_Periph_FW::update()
     adsb_update();
 #endif
 
-#ifdef HAL_RGB_FlIGHT_STAT
+#ifdef HAL_RGB_FlIGHT_STAT_ENABLED
     RGB_FlIGHT_STAT_update();
 #endif
 }
 
-#ifdef HAL_RGB_FlIGHT_STAT
+#ifdef HAL_RGB_FlIGHT_STAT_ENABLED
 void AP_Periph_FW::RGB_FlIGHT_STAT_update()
 {
+    static uint32_t time_cur_ms = 0;
+    static uint32_t time_last_ms = 0;
+    static uint8_t flight_stat_cnt = 0;
+
     time_cur_ms = AP_HAL::millis();
     if((time_cur_ms - time_last_ms) < 25) {
        return;
     }
-
     time_last_ms = time_cur_ms;
 
     flight_stat_cnt++;
 
     switch(flight_stat_cnt) {
     case 50:
-        hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
-        hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
-        hal.rcout->serial_led_send(4);
-        hal.rcout->serial_led_send(5);
-    break;
-
     case 60:
         hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
         hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);

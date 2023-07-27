@@ -327,6 +327,13 @@ private:
     void handle_param_get_set_response(const CanardRxTransfer& transfer, const uavcan_protocol_param_GetSetResponse& rsp);
     void handle_param_save_response(const CanardRxTransfer& transfer, const uavcan_protocol_param_ExecuteOpcodeResponse& rsp);
     void handle_node_info_request(const CanardRxTransfer& transfer, const uavcan_protocol_GetNodeInfoRequest& req);
+
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
+    Canard::Publisher<uavcan_protocol_debug_KeyValue> debug_keyvalue{canard_iface};
+    uint32_t _last_esc_ctrl_ms;
+    void send_esc_ctrl_msg();
+    
+#endif
 };
 
 #endif // #if HAL_ENABLE_DRONECAN_DRIVERS

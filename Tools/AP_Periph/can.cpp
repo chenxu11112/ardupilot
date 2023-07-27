@@ -887,7 +887,7 @@ static void can_safety_button_update(void)
 }
 #endif // HAL_GPIO_PIN_SAFE_BUTTON
 
-#if defined(HAL_GPIO_ESC_ENABLED)
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
 static void handle_esc_control(CanardInstance* ins, CanardRxTransfer* transfer)
 {
     uavcan_protocol_debug_KeyValue msg;
@@ -899,13 +899,13 @@ static void handle_esc_control(CanardInstance* ins, CanardRxTransfer* transfer)
     {           
         printf("esc_control\n");
 
-        if (msg.value == HAL_GPIO_ESC_OPEN_NUM)
+        if ((int)msg.value == HAL_GPIO_ESC_OPEN_NUM)
         {
-            hal.gpio->write(HAL_GPIO_ESC_PIN, HAL_GPIO_ESC_OPEN);
+            hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_OPEN);
             printf("ESC_OPEN\n");
-        }else if (msg.value == HAL_GPIO_ESC_CLOSE_NUM)
+        }else if ((int)msg.value == HAL_GPIO_ESC_CLOSE_NUM)
         {
-            hal.gpio->write(HAL_GPIO_ESC_PIN, HAL_GPIO_ESC_CLOSE);
+            hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_CLOSE);
             printf("ESC_CLOSE\n");
         }
     }
@@ -1024,7 +1024,7 @@ static void onTransferReceived(CanardInstance* ins,
         break;
 #endif
 
-#ifdef HAL_GPIO_ESC_ENABLED
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
     case UAVCAN_PROTOCOL_DEBUG_KEYVALUE_ID:
         handle_esc_control(ins, transfer);
         break;

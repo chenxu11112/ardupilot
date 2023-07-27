@@ -373,6 +373,10 @@ void AP_DroneCAN::loop(void)
         send_node_status();
         _dna_server.verify_nodes();
 
+#ifdef  HAL_GPIO_ESC_CTRL_ENABLED
+        send_esc_ctrl_msg();
+#endif
+
 #if AP_DRONECAN_SEND_GPS
         if (option_is_set(AP_DroneCAN::Options::SEND_GNSS) && !AP_GPS_DroneCAN::instance_exists(this)) {
             // send if enabled and this interface/driver is not used by the AP_GPS driver
@@ -1070,6 +1074,35 @@ void AP_DroneCAN::safety_state_send()
         arming_status.broadcast(arming_msg);
     }
 }
+
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
+void AP_DroneCAN::send_esc_ctrl_msg()
+{
+    uint32_t now = AP_HAL::native_millis();
+    if (now - _last_esc_ctrl_ms < 1000) {
+        // update at 1Hz
+        return;
+    } 
+    _last_esc_ctrl_ms = now;
+
+    uavcan_protocol_debug_KeyValue keyvalue_msg;
+
+    uint16_t value = hal.rcin->read(HAL_GPIO_ESC_RC_CH);
+
+    if(value > 1700 && value < 2100)
+    {
+        keyvalue_msg.value = HAL_GPIO_ESC_OPEN_NUM;
+    }
+    else if(value < 1500 && value > 1000)
+    {
+        keyvalue_msg.value = HAL_GPIO_ESC_CLOSE_NUM;
+    }
+    keyvalue_msg.key.len = sizeof("esc_control") - 1;
+    strncpy_noterm((char*)keyvalue_msg.key.data, "esc_control", sizeof("esc_control") - 1);
+
+    debug_keyvalue.broadcast(keyvalue_msg);
+}
+#endif
 
 /*
   handle Button message
