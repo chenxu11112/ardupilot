@@ -897,16 +897,16 @@ static void handle_esc_control(CanardInstance* ins, CanardRxTransfer* transfer)
 
     if (strncmp((char*)msg.key.data, "esc_control", sizeof("esc_control") - 1) == 0)
     {           
-        printf("esc_control\n");
+        // printf("esc_control\r\n");
 
         if ((int)msg.value == HAL_GPIO_ESC_OPEN_NUM)
         {
             hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_OPEN);
-            printf("ESC_OPEN\n");
+            // printf("ESC_OPEN\r\n");
         }else if ((int)msg.value == HAL_GPIO_ESC_CLOSE_NUM)
         {
             hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_CLOSE);
-            printf("ESC_CLOSE\n");
+            // printf("ESC_CLOSE\r\n");
         }
     }
 }
@@ -1128,7 +1128,7 @@ static bool shouldAcceptTransfer(const CanardInstance* ins,
         *out_data_type_signature = ARDUPILOT_INDICATION_NOTIFYSTATE_SIGNATURE;
         return true;
 #endif
-#ifdef HAL_GPIO_ESC_ENABLED
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
     case UAVCAN_PROTOCOL_DEBUG_KEYVALUE_ID:
         *out_data_type_signature = UAVCAN_PROTOCOL_DEBUG_KEYVALUE_SIGNATURE;
         return true;

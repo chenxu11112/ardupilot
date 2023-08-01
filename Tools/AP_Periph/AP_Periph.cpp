@@ -98,6 +98,36 @@ void AP_Periph_FW::init()
 
     stm32_watchdog_pat();
 
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
+    hal.gpio->pinMode(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_CLOSE);
+#endif
+
+#ifdef HAL_RGB_FlIGHT_STAT_ENABLED
+    hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
+    hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
+    hal.rcout->serial_led_send(4);
+    hal.rcout->serial_led_send(5);
+
+#endif
+
+#ifdef HAL_FCU_PWR_CTRL_ENABLED
+#   ifdef HAL_GPIO_FCU_PWR_CTRL1 
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL1, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL1, HAL_FCU_PWR_PIN_OPEN);
+#   endif
+#   ifdef HAL_GPIO_FCU_PWR_CTRL2
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL2, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL2, HAL_FCU_PWR_PIN_OPEN);
+#   endif
+#   ifdef HAL_GPIO_FCU_PWR_CTRL3
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL3, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL3, HAL_FCU_PWR_PIN_OPEN);
+#   endif
+#endif
+    hal.gpio->pinMode(HAL_TEMP_FAN2, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_TEMP_FAN2, 0);
+
     can_start();
 
 #if HAL_GCS_ENABLED
@@ -271,33 +301,6 @@ void AP_Periph_FW::init()
 
 #if AP_SCRIPTING_ENABLED
     scripting.init();
-#endif
-
-#ifdef HAL_GPIO_ESC_CTRL_ENABLED
-    hal.gpio->pinMode(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_CLOSE);
-#endif
-
-#ifdef HAL_RGB_FlIGHT_STAT_ENABLED
-    hal.rcout->set_serial_led_rgb_data(4, -1, 0, 255, 0);
-    hal.rcout->set_serial_led_rgb_data(5, -1, 255, 0, 0);
-    hal.rcout->serial_led_send(4);
-    hal.rcout->serial_led_send(5);
-#endif
-
-#ifdef HAL_FCU_PWR_CTRL_ENABLED
-#   ifdef FCU_PWR_CTRL1 
-    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL1, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL1, HAL_FCU_PWR_PIN_OPEN);
-#   endif
-#   ifdef FCU_PWR_CTRL2
-    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL2, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL2, HAL_FCU_PWR_PIN_OPEN);
-#   endif
-#   ifdef FCU_PWR_CTRL3
-    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL3, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL3, HAL_FCU_PWR_PIN_OPEN);
-#   endif
 #endif
 
     start_ms = AP_HAL::native_millis();

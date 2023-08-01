@@ -77,14 +77,14 @@ void AP_TemperatureSensor_Analog::update()
     {
         return;
     }
+    if(_volt_pin_analog_source->set_pin(_volt_pin)==false)
+    {
+        return;
+    }
 
     float voltage = (_volt_pin_analog_source->voltage_average() - _volt_offset) * _volt_multiplier;
-
-    float rt = (_Vcc - voltage) / (voltage / _Rp);
-
-    _state.temperature = 1 / ((_T2 + KELVIN_ZEROS_TEMPATURE) + logf(rt / _Rp) / _B) - KELVIN_ZEROS_TEMPATURE;
-
-    hal.console->printf("_state.temperature=%f\r",_state.temperature);
+    float rt = voltage / ((_Vcc - voltage) / _Rp);
+    _state.temperature = 1.0f / (logF(rt/_Rp)/_B + 1.0f/(_T2+KELVIN_ZEROS_TEMPATURE)) - KELVIN_ZEROS_TEMPATURE;
 }
 
 #endif // AP_TEMPERATURE_COPTER_SENSOR_ANALOG_ENABLED

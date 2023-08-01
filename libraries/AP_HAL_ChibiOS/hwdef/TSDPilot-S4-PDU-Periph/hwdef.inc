@@ -83,10 +83,10 @@ define AP_BATT_MONITOR_MAX_INSTANCES 1
 
 define HAL_BATT_MONITOR_DEFAULT 4
 
-define HAL_BATT_VOLT_PIN 12
+define HAL_BATT_VOLT_PIN 13
 define HAL_BATT_VOLT_SCALE 21.0
 
-define HAL_BATT_CURR_PIN 13
+define HAL_BATT_CURR_PIN 12
 define HAL_BATT_CURR_SCALE 50.0
 
 # -------------------- Buzzer+NeoPixels --------------------

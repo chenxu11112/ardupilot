@@ -1089,11 +1089,11 @@ void AP_DroneCAN::send_esc_ctrl_msg()
 
     uint16_t value = hal.rcin->read(HAL_GPIO_ESC_RC_CH);
 
-    if(value > 1700 && value < 2100)
+    if(value > 1700 )
     {
         keyvalue_msg.value = HAL_GPIO_ESC_OPEN_NUM;
     }
-    else if(value < 1500 && value > 1000)
+    else if(value < 1500 )
     {
         keyvalue_msg.value = HAL_GPIO_ESC_CLOSE_NUM;
     }
