@@ -41,8 +41,7 @@ AC_BalanceControl::AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_R
     Encoder_bias_filter = 0.84f;
 
     _moveflag_x = moveFlag::none;
-        _moveflag_z = moveFlag::none;
-
+    _moveflag_z = moveFlag::none;
 }
 
 /**************************************************************************
@@ -57,9 +56,9 @@ float AC_BalanceControl::Balance(float Angle, float Gyro)
 {
     float Angle_bias, Gyro_bias;
     float balance;
-    Angle_bias = _zero_angle - Angle;                                   // 求出平衡的角度中值 和机械相关
-    Gyro_bias = 0 - Gyro;
-    balance = _balance_bal_p * Angle_bias + Gyro_bias * _balance_bal_d; // 计算平衡控制的电机PWM  PD控制   kp是P系数 kd是D系数
+    Angle_bias = _zero_angle - Angle;                                      // 求出平衡的角度中值 和机械相关
+    Gyro_bias  = 0 - Gyro;
+    balance    = _balance_bal_p * Angle_bias + Gyro_bias * _balance_bal_d; // 计算平衡控制的电机PWM  PD控制   kp是P系数 kd是D系数
     return balance;
 }
 
@@ -87,13 +86,13 @@ float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
     }
 
     //================速度PI控制器=====================//
-    Encoder_Least = Movement - (encoder_left + encoder_right);        // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
+    Encoder_Least = Movement - (encoder_left + encoder_right); // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
 
     Encoder_bias *= Encoder_bias_filter;                       // 一阶低通滤波器
     Encoder_bias += Encoder_Least * (1 - Encoder_bias_filter); // 一阶低通滤波器，减缓速度变化
 
     Encoder_Integral += Encoder_bias;                          // 积分出位移 积分时间：10ms
-    Encoder_Integral = Encoder_Integral;            // 接收遥控器数据，控制前进后退
+    Encoder_Integral = Encoder_Integral;                       // 接收遥控器数据，控制前进后退
 
     if (Encoder_Integral > AC_BALANCE_VELOCITY_IMAX)
         Encoder_Integral = AC_BALANCE_VELOCITY_IMAX;                                        // 积分限幅
@@ -116,7 +115,7 @@ Output  : Turn control PWM
 float AC_BalanceControl::Turn(float gyro)
 {
     static float Turn_Target, turn;
-    float Kp = _balance_turn_p, Kd; // 修改转向速度，请修改Turn_Amplitude即可
+    float        Kp = _balance_turn_p, Kd; // 修改转向速度，请修改Turn_Amplitude即可
 
     //===================遥控左右旋转部分=================//
     if (_moveflag_z == moveFlag::moveLeft)
@@ -141,53 +140,64 @@ float AC_BalanceControl::Turn(float gyro)
 
 void AC_BalanceControl::balance_all_control(void)
 {
+    static float   _wheel_left_f, _wheel_right_f;
     static int16_t _wheel_left_int, _wheel_right_int;
-    static float _wheel_left_f, _wheel_right_f;
-    static float motor_target_left_f,motor_target_right_f;
+    static float   motor_target_left_f, motor_target_right_f;
     static int16_t motor_target_left_int, motor_target_right_int;
 
     static float angle_y, gyro_y, gyro_z;
 
     _rmuart.getWheelSpeed(_wheel_left_int, _wheel_right_int);
-    _wheel_left_f = (float)_wheel_left_int / _max_speed;
+    _wheel_left_f  = (float)_wheel_left_int / _max_speed;
     _wheel_right_f = (float)_wheel_right_int / _max_speed;
 
     angle_y = _ahrs.pitch;
-    gyro_y = _ahrs.get_gyro_latest()[1];
-    gyro_z = _ahrs.get_gyro_latest()[2];
+    gyro_y  = _ahrs.get_gyro_latest()[1];
+    gyro_z  = _ahrs.get_gyro_latest()[2];
 
-    control_balance = Balance(angle_y, gyro_y);           // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
+    control_balance  = Balance(angle_y, gyro_y);                // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
     control_velocity = Velocity(_wheel_left_f, _wheel_right_f); // 速度环PID控制	记住，速度反馈是正反馈，就是小车快的时候要慢下来就需要再跑快一点
-    control_turn = Turn(gyro_z);                          // 转向环PID控制
+    control_turn     = Turn(gyro_z);                            // 转向环PID控制
 
     // motor值正数使小车前进，负数使小车后退, 范围【-1，1】
-    motor_target_left_f = control_balance + control_velocity + control_turn;  // 计算左轮电机最终PWM
+    motor_target_left_f  = control_balance + control_velocity + control_turn; // 计算左轮电机最终PWM
     motor_target_right_f = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
 
-    motor_target_left_int = (int16_t)(motor_target_left_f * _max_speed);
+    motor_target_left_int  = (int16_t)(motor_target_left_f * _max_speed);
     motor_target_right_int = (int16_t)(motor_target_right_f * _max_speed);
+
+    switch (_motors.get_spool_state()) {
+    case AP_Motors::SpoolState::SPOOLING_UP:
+    case AP_Motors::SpoolState::THROTTLE_UNLIMITED:
+    case AP_Motors::SpoolState::SPOOLING_DOWN:
+        motor_target_left_int  = 0;
+        motor_target_right_int = 0;
+        break;
+
+    case AP_Motors::SpoolState::GROUND_IDLE:
+    case AP_Motors::SpoolState::SHUT_DOWN:
+    default:
+        break;
+    }
 
     _rmuart.setWheelSpeed(motor_target_left_int, motor_target_right_int);
 
     uint16_t pwm_x = hal.rcin->read(CH_7);
     uint16_t pwm_z = hal.rcin->read(CH_6);
 
-    if(pwm_x < 1300) {
-        _moveflag_x =  moveFlag::moveBack;
-    } else if(pwm_x > 1700) {
-        _moveflag_x =  moveFlag::moveFront;
+    if (pwm_x < 1300) {
+        _moveflag_x = moveFlag::moveBack;
+    } else if (pwm_x > 1700) {
+        _moveflag_x = moveFlag::moveFront;
     } else {
         _moveflag_x = moveFlag::none;
     }
-    
-    if(pwm_z < 1300) {
-        _moveflag_z =  moveFlag::moveLeft;
-    } else if(pwm_z > 1700) {
-        _moveflag_z =  moveFlag::moveRight;
+
+    if (pwm_z < 1300) {
+        _moveflag_z = moveFlag::moveLeft;
+    } else if (pwm_z > 1700) {
+        _moveflag_z = moveFlag::moveRight;
     } else {
         _moveflag_z = moveFlag::none;
     }
-
-
-
 }
