@@ -61,7 +61,7 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorRightJoint, SERVO_OUTPUT_RANGE);
 
     //leftjoint servo defaults to servo output 6
-    SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorLeftJoint,CH_8);
+    SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorLeftJoint, CH_8);
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeftJoint,SERVO_OUTPUT_RANGE);
 
     _mav_type = MAV_TYPE_VTOL_DUOROTOR;
@@ -126,23 +126,9 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
 
-    // 平衡车 电机的输出范围: 0~2000
-
-    // 直立环 _balancebot_throttle_in 输出范围: -1~1， 这里 _balancebot_throttle_in_factor 为放大系数
-    // const float _balancebot_throttle_in_factor = 500;
-    // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, 1000 + _balancebot_throttle_in * _balancebot_throttle_in_factor);
-    // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, 1000 + _balancebot_throttle_in *  _balancebot_throttle_in_factor);
-
-    // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorLeftWheel, 500);
-    // SRV_Channels::set_output_pwm(SRV_Channel::k_speedMotorRightWheel, 500);
-
-    // SRV_Channels::set_output_scaled(SRV_Channel::k_speedMotorLeftWheel, _speed_leftwheel*SERVO_OUTPUT_RANGE);
-    // SRV_Channels::set_output_scaled(SRV_Channel::k_speedMotorRightWheel, _speed_rightwheel*SERVO_OUTPUT_RANGE);
-
-    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftJoint,_tilt_leftjoint*SERVO_OUTPUT_RANGE);
-    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightJoint,_tilt_rightjoint*SERVO_OUTPUT_RANGE);
-
-
+    // 平衡车 轮腿舵机
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftJoint, -_tilt_leftjoint * SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightJoint, +_tilt_rightjoint * SERVO_OUTPUT_RANGE);
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -246,10 +232,10 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     _tilt_left  = pitch_thrust - yaw_thrust;
     _tilt_right = pitch_thrust + yaw_thrust;
 
-    _speed_leftwheel = pitch_thrust * 0.3f - yaw_thrust * 0.5f;  //添加左右两个足部电机
-    _speed_rightwheel = pitch_thrust * 0.3f + yaw_thrust * 0.5f;
-    _tilt_leftjoint = pitch_thrust * 0.5f - yaw_thrust * 0.5f;  //添加左右两个关节舵机
-    _tilt_rightjoint = pitch_thrust * 0.5f + yaw_thrust * 0.5f;
+    // _speed_leftwheel = pitch_thrust * 0.3f - yaw_thrust * 0.5f;  //添加左右两个足部电机
+    // _speed_rightwheel = pitch_thrust * 0.3f + yaw_thrust * 0.5f;
+    // _tilt_leftjoint = pitch_thrust * 0.5f - yaw_thrust * 0.5f;  //添加左右两个关节舵机
+    // _tilt_rightjoint = pitch_thrust * 0.5f + yaw_thrust * 0.5f;
 
 }
 

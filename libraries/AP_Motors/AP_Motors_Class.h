@@ -265,6 +265,8 @@ public:
     // direct motor write
     virtual void        rc_write(uint8_t chan, uint16_t pwm);
 
+    virtual void    set_roll_out(float rollout) {}
+
 #if AP_SCRIPTING_ENABLED
     void set_frame_string(const char * str);
 #endif

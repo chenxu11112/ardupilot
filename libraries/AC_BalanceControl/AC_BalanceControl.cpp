@@ -28,6 +28,8 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
 
     AP_GROUPINFO("TAR_SPEED_Z", 10, AC_BalanceControl, Target_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
 
+    AP_SUBGROUPINFO(_pid_roll, "ROL_", 11, AC_BalanceControl, AC_PID),
+
     AP_GROUPEND
 };
 
@@ -35,10 +37,20 @@ AC_BalanceControl::AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_R
     : _motors(motors)
     , _ahrs(ahrs)
     , _rmuart(rmuart)
+    , _pid_roll(AC_BALANCE_ROLL_P,
+                AC_BALANCE_ROLL_I,
+                AC_BALANCE_ROLL_D,
+                0.0f,
+                AC_BALANCE_ROLL_IMAX,
+                AC_BALANCE_ROLL_TARGET_FILT_HZ,
+                AC_BALANCE_ROLL_ERROR_FILT_HZ,
+                0.0f)
 {
     AP_Param::setup_object_defaults(this, var_info);
 
     Encoder_bias_filter = 0.84f;
+
+    _dt = 1.0f / 400.0f;
 
     _moveflag_x = moveFlag::none;
     _moveflag_z = moveFlag::none;
@@ -138,6 +150,15 @@ float AC_BalanceControl::Turn(float gyro)
     return turn;                         // 转向环PWM右转为正，左转为负
 }
 
+void AC_BalanceControl::RollControl(float roll)
+{
+    float roll_out;
+
+    roll_out = _pid_roll.update_all(0.0f, roll, _dt);
+
+    _motors.set_roll_out(roll_out); // -1 ~ 1
+}
+
 void AC_BalanceControl::balance_all_control(void)
 {
     static float   _wheel_left_f, _wheel_right_f;
@@ -158,6 +179,8 @@ void AC_BalanceControl::balance_all_control(void)
     control_balance  = Balance(angle_y, gyro_y);                // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
     control_velocity = Velocity(_wheel_left_f, _wheel_right_f); // 速度环PID控制	记住，速度反馈是正反馈，就是小车快的时候要慢下来就需要再跑快一点
     control_turn     = Turn(gyro_z);                            // 转向环PID控制
+
+    RollControl(_ahrs.roll);                                    // 腿部舵机控制
 
     // motor值正数使小车前进，负数使小车后退, 范围【-1，1】
     motor_target_left_f  = control_balance + control_velocity + control_turn; // 计算左轮电机最终PWM

@@ -13,22 +13,29 @@
 
 // default rate controller PID gains
 
-#define AC_BALANCE_BALANCE_P 0.5
-#define AC_BALANCE_BALANCE_D 0.1f
+#define AC_BALANCE_BALANCE_P           0.5
+#define AC_BALANCE_BALANCE_D           0.1f
 
-#define AC_BALANCE_VELOCITY_P    0.5f
-#define AC_BALANCE_VELOCITY_I    0.05f
-#define AC_BALANCE_VELOCITY_IMAX 1.0f
+#define AC_BALANCE_VELOCITY_P          0.5f
+#define AC_BALANCE_VELOCITY_I          0.05f
+#define AC_BALANCE_VELOCITY_IMAX       1.0f
 
-#define AC_BALANCE_TURN_P    0.3f
-#define AC_BALANCE_TURN_D    0.1f
+#define AC_BALANCE_TURN_P              0.3f
+#define AC_BALANCE_TURN_D              0.1f
 
-#define AC_BALANCE_ZERO_ANGLE 0.0f
+#define AC_BALANCE_ZERO_ANGLE          0.0f
 
-#define AC_BALANCE_MAX_SPEED 10000.0f
+#define AC_BALANCE_MAX_SPEED           10000.0f
 
-#define AC_BALANCE_TARGET_X_SPEED 1.0f
-#define AC_BALANCE_TARGET_Z_SPEED 1.0f
+#define AC_BALANCE_TARGET_X_SPEED      1.0f
+#define AC_BALANCE_TARGET_Z_SPEED      1.0f
+
+#define AC_BALANCE_ROLL_P              0.5f
+#define AC_BALANCE_ROLL_I              0.2
+#define AC_BALANCE_ROLL_D              0.01f
+#define AC_BALANCE_ROLL_IMAX           1.0f
+#define AC_BALANCE_ROLL_TARGET_FILT_HZ 0.135f
+#define AC_BALANCE_ROLL_ERROR_FILT_HZ  2.5f
 
 class AC_BalanceControl {
 public:
@@ -41,21 +48,23 @@ public:
     float Velocity(float encoder_left, float encoder_right);
     float Turn(float gyro);
 
+    void RollControl(float roll);
+
     void balance_all_control(void);
 
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
-    AP_Motors& _motors;
+    AP_Motors&          _motors;
     const AP_AHRS_View& _ahrs;
-    AP_RMUART& _rmuart;
+    AP_RMUART&          _rmuart;
 
     enum moveFlag {
-        none = 0,
+        none      = 0,
         moveFront = 1,
-        moveBack = 2,
+        moveBack  = 2,
         moveRight = 3,
-        moveLeft = 4,
+        moveLeft  = 4,
     };
 
 protected:
@@ -69,12 +78,14 @@ protected:
     AP_Float _balance_turn_p;
     AP_Float _balance_turn_d;
 
-    AP_Float _zero_angle;      // 机械零值
+    AP_Float _zero_angle; // 机械零值
 
-    AP_Float _max_speed;  
+    AP_Float _max_speed;
 
     AP_Float Target_Velocity_X;
     AP_Float Target_Velocity_Z;
+
+    AC_PID _pid_roll;
 
     float Encoder_bias_filter; // 一阶低通滤波器
 
@@ -83,6 +94,5 @@ protected:
 
     float control_balance, control_velocity, control_turn;
 
-    
-
+    float _dt;
 };
