@@ -33,7 +33,7 @@ public:
     // Set by tailsitters using diskloading minumum outflow velocity limit
     void set_min_throttle(float val) {_external_min_throttle = val;}
 
-    void set_roll_out(float rollout){ _roll_out = rollout;}
+    void set_roll_out(float rollout) override { _roll_out = rollout;} 
 
 protected:
     // calculate motor outputs
