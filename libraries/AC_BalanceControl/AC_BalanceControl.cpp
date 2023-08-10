@@ -57,7 +57,7 @@ AC_BalanceControl::AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_R
     _moveflag_x = moveFlag::none;
     _moveflag_z = moveFlag::none;
 
-    balanceMode = ground;
+    balanceMode = BalanceMode::ground;
 }
 
 /**************************************************************************
@@ -194,19 +194,19 @@ void AC_BalanceControl::balance_all_control(void)
     /////////////////////////////////////////////////////////////////
     Vector3f acc { 0, 0, 0 };
     switch (balanceMode) {
-    case ground:
+    case BalanceMode::ground:
         if ((hal.rcin->read(CH_3) > 1400) && (_motors.armed())) {
-            balanceMode = flying_with_balance;
+            balanceMode = BalanceMode::flying_with_balance;
         }
         break;
 
-    case flying_with_balance:
+    case BalanceMode::flying_with_balance:
         if ((hal.rcin->read(CH_8) > 1600)) {
-            balanceMode = flying_without_balance;
+            balanceMode = BalanceMode::flying_without_balance;
         }
         break;
 
-    case flying_without_balance:
+    case BalanceMode::flying_without_balance:
         set_control_zeros();
 
         motor_target_left_int  = 0.0f;
@@ -216,13 +216,13 @@ void AC_BalanceControl::balance_all_control(void)
         if (acc.length() > 15.0f) {
             printf("acc:%f\r\n", acc.length());
 
-            balanceMode = landing_check;
+            balanceMode = BalanceMode::landing_check;
         }
         break;
 
-    case landing_check:
+    case BalanceMode::landing_check:
         printf("landing_check\r\n");
-        balanceMode = ground;
+        balanceMode = BalanceMode::ground;
         break;
 
     default:
