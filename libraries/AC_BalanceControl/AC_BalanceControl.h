@@ -69,6 +69,13 @@ public:
         moveLeft  = 4,
     };
 
+    enum BalanceMode {
+        ground                 = 0,
+        flying_with_balance    = 1,
+        flying_without_balance = 2,
+        landing_check          = 3,
+    };
+
 protected:
     AP_Float _balance_bal_p;
     AP_Float _balance_bal_d;
@@ -114,4 +121,6 @@ protected:
     float control_balance, control_velocity, control_turn;
 
     float _dt;
+
+    enum BalanceMode balanceMode;
 };

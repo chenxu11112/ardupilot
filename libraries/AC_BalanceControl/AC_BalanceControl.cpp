@@ -190,31 +190,41 @@ void AC_BalanceControl::balance_all_control(void)
     motor_target_right_int = (int16_t)(motor_target_right_f * _max_speed);
 
     /////////////////////////////////////////////////////////////////
-    if ((hal.rcin->read(CH_8) > 1600)) {
-        if (hal.rcin->read(CH_3) < 1400) {
-            Vector3f vel;
-            if (_ahrs.get_velocity_NED(vel) == false) {
-                printf("no ekf\r\n");
-            }
-
-            Vector3f acc;
-            acc = _ahrs.get_accel_ef();
-
-            if (acc.length() > 15.0f) {
-                printf("vel:%f, acc:%f\r\n", vel.length(), acc.length());
-
-            } else {
-                set_control_zeros();
-
-                motor_target_left_int  = 0.0f;
-                motor_target_right_int = 0.0f;
-            }
-        } else {
-            set_control_zeros();
-
-            motor_target_left_int  = 0.0f;
-            motor_target_right_int = 0.0f;
+    Vector3f acc { 0, 0, 0 };
+    switch (balanceMode) {
+    case ground:
+        if ((hal.rcin->read(CH_3) > 1400) && (_motors.armed())) {
+            balanceMode = flying_with_balance;
         }
+        break;
+
+    case flying_with_balance:
+        if ((hal.rcin->read(CH_8) > 1600)) {
+            balanceMode = flying_without_balance;
+        }
+        break;
+
+    case flying_without_balance:
+        set_control_zeros();
+
+        motor_target_left_int  = 0.0f;
+        motor_target_right_int = 0.0f;
+
+        acc = _ahrs.get_accel_ef();
+        if (acc.length() > 15.0f) {
+            printf("acc:%f\r\n", acc.length());
+
+            balanceMode = landing_check;
+        }
+        break;
+
+    case landing_check:
+        printf("landing_check\r\n");
+        balanceMode = ground;
+        break;
+
+    default:
+        break;
     }
 
     _rmuart.setWheelSpeed(motor_target_left_int, motor_target_right_int);
