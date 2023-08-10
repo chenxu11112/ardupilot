@@ -196,12 +196,15 @@ void AC_BalanceControl::balance_all_control(void)
     switch (balanceMode) {
     case BalanceMode::ground:
         if ((hal.rcin->read(CH_3) > 1400) && (_motors.armed())) {
+            printf("flying_with_balance\r\n");
             balanceMode = BalanceMode::flying_with_balance;
         }
         break;
 
     case BalanceMode::flying_with_balance:
         if ((hal.rcin->read(CH_8) > 1600)) {
+            printf("flying_without_balance\r\n");
+
             balanceMode = BalanceMode::flying_without_balance;
         }
         break;
@@ -213,16 +216,18 @@ void AC_BalanceControl::balance_all_control(void)
         motor_target_right_int = 0.0f;
 
         acc = _ahrs.get_accel_ef();
-        if (acc.length() > 15.0f) {
+        if ((acc.length() > 15.0f) && (hal.rcin->read(CH_3) < 1450)) {
             printf("acc:%f\r\n", acc.length());
+            printf("landing_check\r\n");
 
             balanceMode = BalanceMode::landing_check;
         }
         break;
 
     case BalanceMode::landing_check:
-        printf("landing_check\r\n");
+        _motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::SHUT_DOWN);
         balanceMode = BalanceMode::ground;
+        printf("ground\r\n");
         break;
 
     default:

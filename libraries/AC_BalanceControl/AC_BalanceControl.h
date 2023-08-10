@@ -54,6 +54,8 @@ public:
 
     void set_control_zeros(void);
 
+    uint8_t get_Balance_Mode() { return balanceMode; }
+
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 

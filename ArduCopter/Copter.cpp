@@ -641,6 +641,9 @@ void Copter::update_RMUART()
 
     balanceControl->balance_all_control();
 
+    if (balanceControl->get_Balance_Mode() == AC_BalanceControl::landing_check) {
+        arming.disarm(AP_Arming::Method::AUXSWITCH);
+    }
     rmuart.Send();
 }
 
