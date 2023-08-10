@@ -56,6 +56,8 @@ AC_BalanceControl::AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_R
 
     _moveflag_x = moveFlag::none;
     _moveflag_z = moveFlag::none;
+
+    balanceMode = ground;
 }
 
 /**************************************************************************
