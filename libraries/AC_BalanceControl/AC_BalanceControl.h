@@ -52,6 +52,8 @@ public:
 
     void balance_all_control(void);
 
+    void set_control_zeros(void);
+
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -87,7 +89,24 @@ protected:
 
     AC_PID _pid_roll;
 
+    ///////////////////////////////////////////////////////
+    // 平衡环参数
+    float Balance_Angle_bias;
+    float Balance_Gyro_bias;
+
+    ///////////////////////////////////////////////////////
+    // 速度环参数
     float Encoder_bias_filter; // 一阶低通滤波器
+    float Encoder_Integral;    // 速度积分
+    float Encoder_Least;       // 速度误差
+    float Encoder_bias;        // 速度偏置
+    float Encoder_Movement;    // 速度运动
+
+    ///////////////////////////////////////////////////////
+    // 转向环参数
+    float Turn_Target;
+    float Turn_Kp;
+    float Turn_Kd;
 
     uint8_t _moveflag_x;
     uint8_t _moveflag_z;

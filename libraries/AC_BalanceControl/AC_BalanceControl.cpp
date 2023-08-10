@@ -2,6 +2,8 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 
+#include "stdio.h"
+
 extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
@@ -66,11 +68,10 @@ Output  : balance：Vertical control PWM
 **************************************************************************/
 float AC_BalanceControl::Balance(float Angle, float Gyro)
 {
-    float Angle_bias, Gyro_bias;
     float balance;
-    Angle_bias = _zero_angle - Angle;                                      // 求出平衡的角度中值 和机械相关
-    Gyro_bias  = 0 - Gyro;
-    balance    = _balance_bal_p * Angle_bias + Gyro_bias * _balance_bal_d; // 计算平衡控制的电机PWM  PD控制   kp是P系数 kd是D系数
+    Balance_Angle_bias = _zero_angle - Angle;                                                      // 求出平衡的角度中值 和机械相关
+    Balance_Gyro_bias  = 0 - Gyro;
+    balance            = _balance_bal_p * Balance_Angle_bias + Balance_Gyro_bias * _balance_bal_d; // 计算平衡控制的电机PWM  PD控制   kp是P系数 kd是D系数
     return balance;
 }
 
@@ -85,26 +86,25 @@ Output  : Speed control PWM
 // 修改前进后退速度，请修改Target_Velocity，比如，改成60就比较慢了
 float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
 {
-    static float velocity, Encoder_Least, Encoder_bias, Movement;
-    static float Encoder_Integral;
+    float velocity;
 
     //================遥控前进后退部分====================//
     if (_moveflag_x == moveFlag::moveFront) {
-        Movement = Target_Velocity_X;  // 收到前进信号
+        Encoder_Movement = Target_Velocity_X;  // 收到前进信号
     } else if (_moveflag_x == moveFlag::moveBack) {
-        Movement = -Target_Velocity_X; // 收到后退信号
+        Encoder_Movement = -Target_Velocity_X; // 收到后退信号
     } else {
-        Movement = 0;
+        Encoder_Movement = 0;
     }
 
     //================速度PI控制器=====================//
-    Encoder_Least = Movement - (encoder_left + encoder_right); // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
+    Encoder_Least = Encoder_Movement - (encoder_left + encoder_right); // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
 
-    Encoder_bias *= Encoder_bias_filter;                       // 一阶低通滤波器
-    Encoder_bias += Encoder_Least * (1 - Encoder_bias_filter); // 一阶低通滤波器，减缓速度变化
+    Encoder_bias *= Encoder_bias_filter;                               // 一阶低通滤波器
+    Encoder_bias += Encoder_Least * (1 - Encoder_bias_filter);         // 一阶低通滤波器，减缓速度变化
 
-    Encoder_Integral += Encoder_bias;                          // 积分出位移 积分时间：10ms
-    Encoder_Integral = Encoder_Integral;                       // 接收遥控器数据，控制前进后退
+    Encoder_Integral += Encoder_bias;                                  // 积分出位移 积分时间：10ms
+    Encoder_Integral = Encoder_Integral;                               // 接收遥控器数据，控制前进后退
 
     if (Encoder_Integral > AC_BALANCE_VELOCITY_IMAX)
         Encoder_Integral = AC_BALANCE_VELOCITY_IMAX;                                        // 积分限幅
@@ -126,9 +126,9 @@ Output  : Turn control PWM
 **************************************************************************/
 float AC_BalanceControl::Turn(float gyro)
 {
-    static float Turn_Target, turn;
-    float        Kp = _balance_turn_p, Kd; // 修改转向速度，请修改Turn_Amplitude即可
+    float turn;
 
+    Turn_Kp = _balance_turn_p;
     //===================遥控左右旋转部分=================//
     if (_moveflag_z == moveFlag::moveLeft)
         Turn_Target = -Target_Velocity_Z;
@@ -142,12 +142,12 @@ float AC_BalanceControl::Turn(float gyro)
     // else
     //     Kd = 0; // 转向的时候取消陀螺仪的纠正 有点模糊PID的思想
 
-    Kd = _balance_turn_d;
+    Turn_Kd = _balance_turn_d;
 
     //===================转向PD控制器=================//
-    turn = Turn_Target * Kp + gyro * Kd; // 结合Z轴陀螺仪进行PD控制
+    turn = Turn_Target * Turn_Kp + gyro * Turn_Kd; // 结合Z轴陀螺仪进行PD控制
 
-    return turn;                         // 转向环PWM右转为正，左转为负
+    return turn;                                   // 转向环PWM右转为正，左转为负
 }
 
 void AC_BalanceControl::RollControl(float roll)
@@ -189,18 +189,32 @@ void AC_BalanceControl::balance_all_control(void)
     motor_target_left_int  = (int16_t)(motor_target_left_f * _max_speed);
     motor_target_right_int = (int16_t)(motor_target_right_f * _max_speed);
 
-    switch (_motors.get_spool_state()) {
-    case AP_Motors::SpoolState::SPOOLING_UP:
-    case AP_Motors::SpoolState::THROTTLE_UNLIMITED:
-    case AP_Motors::SpoolState::SPOOLING_DOWN:
-        motor_target_left_int  = 0;
-        motor_target_right_int = 0;
-        break;
+    /////////////////////////////////////////////////////////////////
+    if ((hal.rcin->read(CH_8) > 1600)) {
+        if (hal.rcin->read(CH_3) < 1400) {
+            Vector3f vel;
+            if (_ahrs.get_velocity_NED(vel) == false) {
+                printf("no ekf\r\n");
+            }
 
-    case AP_Motors::SpoolState::GROUND_IDLE:
-    case AP_Motors::SpoolState::SHUT_DOWN:
-    default:
-        break;
+            Vector3f acc;
+            acc = _ahrs.get_accel_ef();
+
+            if (acc.length() > 15.0f) {
+                printf("vel:%f, acc:%f\r\n", vel.length(), acc.length());
+
+            } else {
+                set_control_zeros();
+
+                motor_target_left_int  = 0.0f;
+                motor_target_right_int = 0.0f;
+            }
+        } else {
+            set_control_zeros();
+
+            motor_target_left_int  = 0.0f;
+            motor_target_right_int = 0.0f;
+        }
     }
 
     _rmuart.setWheelSpeed(motor_target_left_int, motor_target_right_int);
@@ -223,4 +237,20 @@ void AC_BalanceControl::balance_all_control(void)
     } else {
         _moveflag_z = moveFlag::none;
     }
+}
+
+void AC_BalanceControl::set_control_zeros(void)
+{
+
+    Balance_Angle_bias = 0;
+    Balance_Gyro_bias  = 0;
+
+    Encoder_Integral = 0;
+    Encoder_Least    = 0;
+    Encoder_bias     = 0;
+    Encoder_Movement = 0;
+
+    Turn_Target = 0;
+    Turn_Kp     = 0;
+    Turn_Kd     = 0;
 }
