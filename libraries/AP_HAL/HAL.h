@@ -111,7 +111,6 @@ public:
 
     virtual void run(int argc, char * const argv[], Callbacks* callbacks) const = 0;
 
-    double hal_wheel_v[2];
 
 private:
     // the uartX ports must be contiguous in ram for the serial() method to work

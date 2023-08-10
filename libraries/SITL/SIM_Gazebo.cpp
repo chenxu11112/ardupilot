@@ -17,7 +17,6 @@
 */
 
 #include "SIM_Gazebo.h"
-extern const AP_HAL::HAL& hal;
 
 #if HAL_SIM_GAZEBO_ENABLED
 
@@ -128,10 +127,6 @@ void Gazebo::recv_fdm(const struct sitl_input &input)
         adjust_frame_time(static_cast<float>(1.0/deltat));
     }
     last_timestamp = pkt.timestamp;
-
-    AP::sitl()->hal_wheel_v[0] = pkt.wheel_v[0];
-    AP::sitl()->hal_wheel_v[1] = pkt.wheel_v[1];
-
 }
 
 /*

@@ -146,7 +146,6 @@ public:
 
     float get_battery_voltage() const { return battery_voltage; }
 
-    double wheel_v[2];
 
 protected:
     SIM *sitl;
