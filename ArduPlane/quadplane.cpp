@@ -1546,7 +1546,8 @@ void SLT_Transition::update()
         quadplane.assisted_flight = true;
         // update transition state for vehicles using airspeed wait
         if (!in_forced_transition) {
-            if (transition_state != TRANSITION_AIRSPEED_WAIT) {
+            const bool show_message = transition_state != TRANSITION_AIRSPEED_WAIT || transition_start_ms == 0;
+            if (show_message) {
                 gcs().send_text(MAV_SEVERITY_INFO, "Transition started airspeed %.1f", (double)aspeed);
             }
             transition_state = TRANSITION_AIRSPEED_WAIT;
@@ -2406,7 +2407,7 @@ void QuadPlane::vtol_position_controller(void)
         const float aspeed_threshold = MAX(plane.aparm.airspeed_min-2, assist_speed);
 
         // run fixed wing navigation
-        plane.nav_controller->update_waypoint(plane.current_loc, loc);
+        plane.nav_controller->update_waypoint(plane.auto_state.crosstrack ? plane.prev_WP_loc : plane.current_loc, loc);
 
         // use TECS for throttle
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, plane.TECS_controller.get_throttle_demand());
@@ -3239,7 +3240,8 @@ bool QuadPlane::do_vtol_land(const AP_Mission::Mission_Command& cmd)
     plane.crash_state.is_crashed = false;
     
     // also update nav_controller for status output
-    plane.nav_controller->update_waypoint(plane.current_loc, plane.next_WP_loc);
+    plane.nav_controller->update_waypoint(plane.auto_state.crosstrack ? plane.prev_WP_loc : plane.current_loc,
+                                          plane.next_WP_loc);
 
     poscontrol_init_approach();
     return true;
@@ -4558,6 +4560,22 @@ bool QuadPlane::allow_stick_mixing() const
     }
     // Ask transition logic
     return transition->allow_stick_mixing();
+}
+
+/*
+  return true if we should disable TECS in the current flight state
+  this ensures that TECS resets when we change height in a VTOL mode
+ */
+bool QuadPlane::should_disable_TECS() const
+{
+    if (in_vtol_land_descent()) {
+        return true;
+    }
+    if (plane.control_mode == &plane.mode_guided &&
+        plane.auto_state.vtol_loiter) {
+        return true;
+    }
+    return false;
 }
 
 #endif  // HAL_QUADPLANE_ENABLED

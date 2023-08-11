@@ -31,7 +31,6 @@ void AP_Mount_Siyi::init()
     _uart = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Gimbal, 0);
     if (_uart != nullptr) {
         _initialised = true;
-        set_mode((enum MAV_MOUNT_MODE)_params.default_mode.get());
     }
     AP_Mount_Backend::init();
 }
@@ -69,74 +68,76 @@ void AP_Mount_Siyi::update()
     // run zoom control
     update_zoom_control();
 
-    // update based on mount mode
+    // Get the target angles or rates first depending on the current mount mode
     switch (get_mode()) {
-        // move mount to a "retracted" position.  To-Do: remove support and replace with a relaxed mode?
         case MAV_MOUNT_MODE_RETRACT: {
             const Vector3f &angle_bf_target = _params.retract_angles.get();
-            send_target_angles(ToRad(angle_bf_target.y), ToRad(angle_bf_target.z), false);
+            mnt_target.target_type = MountTargetType::ANGLE;
+            mnt_target.angle_rad.set(angle_bf_target*DEG_TO_RAD, false);
             break;
         }
 
-        // move mount to a neutral position, typically pointing forward
         case MAV_MOUNT_MODE_NEUTRAL: {
             const Vector3f &angle_bf_target = _params.neutral_angles.get();
-            send_target_angles(ToRad(angle_bf_target.y), ToRad(angle_bf_target.z), false);
+            mnt_target.target_type = MountTargetType::ANGLE;
+            mnt_target.angle_rad.set(angle_bf_target*DEG_TO_RAD, false);
             break;
         }
 
-        // point to the angles given by a mavlink message
-        case MAV_MOUNT_MODE_MAVLINK_TARGETING:
-            switch (mavt_target.target_type) {
+        case MAV_MOUNT_MODE_MAVLINK_TARGETING: {
+            // mavlink targets are stored while handling the incoming message
+            break;
+        }
+
+        case MAV_MOUNT_MODE_RC_TARGETING: {
+            // update targets using pilot's RC inputs
+            MountTarget rc_target;
+            get_rc_target(mnt_target.target_type, rc_target);
+            switch (mnt_target.target_type) {
             case MountTargetType::ANGLE:
-                send_target_angles(mavt_target.angle_rad.pitch, mavt_target.angle_rad.yaw, mavt_target.angle_rad.yaw_is_ef);
+                mnt_target.angle_rad = rc_target;
                 break;
             case MountTargetType::RATE:
-                send_target_rates(mavt_target.rate_rads.pitch, mavt_target.rate_rads.yaw, mavt_target.rate_rads.yaw_is_ef);
+                mnt_target.rate_rads = rc_target;
                 break;
-            }
-            break;
-
-        // RC radio manual angle control, but with stabilization from the AHRS
-        case MAV_MOUNT_MODE_RC_TARGETING: {
-            // update targets using pilot's rc inputs
-            MountTarget rc_target {};
-            if (get_rc_rate_target(rc_target)) {
-                send_target_rates(rc_target.pitch, rc_target.yaw, rc_target.yaw_is_ef);
-            } else if (get_rc_angle_target(rc_target)) {
-                send_target_angles(rc_target.pitch, rc_target.yaw, rc_target.yaw_is_ef);
             }
             break;
         }
 
         // point mount to a GPS point given by the mission planner
-        case MAV_MOUNT_MODE_GPS_POINT: {
-            MountTarget angle_target_rad {};
-            if (get_angle_target_to_roi(angle_target_rad)) {
-                send_target_angles(angle_target_rad.pitch, angle_target_rad.yaw, angle_target_rad.yaw_is_ef);
+        case MAV_MOUNT_MODE_GPS_POINT:
+            if (get_angle_target_to_roi(mnt_target.angle_rad)) {
+                mnt_target.target_type = MountTargetType::ANGLE;
             }
             break;
-        }
 
-        case MAV_MOUNT_MODE_HOME_LOCATION: {
-            MountTarget angle_target_rad {};
-            if (get_angle_target_to_home(angle_target_rad)) {
-                send_target_angles(angle_target_rad.pitch, angle_target_rad.yaw, angle_target_rad.yaw_is_ef);
+        // point mount to Home location
+        case MAV_MOUNT_MODE_HOME_LOCATION:
+            if (get_angle_target_to_home(mnt_target.angle_rad)) {
+                mnt_target.target_type = MountTargetType::ANGLE;
             }
             break;
-        }
 
-        case MAV_MOUNT_MODE_SYSID_TARGET:{
-            MountTarget angle_target_rad {};
-            if (get_angle_target_to_sysid(angle_target_rad)) {
-                send_target_angles(angle_target_rad.pitch, angle_target_rad.yaw, angle_target_rad.yaw_is_ef);
+        // point mount to another vehicle
+        case MAV_MOUNT_MODE_SYSID_TARGET:
+            if (get_angle_target_to_sysid(mnt_target.angle_rad)) {
+                mnt_target.target_type = MountTargetType::ANGLE;
             }
             break;
-        }
 
         default:
             // we do not know this mode so raise internal error
             INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
+            break;
+    }
+
+    // send target angles or rates depending on the target type
+    switch (mnt_target.target_type) {
+        case MountTargetType::ANGLE:
+            send_target_angles(mnt_target.angle_rad.pitch, mnt_target.angle_rad.yaw, mnt_target.angle_rad.yaw_is_ef);
+            break;
+        case MountTargetType::RATE:
+            send_target_rates(mnt_target.rate_rads.pitch, mnt_target.rate_rads.yaw, mnt_target.rate_rads.yaw_is_ef);
             break;
     }
 }
@@ -485,6 +486,9 @@ void AP_Mount_Siyi::process_packet()
 // returns true on success, false if outgoing serial buffer is full
 bool AP_Mount_Siyi::send_packet(SiyiCommandId cmd_id, const uint8_t* databuff, uint8_t databuff_len)
 {
+    if (!_initialised) {
+        return false;
+    }
     // calculate and sanity check packet size
     const uint16_t packet_size = AP_MOUNT_SIYI_PACKETLEN_MIN + databuff_len;
     if (packet_size > AP_MOUNT_SIYI_PACKETLEN_MAX) {
@@ -756,7 +760,7 @@ void AP_Mount_Siyi::update_zoom_control()
 
 // set focus specified as rate, percentage or auto
 // focus in = -1, focus hold = 0, focus out = 1
-bool AP_Mount_Siyi::set_focus(FocusType focus_type, float focus_value)
+SetFocusResult AP_Mount_Siyi::set_focus(FocusType focus_type, float focus_value)
 {
     switch (focus_type) {
     case FocusType::RATE: {
@@ -767,17 +771,23 @@ bool AP_Mount_Siyi::set_focus(FocusType focus_type, float focus_value)
             // Siyi API specifies -1 should be sent as 255
             focus_step = UINT8_MAX;
         }
-        return send_1byte_packet(SiyiCommandId::MANUAL_FOCUS, (uint8_t)focus_step);
+        if (!send_1byte_packet(SiyiCommandId::MANUAL_FOCUS, (uint8_t)focus_step)) {
+            return SetFocusResult::FAILED;
+        }
+        return SetFocusResult::ACCEPTED;
     }
     case FocusType::PCT:
         // not supported
-        return false;
+        return SetFocusResult::INVALID_PARAMETERS;
     case FocusType::AUTO:
-        return send_1byte_packet(SiyiCommandId::AUTO_FOCUS, 1);
+        if (!send_1byte_packet(SiyiCommandId::AUTO_FOCUS, 1)) {
+            return SetFocusResult::FAILED;
+        }
+        return SetFocusResult::ACCEPTED;
     }
 
     // unsupported focus type
-    return false;
+    return SetFocusResult::INVALID_PARAMETERS;
 }
 
 // send camera information message to GCS
@@ -830,7 +840,8 @@ void AP_Mount_Siyi::send_camera_information(mavlink_channel_t chan) const
         0,                      // lens_id uint8_t
         flags,                  // flags uint32_t (CAMERA_CAP_FLAGS)
         0,                      // cam_definition_version uint16_t
-        cam_definition_uri);    // cam_definition_uri char[140]
+        cam_definition_uri,     // cam_definition_uri char[140]
+        _instance + 1);         // gimbal_device_id uint8_t
 }
 
 // send camera settings message to GCS

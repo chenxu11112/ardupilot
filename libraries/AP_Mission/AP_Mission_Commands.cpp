@@ -150,15 +150,15 @@ bool AP_Mission::start_command_camera(const AP_Mission::Mission_Command& cmd)
         if ((cmd.content.set_camera_focus.focus_type == FOCUS_TYPE_AUTO) ||
             (cmd.content.set_camera_focus.focus_type == FOCUS_TYPE_AUTO_SINGLE) ||
             (cmd.content.set_camera_focus.focus_type == FOCUS_TYPE_AUTO_CONTINUOUS)) {
-            return camera->set_focus(FocusType::AUTO, 0);
+            return camera->set_focus(FocusType::AUTO, 0) == SetFocusResult::ACCEPTED;
         }
         // accept continuous manual focus
         if (cmd.content.set_camera_focus.focus_type == FOCUS_TYPE_CONTINUOUS) {
-            return camera->set_focus(FocusType::RATE, cmd.content.set_camera_focus.focus_value);
+            return camera->set_focus(FocusType::RATE, cmd.content.set_camera_focus.focus_value) == SetFocusResult::ACCEPTED;
         }
         // accept range manual focus
         if (cmd.content.set_camera_focus.focus_type == FOCUS_TYPE_RANGE) {
-            return camera->set_focus(FocusType::PCT, cmd.content.set_camera_focus.focus_value);
+            return camera->set_focus(FocusType::PCT, cmd.content.set_camera_focus.focus_value) == SetFocusResult::ACCEPTED;
         }
         return false;
 
@@ -286,8 +286,8 @@ bool AP_Mission::start_command_do_gimbal_manager_pitchyaw(const AP_Mission::Miss
     }
 
     // handle angle target
-    const bool pitch_angle_valid = !isnan(cmd.content.gimbal_manager_pitchyaw.pitch_angle_deg) && (fabsf(cmd.content.gimbal_manager_pitchyaw.pitch_angle_deg) <= 90);
-    const bool yaw_angle_valid = !isnan(cmd.content.gimbal_manager_pitchyaw.yaw_angle_deg) && (fabsf(cmd.content.gimbal_manager_pitchyaw.yaw_angle_deg) <= 360);
+    const bool pitch_angle_valid = !isnan(cmd.content.gimbal_manager_pitchyaw.pitch_angle_deg) && (fabsF(cmd.content.gimbal_manager_pitchyaw.pitch_angle_deg) <= 90);
+    const bool yaw_angle_valid = !isnan(cmd.content.gimbal_manager_pitchyaw.yaw_angle_deg) && (fabsF(cmd.content.gimbal_manager_pitchyaw.yaw_angle_deg) <= 360);
     if (pitch_angle_valid && yaw_angle_valid) {
         mount->set_angle_target(gimbal_instance, 0, cmd.content.gimbal_manager_pitchyaw.pitch_angle_deg, cmd.content.gimbal_manager_pitchyaw.yaw_angle_deg, cmd.content.gimbal_manager_pitchyaw.flags & GIMBAL_MANAGER_FLAGS_YAW_LOCK);
         return true;

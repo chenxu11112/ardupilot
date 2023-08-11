@@ -58,7 +58,7 @@ void Plane::loiter_angle_update(void)
             }
         }
         if (terrain_status_ok &&
-            fabsf(altitude_agl - target_altitude.terrain_alt_cm*0.01) < 5) {
+            fabsF(altitude_agl - target_altitude.terrain_alt_cm*0.01) < 5) {
             reached_target_alt = true;
         } else
 #endif
@@ -94,6 +94,8 @@ void Plane::navigate()
     if (next_WP_loc.lat == 0 && next_WP_loc.lng == 0) {
         return;
     }
+
+    check_home_alt_change();
 
     // waypoint distance from plane
     // ----------------------------

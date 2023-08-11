@@ -243,16 +243,20 @@ class Board:
         if 'clang' in cfg.env.COMPILER_CC:
             env.CFLAGS += [
                 '-fcolor-diagnostics',
-
                 '-Wno-gnu-designator',
                 '-Wno-inconsistent-missing-override',
                 '-Wno-mismatched-tags',
                 '-Wno-gnu-variable-sized-type-not-at-end',
                 '-Werror=implicit-fallthrough',
+                '-cl-single-precision-constant',
+            ]
+            env.CXXFLAGS += [
+                '-cl-single-precision-constant',
             ]
         else:
             env.CFLAGS += [
                 '-Wno-format-contains-nul',
+                '-fsingle-precision-constant', # force const vals to be float , not double. so 100.0 means 100.0f
             ]
             if self.cc_version_gte(cfg, 7, 4):
                 env.CXXFLAGS += [
@@ -260,6 +264,7 @@ class Board:
                 ]
             env.CXXFLAGS += [
                 '-fcheck-new',
+                '-fsingle-precision-constant',
             ]
 
         if cfg.env.DEBUG:
@@ -649,7 +654,8 @@ class sitl(Board):
             cfg.define('HAL_NUM_CAN_IFACES', 2)
             env.DEFINES.update(CANARD_MULTI_IFACE=1,
                                CANARD_IFACE_ALL = 0x3,
-                                CANARD_ENABLE_CANFD = 1)
+                                CANARD_ENABLE_CANFD = 1,
+                                CANARD_ENABLE_ASSERTS = 1)
 
         env.CXXFLAGS += [
             '-Werror=float-equal',
@@ -773,22 +779,31 @@ class sitl(Board):
         # whitelist of compilers which we should build with -Werror
         gcc_whitelist = frozenset([
                 ('11','3','0'),
+                ('12','1','0'),
             ])
 
-        werr_enabled_default = bool('g++' == cfg.env.COMPILER_CXX and cfg.env.CC_VERSION in gcc_whitelist)
+        # initialise werr_enabled from defaults:
+        werr_enabled = bool('g++' in cfg.env.COMPILER_CXX and cfg.env.CC_VERSION in gcc_whitelist)
 
-        if werr_enabled_default or cfg.options.Werror:
-            if not cfg.options.disable_Werror:
-                cfg.msg("Enabling -Werror", "yes")
-                if '-Werror' not in env.CXXFLAGS:
-                    env.CXXFLAGS += [ '-Werror' ]
-            else:
-                cfg.msg("Enabling -Werror", "no")
-                if '-Werror' in env.CXXFLAGS:
-                    env.CXXFLAGS.remove('-Werror')
-        else:
+        # now process overrides to that default:
+        if (cfg.options.Werror is not None and
+                cfg.options.Werror == cfg.options.disable_Werror):
+            cfg.fatal("Asked to both enable and disable Werror")
+
+        if cfg.options.Werror is not None:
+            werr_enabled = cfg.options.Werror
+        elif cfg.options.disable_Werror is not None:
+            werr_enabled = not cfg.options.disable_Werror
+
+        if werr_enabled:
             cfg.msg("Enabling -Werror", "yes")
-        
+            if '-Werror' not in env.CXXFLAGS:
+                env.CXXFLAGS += [ '-Werror' ]
+        else:
+            cfg.msg("Enabling -Werror", "no")
+            if '-Werror' in env.CXXFLAGS:
+                env.CXXFLAGS.remove('-Werror')
+
     def get_name(self):
         return self.__class__.__name__
 
@@ -803,6 +818,7 @@ class sitl_periph_gps(sitl):
             CAN_APP_NODE_NAME = '"org.ardupilot.ap_periph_gps"',
             AP_AIRSPEED_ENABLED = 0,
             HAL_PERIPH_ENABLE_GPS = 1,
+            AP_UART_MONITOR_ENABLED = 1,
             HAL_CAN_DEFAULT_NODE_ID = 0,
             HAL_RAM_RESERVE_START = 0,
             APJ_BOARD_ID = 100,
@@ -828,6 +844,7 @@ class sitl_periph_gps(sitl):
             AP_CAN_SLCAN_ENABLED = 0,
             HAL_PROXIMITY_ENABLED = 0,
             AP_SCRIPTING_ENABLED = 0,
+            AP_AHRS_ENABLED = 0,
         )
 
 
@@ -866,7 +883,6 @@ class esp32(Board):
         env.CFLAGS += [
             '-fno-inline-functions',
             '-mlongcalls',
-            '-fsingle-precision-constant',
         ]
         env.CFLAGS.remove('-Werror=undef')
 
@@ -882,7 +898,6 @@ class esp32(Board):
                          '-Wno-sign-compare',
                          '-fno-inline-functions',
                          '-mlongcalls',
-                         '-fsingle-precision-constant', # force const vals to be float , not double. so 100.0 means 100.0f 
                          '-fno-threadsafe-statics',
                          '-DCYGWIN_BUILD']
         env.CXXFLAGS.remove('-Werror=undef')
@@ -945,7 +960,6 @@ class chibios(Board):
         env.CFLAGS += cfg.env.CPU_FLAGS + [
             '-Wlogical-op',
             '-Wframe-larger-than=1300',
-            '-fsingle-precision-constant',
             '-Wno-attributes',
             '-fno-exceptions',
             '-Wall',
@@ -1053,7 +1067,7 @@ class chibios(Board):
         if cfg.env.SAVE_TEMPS:
             env.CXXFLAGS += [ '-S', '-save-temps=obj' ]
 
-        if cfg.options.disable_watchdog or cfg.env.DEBUG:
+        if cfg.options.disable_watchdog:
             cfg.msg("Disabling Watchdog", "yes")
             env.CFLAGS += [ '-DDISABLE_WATCHDOG' ]
             env.CXXFLAGS += [ '-DDISABLE_WATCHDOG' ]

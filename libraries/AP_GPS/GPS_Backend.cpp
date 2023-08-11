@@ -197,9 +197,9 @@ bool AP_GPS_Backend::should_log() const
 }
 
 
+#if HAL_GCS_ENABLED
 void AP_GPS_Backend::send_mavlink_gps_rtk(mavlink_channel_t chan)
 {
-#if HAL_GCS_ENABLED
     const uint8_t instance = state.instance;
     // send status
     switch (instance) {
@@ -236,8 +236,8 @@ void AP_GPS_Backend::send_mavlink_gps_rtk(mavlink_channel_t chan)
                                  state.rtk_iar_num_hypotheses);
             break;
     }
-#endif
 }
+#endif
 
 
 /*
@@ -397,7 +397,7 @@ bool AP_GPS_Backend::calculate_moving_base_yaw(AP_GPS::GPS_State &interim_state,
             goto bad_yaw;
         }
 
-#ifndef HAL_BUILD_AP_PERIPH
+#if AP_AHRS_ENABLED
         {
             // get lag
             float lag = 0.1;
@@ -425,7 +425,7 @@ bool AP_GPS_Backend::calculate_moving_base_yaw(AP_GPS::GPS_State &interim_state,
                 goto bad_yaw;
             }
         }
-#endif // HAL_BUILD_AP_PERIPH
+#endif // AP_AHRS_ENABLED
 
         {
             // at this point the offsets are looking okay, go ahead and actually calculate a useful heading
