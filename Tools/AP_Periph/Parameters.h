@@ -76,6 +76,7 @@ public:
         k_param_esc_number1,
         k_param_pole_count1,
         k_param_esc_serial_port1,
+        k_param_networking,
     };
 
     AP_Int16 format_version;
@@ -188,6 +189,7 @@ public:
 #else
     static constexpr uint8_t can_fdmode = 0;
 #endif
+    AP_Int8 node_stats;
     Parameters() {}
 };
 

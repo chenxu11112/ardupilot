@@ -445,6 +445,8 @@ bool Copter::has_ekf_failsafed() const
     return failsafe.ekf;
 }
 
+#endif // AP_SCRIPTING_ENABLED
+
 // returns true if vehicle is landing. Only used by Lua scripts
 bool Copter::is_landing() const
 {
@@ -456,8 +458,6 @@ bool Copter::is_taking_off() const
 {
     return flightmode->is_taking_off();
 }
-
-#endif // AP_SCRIPTING_ENABLED
 
 bool Copter::current_mode_requires_mission() const
 {
@@ -583,6 +583,11 @@ void Copter::ten_hz_logging_loop()
         g2.winch.write_log();
     }
 #endif
+#if HAL_MOUNT_ENABLED
+    if (should_log(MASK_LOG_CAMERA)) {
+        camera_mount.write_log();
+    }
+#endif
 }
 
 // twentyfive_hz_logging - should be run at 25hz
@@ -609,7 +614,7 @@ void Copter::twentyfive_hz_logging()
 #endif
 }
 
-// three_hz_loop - 3.3hz loop
+// three_hz_loop - 3hz loop
 void Copter::three_hz_loop()
 {
     // check if we've lost contact with the ground station

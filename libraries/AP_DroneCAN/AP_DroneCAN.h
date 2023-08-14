@@ -95,7 +95,9 @@ public:
     // THIS IS NOT A THREAD SAFE API!
     void send_reboot_request(uint8_t node_id);
 
-    // set param value
+    // get or set param value
+    // returns true on success, false on failure
+    // failures occur when waiting on node to respond to previous get or set request
     bool set_parameter_on_node(uint8_t node_id, const char *name, float value, ParamGetSetFloatCb *cb);
     bool set_parameter_on_node(uint8_t node_id, const char *name, int32_t value, ParamGetSetIntCb *cb);
     bool get_parameter_on_node(uint8_t node_id, const char *name, ParamGetSetFloatCb *cb);
@@ -114,6 +116,7 @@ public:
         SEND_GNSS                 = (1U<<5),
         USE_HIMARK_SERVO          = (1U<<6),
         USE_HOBBYWING_ESC         = (1U<<7),
+        ENABLE_STATS              = (1U<<8),
     };
 
     // check if a option is set
@@ -150,27 +153,31 @@ private:
     // send notify vehicle state
     void notify_state_send();
 
-    // send parameter get/set request
+    // check for parameter get/set response timeout
+    void check_parameter_callback_timeout();
+
+    // send queued parameter get/set request. called from loop
     void send_parameter_request();
     
-    // send parameter save request
+    // send queued parameter save request. called from loop
     void send_parameter_save_request();
 
     // periodic logging
     void logging();
     
-    // set parameter on a node
-    ParamGetSetIntCb *param_int_cb;
-    ParamGetSetFloatCb *param_float_cb;
-    bool param_request_sent = true;
-    HAL_Semaphore _param_sem;
-    uint8_t param_request_node_id;
+    // get parameter on a node
+    ParamGetSetIntCb *param_int_cb;         // latest get param request callback function (for integers)
+    ParamGetSetFloatCb *param_float_cb;     // latest get param request callback function (for floats)
+    bool param_request_sent = true;         // true after a param request has been sent, false when queued to be sent
+    uint32_t param_request_sent_ms;         // system time that get param request was sent
+    HAL_Semaphore _param_sem;               // semaphore protecting this block of variables
+    uint8_t param_request_node_id;          // node id of most recent get param request
 
     // save parameters on a node
-    ParamSaveCb *save_param_cb;
-    bool param_save_request_sent = true;
-    HAL_Semaphore _param_save_sem;
-    uint8_t param_save_request_node_id;
+    ParamSaveCb *save_param_cb;             // latest save param request callback function
+    bool param_save_request_sent = true;    // true after a save param request has been sent, false when queued to be sent
+    HAL_Semaphore _param_save_sem;          // semaphore protecting this block of variables
+    uint8_t param_save_request_node_id;     // node id of most recent save param request
 
     // UAVCAN parameters
     AP_Int8 _dronecan_node;
@@ -201,7 +208,8 @@ private:
     uint32_t _srv_send_count;
     uint32_t _fail_send_count;
 
-    uint8_t _SRV_armed;
+    uint32_t _SRV_armed_mask; // mask of servo outputs that are active
+    uint32_t _ESC_armed_mask; // mask of ESC outputs that are active
     uint32_t _SRV_last_send_us;
     HAL_Semaphore SRV_sem;
 
@@ -234,6 +242,8 @@ private:
     CanardInterface canard_iface;
 
     Canard::Publisher<uavcan_protocol_NodeStatus> node_status{canard_iface};
+    Canard::Publisher<dronecan_protocol_CanStats> can_stats{canard_iface};
+    Canard::Publisher<dronecan_protocol_Stats> protocol_stats{canard_iface};
     Canard::Publisher<uavcan_equipment_actuator_ArrayCommand> act_out_array{canard_iface};
     Canard::Publisher<uavcan_equipment_esc_RawCommand> esc_raw{canard_iface};
     Canard::Publisher<ardupilot_indication_SafetyState> safety_state{canard_iface};
