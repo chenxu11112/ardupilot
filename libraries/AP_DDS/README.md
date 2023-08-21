@@ -104,25 +104,28 @@ sudo apt-get install socat
 Set up your [SITL](https://ardupilot.org/dev/docs/setting-up-sitl-on-linux.html).
 Run the simulator with the following command. If using UDP, the only parameter you need to set it `DDS_ENABLE`.
 
-| Name | Description |
-| - | - |
-| DDS_ENABLE | Set to 1 to enable DDS |
-| SERIAL1_BAUD | The serial baud rate for DDS |
-| SERIAL1_PROTOCOL | Set this to 45 to use DDS on the serial port |
+| Name | Description | Default |
+| - | - | - |
+| DDS_ENABLE | Set to 1 to enable DDS, or 0 to disable | 1 |
+| SERIAL1_BAUD | The serial baud rate for DDS | 57 |
+| SERIAL1_PROTOCOL | Set this to 45 to use DDS on the serial port | 0 |
 ```bash
 # Wipe params till you see "AP: ArduPilot Ready"
 # Select your favorite vehicle type
 sim_vehicle.py -w -v ArduPlane --console -DG --enable-dds
 
-# Enable DDS (both for UDP or Serial)
-param set DDS_ENABLE 1
-
-# Only for Serial
+# Only set this for Serial, which means 115200 baud
 param set SERIAL1_BAUD 115
 # See libraries/AP_SerialManager/AP_SerialManager.h AP_SerialManager SerialProtocol_DDS_XRCE
 param set SERIAL1_PROTOCOL 45
 ```
-Because `DDS_ENABLE` requires a reboot, stop the simulator with ctrl+C and proceed to the next section.
+
+DDS is currently enabled by default, if it's part of the build. To disable it, run the following and reboot the simulator.
+```
+param set DDS_ENABLE 0
+REBOOT
+```
+
 ## Setup ROS 2 and micro-ROS
 
 Follow the steps to use the microROS Agent
@@ -213,6 +216,8 @@ Next, follow the associated section for your chosen transport, and finally you c
 
   Subscribed topics:
   * /ap/joy [sensor_msgs/msg/Joy] 1 subscriber
+  * /ap/tf [tf2_msgs/msg/TFMessage] 1 subscriber
+  * /ap/cmd_vel [geometry_msgs/msg/TwistStamped] 1 subscriber
 
   $ ros2 topic hz /ap/time
   average rate: 50.115
@@ -221,6 +226,9 @@ Next, follow the associated section for your chosen transport, and finally you c
   $ ros2 topic echo /ap/time
   sec: 1678668735
   nanosec: 729410000
+
+  $ ros2 service list
+  /arm_motors
   ---
   ```
 
@@ -230,7 +238,34 @@ Next, follow the associated section for your chosen transport, and finally you c
   ```
   In order to consume the transforms, it's highly recommended to [create and run a transform broadcaster in ROS 2](https://docs.ros.org/en/humble/Concepts/About-Tf2.html#tutorials).
 
+## Using ROS 2 services (with Integration Services)
 
+### Prerequisites
+- Install and setup [Micro-XRCE Agent](https://micro-xrce-dds.docs.eprosima.com/en/latest/installation.html#installing-the-agent-standalone)
+- Install and setup [Integration Services](https://integration-service.docs.eprosima.com/en/latest/installation_manual/installation.html) (it would be good to have a separate workspace for this)
+  - Get System Handles for [ROS 2](https://github.com/eProsima/ROS2-SH)
+  - Get System Handles for [Fast-DDS](https://github.com/eProsima/FastDDS-SH)
+- Once the above-mentioned System Handles have been cloned, build the Integration Services with the following command : 
+`colcon build --cmake-args -DMIX_ROS_PACKAGES="example_interfaces ardupilot_msgs"`
+
+### Setup
+- The necessary ROS 2 messages and service defintions (especially for the Arming/Disarming Services) are already defined in the `ardupilot_msgs` folder in the `Tools` directory.
+
+### Terminal 1 (XRCE Agent)
+- Move to the **AP_DDS** folder and run the XRCE Agent as follows `MicroXRCEAgent udp4 -p 2019 -r dds_xrce_profile.xml`
+
+### Terminal 2 (Integration Service)
+- Source ROS 2 installation
+- Source Integration Service installation
+- Move to the **AP_DDS** folder and run the following command `integration-service Is-Config/Arm_Motors_DDS_IS_config.yaml`
+
+### Terminal 3 (Ardupilot)
+- Make sure you have successfully setup Ardupilot and the `DDS_ENABLE` param is set to 1
+- Run SITL with the following command `sim_vehicle.py -v ArduPlane -DG --console --enable-dds`
+
+### Terminal 4 (ROS 2 Client)
+- Run the following command : `ros2 service call /arm_motors ardupilot_msgs/srv/ArmMotors "{arm: True}"`
+ 
 ## Contributing to AP_DDS library
 ### Adding DDS messages to Ardupilot
 

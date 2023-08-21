@@ -21,8 +21,11 @@ from common import NotAchievedException
 from common import PreconditionFailedException
 from common import WaitModeTimeout
 from common import OldpymavlinkException
+from common import Test
+
 from pymavlink.rotmat import Vector3
 from pysim import vehicleinfo
+from pysim import util
 
 import operator
 
@@ -768,18 +771,18 @@ class AutoTestPlane(AutoTest):
         self.change_mode("AUTO")
         self.wait_ready_to_arm()
         self.arm_vehicle()
-        self.progress("Waiting for deepstall messages")
-
-        # note that the following two don't necessarily happen in this
-        # order, but at very high speedups we may miss the elevator
-        # PWM if we first look for the text (due to the get_sim_time()
-        # in wait_servo_channel_value)
-        self.context_collect('STATUSTEXT')
+        self.wait_current_waypoint(4)
 
         # assume elevator is on channel 2:
         self.wait_servo_channel_value(2, deepstall_elevator_pwm, timeout=240)
 
-        self.wait_text("Deepstall: Entry: ", check_context=True, timeout=60)
+        self.progress("Waiting for stage DEEPSTALL_STAGE_LAND")
+        self.assert_receive_message(
+            'DEEPSTALL',
+            condition='DEEPSTALL.stage==6',
+            timeout=240,
+        )
+        self.progress("Reached stage DEEPSTALL_STAGE_LAND")
 
         self.disarm_wait(timeout=120)
         self.set_current_waypoint(0, check_afterwards=False)
@@ -1302,29 +1305,28 @@ class AutoTestPlane(AutoTest):
         '''Ensure Long-Failsafe works on GCS loss'''
         self.start_subtest("Test Failsafe: RTL")
         self.load_sample_mission()
-        self.set_parameter("RTL_AUTOLAND", 1)
-        self.change_mode("AUTO")
-        self.takeoff()
         self.set_parameters({
             "FS_GCS_ENABL": 1,
             "FS_LONG_ACTN": 1,
+            "RTL_AUTOLAND": 1,
+            "SYSID_MYGCS": self.mav.source_system,
         })
+        self.takeoff()
+        self.change_mode('LOITER')
         self.progress("Disconnecting GCS")
         self.set_heartbeat_rate(0)
-        self.wait_mode("RTL", timeout=5)
+        self.wait_mode("RTL", timeout=10)
         self.set_heartbeat_rate(self.speedup)
         self.end_subtest("Completed RTL Failsafe test")
 
         self.start_subtest("Test Failsafe: FBWA Glide")
         self.set_parameters({
-            "RTL_AUTOLAND": 1,
             "FS_LONG_ACTN": 2,
         })
-        self.change_mode("AUTO")
-        self.takeoff()
+        self.change_mode('AUTO')
         self.progress("Disconnecting GCS")
         self.set_heartbeat_rate(0)
-        self.wait_mode("FBWA", timeout=5)
+        self.wait_mode("FBWA", timeout=10)
         self.set_heartbeat_rate(self.speedup)
         self.end_subtest("Completed FBWA Failsafe test")
 
@@ -3072,7 +3074,7 @@ class AutoTestPlane(AutoTest):
             self.wait_and_maintain_wind_estimate(
                 5, 45,
                 speed_tolerance=1,
-                timeout=20
+                timeout=30
             )
         self.fly_home_land_and_disarm()
 
@@ -3080,9 +3082,9 @@ class AutoTestPlane(AutoTest):
         '''Test VectorNav EAHRS support'''
         self.fly_external_AHRS("VectorNav", 1, "ap1.txt")
 
-    def LordEAHRS(self):
-        '''Test LORD Microstrain EAHRS support'''
-        self.fly_external_AHRS("LORD", 2, "ap1.txt")
+    def MicroStrainEAHRS(self):
+        '''Test MicroStrain EAHRS support'''
+        self.fly_external_AHRS("MicroStrain", 2, "ap1.txt")
 
     def get_accelvec(self, m):
         return Vector3(m.xacc, m.yacc, m.zacc) * 0.001 * 9.81
@@ -4622,6 +4624,43 @@ class AutoTestPlane(AutoTest):
 
         self.reboot_sitl()
 
+    def RunMissionScript(self):
+        '''Test run_mission.py script'''
+        script = os.path.join('Tools', 'autotest', 'run_mission.py')
+        self.stop_SITL()
+        util.run_cmd([
+            util.reltopdir(script),
+            self.binary,
+            'plane',
+            self.generic_mission_filepath_for_filename("flaps.txt"),
+        ])
+        self.start_SITL()
+
+    def MAV_CMD_GUIDED_CHANGE_ALTITUDE(self):
+        '''test handling of MAV_CMD_GUIDED_CHANGE_ALTITUDE'''
+        self.takeoff(30, relative=True)
+        self.change_mode('GUIDED')
+        for alt in 50, 70:
+            self.run_cmd_int(
+                mavutil.mavlink.MAV_CMD_GUIDED_CHANGE_ALTITUDE,
+                p7=alt,
+                frame=mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT,
+            )
+            self.wait_altitude(alt-1, alt+1, timeout=30, relative=True)
+
+        # test for #24535
+        self.change_mode('LOITER')
+        self.delay_sim_time(5)
+        self.change_mode('GUIDED')
+        self.wait_altitude(
+            alt-3,  # NOTE: reuse of alt from above loop!
+            alt+3,
+            minimum_duration=10,
+            timeout=30,
+            relative=True,
+        )
+        self.fly_home_land_and_disarm()
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestPlane, self).tests()
@@ -4673,7 +4712,7 @@ class AutoTestPlane(AutoTest):
             self.TerrainMission,
             self.TerrainLoiter,
             self.VectorNavEAHRS,
-            self.LordEAHRS,
+            self.MicroStrainEAHRS,
             self.Deadreckoning,
             self.DeadreckoningNoAirSpeed,
             self.EKFlaneswitch,
@@ -4701,15 +4740,17 @@ class AutoTestPlane(AutoTest):
             self.EmbeddedParamParser,
             self.AerobaticsScripting,
             self.MANUAL_CONTROL,
+            self.RunMissionScript,
             self.WindEstimates,
             self.AltResetBadGPS,
             self.AirspeedCal,
             self.MissionJumpTags,
-            self.GCSFailsafe,
+            Test(self.GCSFailsafe, speedup=8),
             self.SDCardWPTest,
             self.NoArmWithoutMissionItems,
             self.MODE_SWITCH_RESET,
             self.ExternalPositionEstimate,
+            self.MAV_CMD_GUIDED_CHANGE_ALTITUDE,
         ])
         return ret
 

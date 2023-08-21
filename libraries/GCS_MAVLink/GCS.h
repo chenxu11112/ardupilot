@@ -28,10 +28,6 @@
 
 #define GCS_DEBUG_SEND_MESSAGE_TIMINGS 0
 
-#ifndef HAL_HIGH_LATENCY2_ENABLED
-#define HAL_HIGH_LATENCY2_ENABLED 1
-#endif
-
 // macros used to determine if a message will fit in the space available.
 
 void gcs_out_of_space_to_send(mavlink_channel_t chan);
@@ -165,7 +161,7 @@ public:
     Type task;
     MAV_CMD mav_cmd;
 
-    static class GCS_MAVLINK_InProgress *get_task(MAV_CMD cmd, Type t, uint8_t sysid, uint8_t compid);
+    static class GCS_MAVLINK_InProgress *get_task(MAV_CMD cmd, Type t, uint8_t sysid, uint8_t compid, mavlink_channel_t chan);
 
     static void check_tasks();
 
@@ -649,7 +645,10 @@ protected:
     MAV_RESULT handle_command_do_set_roi_none();
 
     virtual MAV_RESULT handle_command_mount(const mavlink_command_long_t &packet, const mavlink_message_t &msg);
-    MAV_RESULT handle_command_mag_cal(const mavlink_command_long_t &packet);
+
+    MAV_RESULT handle_command_mag_cal(const mavlink_command_int_t &packet);
+    MAV_RESULT handle_command_fixed_mag_cal_yaw(const mavlink_command_int_t &packet);
+
     MAV_RESULT try_command_long_as_command_int(const mavlink_command_long_t &packet);
     virtual MAV_RESULT handle_command_long_packet(const mavlink_command_long_t &packet);
     MAV_RESULT handle_command_camera(const mavlink_command_long_t &packet);
@@ -673,8 +672,6 @@ protected:
     void handle_can_frame(const mavlink_message_t &msg) const;
 
     void handle_optical_flow(const mavlink_message_t &msg);
-
-    MAV_RESULT handle_command_fixed_mag_cal_yaw(const mavlink_command_int_t &packet);
 
     void handle_manual_control(const mavlink_message_t &msg);
 
@@ -771,6 +768,7 @@ private:
     virtual void        handleMessage(const mavlink_message_t &msg) = 0;
 
     MAV_RESULT handle_servorelay_message(const mavlink_command_long_t &packet);
+    bool send_relay_status() const;
 
     static bool command_long_stores_location(const MAV_CMD command);
 

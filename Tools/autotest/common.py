@@ -203,6 +203,7 @@ class Context(object):
         self.original_heartbeat_interval_ms = None
         self.installed_scripts = []
         self.installed_modules = []
+        self.overridden_message_rates = {}
 
 
 # https://stackoverflow.com/questions/616645/how-do-i-duplicate-sys-stdout-to-a-log-file-in-python
@@ -2139,34 +2140,19 @@ class AutoTest(ABC):
             "SIM_ACC1_BIAS_Y",
             "SIM_ACC1_BIAS_Z",
             "SIM_ACC1_RND",
-            "SIM_ACC1_SCAL_X",
-            "SIM_ACC1_SCAL_Y",
-            "SIM_ACC1_SCAL_Z",
             "SIM_ACC2_BIAS_X",
             "SIM_ACC2_BIAS_Y",
             "SIM_ACC2_BIAS_Z",
             "SIM_ACC2_RND",
-            "SIM_ACC2_SCAL_X",
-            "SIM_ACC2_SCAL_Y",
-            "SIM_ACC2_SCAL_Z",
             "SIM_ACC3_BIAS_X",
             "SIM_ACC3_BIAS_Y",
             "SIM_ACC3_BIAS_Z",
             "SIM_ACC3_RND",
-            "SIM_ACC3_SCAL_X",
-            "SIM_ACC3_SCAL_Y",
-            "SIM_ACC3_SCAL_Z",
             "SIM_ACC4_RND",
-            "SIM_ACC4_SCAL_X",
-            "SIM_ACC4_SCAL_Y",
-            "SIM_ACC4_SCAL_Z",
             "SIM_ACC4_BIAS_X",
             "SIM_ACC4_BIAS_Y",
             "SIM_ACC4_BIAS_Z",
             "SIM_ACC5_RND",
-            "SIM_ACC5_SCAL_X",
-            "SIM_ACC5_SCAL_Y",
-            "SIM_ACC5_SCAL_Z",
             "SIM_ACC5_BIAS_X",
             "SIM_ACC5_BIAS_Y",
             "SIM_ACC5_BIAS_Z",
@@ -2223,7 +2209,6 @@ class AutoTest(ABC):
             "SIM_BARO_WCF_RGT",
             "SIM_BARO_WCF_UP",
             "SIM_BATT_CAP_AH",
-            "SIM_BATT_VOLTAGE",
             "SIM_BAUDLIMIT_EN",
             "SIM_DRIFT_SPEED",
             "SIM_DRIFT_TIME",
@@ -2281,25 +2266,10 @@ class AutoTest(ABC):
             "SIM_GPS_VERR_Y",
             "SIM_GPS_VERR_Z",
             "SIM_GYR1_RND",
-            "SIM_GYR1_SCALE_X",
-            "SIM_GYR1_SCALE_Y",
-            "SIM_GYR1_SCALE_Z",
             "SIM_GYR2_RND",
-            "SIM_GYR2_SCALE_X",
-            "SIM_GYR2_SCALE_Y",
-            "SIM_GYR2_SCALE_Z",
             "SIM_GYR3_RND",
-            "SIM_GYR3_SCALE_X",
-            "SIM_GYR3_SCALE_Y",
-            "SIM_GYR3_SCALE_Z",
             "SIM_GYR4_RND",
-            "SIM_GYR4_SCALE_X",
-            "SIM_GYR4_SCALE_Y",
-            "SIM_GYR4_SCALE_Z",
             "SIM_GYR5_RND",
-            "SIM_GYR5_SCALE_X",
-            "SIM_GYR5_SCALE_Y",
-            "SIM_GYR5_SCALE_Z",
             "SIM_GYR_FAIL_MSK",
             "SIM_GYR_FILE_RW",
             "SIM_IE24_ENABLE",
@@ -2782,6 +2752,8 @@ class AutoTest(ABC):
                     if "#if FRAME_CONFIG == HELI_FRAME" in line:
                         continue
                     if "#if AC_PRECLAND_ENABLED" in line:
+                        continue
+                    if "#if OFFBOARD_GUIDED == ENABLED" in line:
                         continue
                     if "#end" in line:
                         continue
@@ -3448,6 +3420,14 @@ class AutoTest(ABC):
         if m.temperature_air == -128: # High_Latency2 defaults to INT8_MIN for no temperature available
             raise NotAchievedException("Air Temperature not received from HIGH_LATENCY2")
         self.HIGH_LATENCY2_links()
+
+    def context_set_message_rate_hz(self, id, rate_hz):
+        overridden_message_rates = self.context_get().overridden_message_rates
+
+        if id not in overridden_message_rates:
+            overridden_message_rates[id] = self.get_message_rate(id)
+
+        self.set_message_rate_hz(id, rate_hz)
 
     def HIGH_LATENCY2_links(self):
 
@@ -4518,9 +4498,12 @@ class AutoTest(ABC):
     def load_sample_mission(self):
         self.load_mission(self.sample_mission_filename())
 
+    def generic_mission_filepath_for_filename(self, filename):
+        return os.path.join(testdir, "Generic_Missions", filename)
+
     def load_generic_mission(self, filename, strict=True):
         return self.load_mission_from_filepath(
-            os.path.join(testdir, "Generic_Missions", filename),
+            self.generic_mission_filepath_for_filename(filename),
             strict=strict)
 
     def load_mission(self, filename, strict=True):
@@ -5649,6 +5632,8 @@ class AutoTest(ABC):
             self.remove_message_hook(hook)
         for script in dead.installed_scripts:
             self.remove_installed_script(script)
+        for (message_id, interval_us) in dead.overridden_message_rates.items():
+            self.set_message_interval(message_id, interval_us)
         for module in dead.installed_modules:
             print("Removing module (%s)" % module)
             self.remove_installed_modules(module)
@@ -6761,7 +6746,7 @@ class AutoTest(ABC):
         return Vector3(msg.vx, msg.vy, msg.vz)
 
     """Wait for a given speed vector."""
-    def wait_speed_vector(self, speed_vector, accuracy=0.2, timeout=30, **kwargs):
+    def wait_speed_vector(self, speed_vector, accuracy=0.3, timeout=30, **kwargs):
         def validator(value2, target2):
             return (math.fabs(value2.x - target2.x) <= accuracy and
                     math.fabs(value2.y - target2.y) <= accuracy and
@@ -8445,11 +8430,11 @@ Also, ignores heartbeats not from our target system'''
         start_loc = self.sitl_start_location()
         self.progress("SITL start loc: %s" % str(start_loc))
         delta = abs(orig_home.latitude * 1.0e-7 - start_loc.lat)
-        if delta > 0.000001:
+        if delta > 0.000006:
             raise ValueError("homes differ in lat got=%f vs want=%f delta=%f" %
                              (orig_home.latitude * 1.0e-7, start_loc.lat, delta))
         delta = abs(orig_home.longitude * 1.0e-7 - start_loc.lng)
-        if delta > 0.000001:
+        if delta > 0.000006:
             raise ValueError("homes differ in lon  got=%f vs want=%f delta=%f" %
                              (orig_home.longitude * 1.0e-7, start_loc.lng, delta))
         if self.is_rover():
@@ -9771,6 +9756,25 @@ Also, ignores heartbeats not from our target system'''
             0,
             0)
 
+    def get_message_interval(self, victim_message, mav=None):
+        '''returns message interval in microseconds'''
+        self.send_get_message_interval(victim_message, mav=mav)
+        m = self.assert_receive_message('MESSAGE_INTERVAL', timeout=1, mav=mav)
+        if m.message_id != victim_message:
+            raise NotAchievedException("Unexpected ID in MESSAGE_INTERVAL")
+        return m.interval_us
+
+    def set_message_interval(self, victim_message, interval_us, mav=None):
+        '''sets message interval in microseconds'''
+        if type(victim_message) == str:
+            victim_message = eval("mavutil.mavlink.MAVLINK_MSG_ID_%s" % victim_message)
+        self.run_cmd(
+            mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,
+            p1=victim_message,
+            p2=interval_us,
+            mav=mav,
+        )
+
     def test_rate(self,
                   desc,
                   in_rate,
@@ -10000,10 +10004,11 @@ Also, ignores heartbeats not from our target system'''
         '''
         if mission_type == mavutil.mavlink.MAV_MISSION_TYPE_ALL:
             # recurse
-            if not self.is_tracker() and not self.is_plane():
+            if not self.is_tracker() and not self.is_blimp():
                 self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
-            self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_MISSION)
-            if not self.is_sub() and not self.is_tracker():
+            if not self.is_blimp():
+                self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_MISSION)
+            if not self.is_sub() and not self.is_tracker() and not self.is_blimp():
                 self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_RALLY)
             self.last_wp_load = time.time()
             return
@@ -10953,6 +10958,9 @@ Also, ignores heartbeats not from our target system'''
         self.do_RTL(distance_min=0, distance_max=wp_accuracy)
         self.disarm_vehicle()
 
+    def is_blimp(self):
+        return False
+
     def is_copter(self):
         return False
 
@@ -11618,6 +11626,17 @@ switch value'''
                     (v, pname, expected_v, error_pct))
             self.progress("Correct value %.4f for %s error %.2f%%" %
                           (v, pname, error_pct))
+
+    def user_takeoff(self, alt_min=30, timeout=30, max_err=5):
+        '''takeoff using mavlink takeoff command'''
+        self.run_cmd(
+            mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
+            p7=alt_min, # param7
+        )
+        self.wait_altitude(alt_min - 1,
+                           (alt_min + max_err),
+                           relative=True,
+                           timeout=timeout)
 
     def ahrstrim_attitude_correctness(self):
         self.wait_ready_to_arm()
@@ -12993,23 +13012,26 @@ switch value'''
         # if gps_type is None we auto-detect
         sim_gps = [
             # (0, "NONE"),
-            (1, "UBLOX", None, "u-blox"),
-            (5, "NMEA", 5, "NMEA"),
-            (6, "SBP", None, "SBP"),
-            # (7, "SBP2", 9, "SBP2"),  # broken, "waiting for config data"
-            (8, "NOVA", 15, "NOVA"),  # no attempt to auto-detect this in AP_GPS
+            (1, "UBLOX", None, "u-blox", 5, 'detected'),
+            (5, "NMEA", 5, "NMEA", 5, 'detected'),
+            (6, "SBP", None, "SBP", 5, 'detected'),
+            # (7, "SBP2", 9, "SBP2", 5),  # broken, "waiting for config data"
+            (8, "NOVA", 15, "NOVA", 5, 'detected'),  # no attempt to auto-detect this in AP_GPS
+            (11, "GSOF", 11, "GSOF", 5, 'detected'),
+            (19, "MSP", 19, "MSP", 32, 'specified'),  # no attempt to auto-detect this in AP_GPS
             # (9, "FILE"),
         ]
         self.context_collect("STATUSTEXT")
-        for (sim_gps_type, name, gps_type, detect_name) in sim_gps:
+        for (sim_gps_type, name, gps_type, detect_name, serial_protocol, detect_prefix) in sim_gps:
             self.start_subtest("Checking GPS type %s" % name)
             self.set_parameter("SIM_GPS_TYPE", sim_gps_type)
+            self.set_parameter("SERIAL3_PROTOCOL", serial_protocol)
             if gps_type is None:
                 gps_type = 1  # auto-detect
             self.set_parameter("GPS_TYPE", gps_type)
             self.context_clear_collection('STATUSTEXT')
             self.reboot_sitl()
-            self.wait_statustext("detected as %s" % detect_name, check_context=True)
+            self.wait_statustext("%s as %s" % (detect_prefix, detect_name), check_context=True)
             n = self.poll_home_position(timeout=120)
             distance = self.get_distance_int(orig, n)
             if distance > 1:

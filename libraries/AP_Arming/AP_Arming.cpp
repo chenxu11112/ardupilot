@@ -618,10 +618,12 @@ bool AP_Arming::gps_checks(bool report)
                          (double)distance_m);
             return false;
         }
+#if defined(GPS_BLENDED_INSTANCE)
         if (!gps.blend_health_check()) {
             check_failed(ARMING_CHECK_GPS, report, "GPS blending unhealthy");
             return false;
         }
+#endif
 
         // check AHRS and GPS are within 10m of each other
         if (gps.num_sensors() > 0) {
@@ -1549,16 +1551,6 @@ bool AP_Arming::arm_checks(AP_Arming::Method method)
         }
     }
 
-#if AP_FENCE_ENABLED
-    AC_Fence *fence = AP::fence();
-    if (fence != nullptr) {
-        // If a fence is set to auto-enable, turn on the fence
-        if(fence->auto_enabled() == AC_Fence::AutoEnable::ONLY_WHEN_ARMED) {
-            fence->enable(true);
-        }
-    }
-#endif
-
     // note that this will prepare AP_Logger to start logging
     // so should be the last check to be done before arming
 
@@ -1632,6 +1624,19 @@ bool AP_Arming::arm(AP_Arming::Method method, const bool do_arming_checks)
         auto *terrain = AP::terrain();
         if (terrain != nullptr) {
             terrain->set_reference_location();
+        }
+    }
+#endif
+
+#if AP_FENCE_ENABLED
+    if (armed) {
+        auto *fence = AP::fence();
+        if (fence != nullptr) {
+            // If a fence is set to auto-enable, turn on the fence
+            if (fence->auto_enabled() == AC_Fence::AutoEnable::ONLY_WHEN_ARMED) {
+                fence->enable(true);
+                gcs().send_text(MAV_SEVERITY_INFO, "Fence: auto-enabled");
+            }
         }
     }
 #endif
@@ -1827,6 +1832,7 @@ void AP_Arming::check_forced_logging(const AP_Arming::Method method)
         case Method::TOYMODELANDTHROTTLE:
         case Method::TOYMODELANDFORCE:
         case Method::LANDING:
+        case Method::DDS:
         case Method::UNKNOWN:
             AP::logger().set_long_log_persist(false);
             return;

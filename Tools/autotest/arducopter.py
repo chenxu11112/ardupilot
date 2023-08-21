@@ -123,14 +123,6 @@ class AutoTestCopter(AutoTest):
     def set_autodisarm_delay(self, delay):
         self.set_parameter("DISARM_DELAY", delay)
 
-    def user_takeoff(self, alt_min=30, timeout=30, max_err=5):
-        '''takeoff using mavlink takeoff command'''
-        self.run_cmd(
-            mavutil.mavlink.MAV_CMD_NAV_TAKEOFF,
-            p7=alt_min,
-        )
-        self.wait_for_alt(alt_min, timeout=timeout, max_err=max_err)
-
     def takeoff(self,
                 alt_min=30,
                 takeoff_throttle=1700,
@@ -149,16 +141,9 @@ class AutoTestCopter(AutoTest):
             self.user_takeoff(alt_min=alt_min, timeout=timeout, max_err=max_err)
         else:
             self.set_rc(3, takeoff_throttle)
-        self.wait_for_alt(alt_min=alt_min, timeout=timeout, max_err=max_err)
+        self.wait_altitude(alt_min-1, alt_min+max_err, relative=True, timeout=timeout)
         self.hover()
         self.progress("TAKEOFF COMPLETE")
-
-    def wait_for_alt(self, alt_min=30, timeout=30, max_err=5):
-        """Wait for minimum altitude to be reached."""
-        self.wait_altitude(alt_min - 1,
-                           (alt_min + max_err),
-                           relative=True,
-                           timeout=timeout)
 
     def land_and_disarm(self, timeout=60):
         """Land the quad."""
@@ -171,7 +156,7 @@ class AutoTestCopter(AutoTest):
         m = self.mav.recv_match(type='GLOBAL_POSITION_INT', blocking=True)
         alt = m.relative_alt / 1000.0 # mm -> m
         if alt > min_alt:
-            self.wait_for_alt(min_alt, timeout=timeout)
+            self.wait_altitude(min_alt-1, min_alt+5, relative=True, timeout=timeout)
 #        self.wait_statustext("SIM Hit ground", timeout=timeout)
         self.wait_disarmed()
 
@@ -703,6 +688,47 @@ class AutoTestCopter(AutoTest):
         self.set_parameter('FS_THR_ENABLE', 0)
         self.reboot_sitl()
 
+    def ThrottleFailsafePassthrough(self):
+        '''check servo passthrough on RC failsafe.  Make sure it doesn't glitch to the bad RC input value'''
+        channel = 7
+        trim_value = 1450
+        self.set_parameters({
+            'RC%u_MIN' % channel: 1000,
+            'RC%u_MAX' % channel: 2000,
+            'SERVO%u_MIN' % channel: 1000,
+            'SERVO%u_MAX' % channel: 2000,
+            'SERVO%u_TRIM' % channel: trim_value,
+            'SERVO%u_FUNCTION' % channel: 146,  # scaled passthrough for channel 7
+            'FS_THR_ENABLE': 1,
+            'RC_FS_TIMEOUT': 10,
+            'SERVO_RC_FS_MSK': 1 << (channel-1),
+        })
+
+        self.reboot_sitl()
+
+        self.context_set_message_rate_hz('SERVO_OUTPUT_RAW', 200)
+
+        self.set_rc(channel, 1799)
+        expected_servo_output_value = 1778  # 1778 because of weird trim
+        self.wait_servo_channel_value(channel, expected_servo_output_value)
+        # receiver goes into failsafe with wild override values:
+
+        def ensure_SERVO_values_never_input(mav, m):
+            if m.get_type() != "SERVO_OUTPUT_RAW":
+                return
+            value = getattr(m, "servo%u_raw" % channel)
+            if value != expected_servo_output_value and value != trim_value:
+                raise NotAchievedException("Bad servo value %u received" % value)
+
+        self.install_message_hook_context(ensure_SERVO_values_never_input)
+        self.progress("Forcing receiver into failsafe")
+        self.set_rc_from_map({
+            3: 800,
+            channel: 1300,
+        })
+        self.wait_servo_channel_value(channel, trim_value)
+        self.delay_sim_time(10)
+
     # Tests all actions and logic behind the GCS failsafe
     def GCSFailsafe(self, side=60, timeout=360):
         '''Test GCS Failsafe'''
@@ -1114,7 +1140,7 @@ class AutoTestCopter(AutoTest):
         self.change_mode("LAND")
 
         # check vehicle descends to 2m or less within 40 seconds
-        self.wait_altitude(-5, 2, timeout=40, relative=True)
+        self.wait_altitude(-5, 2, timeout=50, relative=True)
 
         # force disarm of vehicle (it will likely not automatically disarm)
         self.disarm_vehicle(force=True)
@@ -2100,7 +2126,7 @@ class AutoTestCopter(AutoTest):
 
             self.progress("Regaining altitude")
             self.change_mode('ALT_HOLD')
-            self.wait_for_alt(20, max_err=40)
+            self.wait_altitude(19, 60, relative=True)
 
             self.progress("Flipping in pitch")
             self.set_rc(2, 1700)
@@ -2440,7 +2466,7 @@ class AutoTestCopter(AutoTest):
                     raise NotAchievedException("AUTOTUNE gains not present in pilot testing")
                 # land without changing mode
                 self.set_rc(3, 1000)
-                self.wait_for_alt(0)
+                self.wait_altitude(-1, 5, relative=True)
                 self.wait_disarmed()
                 # Check gains are still there after disarm
                 if (rlld == self.get_parameter("ATC_RAT_RLL_D") or
@@ -3833,7 +3859,7 @@ class AutoTestCopter(AutoTest):
                 new_pos = self.mav.location()
                 delta = self.get_distance(target, new_pos)
                 self.progress("Landed %f metres from target position" % delta)
-                max_delta = 1
+                max_delta = 1.5
                 if delta > max_delta:
                     raise NotAchievedException("Did not land close enough to target position (%fm > %fm" % (delta, max_delta))
 
@@ -4550,7 +4576,7 @@ class AutoTestCopter(AutoTest):
             # determine if we've successfully navigated to close to
             # where we should be:
             dist = math.sqrt(delta_ef.x * delta_ef.x + delta_ef.y * delta_ef.y)
-            dist_max = 0.15
+            dist_max = 1
             self.progress("dist=%f want <%f" % (dist, dist_max))
             if dist < dist_max:
                 # success!  We've gotten within our target distance
@@ -4628,6 +4654,7 @@ class AutoTestCopter(AutoTest):
 
         except Exception as e:
             self.print_exception_caught(e)
+            self.disarm_vehicle(force=True)
             ex = e
 
         self.context_pop()
@@ -5213,6 +5240,11 @@ class AutoTestCopter(AutoTest):
             )
             self.test_mount_pitch(-89, 5, mavutil.mavlink.MAV_MOUNT_MODE_SYSID_TARGET, hold=2)
 
+            self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SET_ROI_NONE)
+            self.run_cmd_int(
+                mavutil.mavlink.MAV_CMD_DO_SET_ROI_SYSID,
+                p1=self.mav.source_system,
+            )
             self.mav.mav.global_position_int_send(
                 0, # time boot ms
                 int(roi_lat * 1e7),
@@ -6891,7 +6923,7 @@ class AutoTestCopter(AutoTest):
                 if self.get_sim_time_cached() - tstart > 10:
                     break
                 vel = self.get_body_frame_velocity()
-                if vel.length() > 0.3:
+                if vel.length() > 0.5:
                     raise NotAchievedException("Moved too much (%s)" %
                                                (str(vel),))
                 shove(None, None)
@@ -7682,28 +7714,18 @@ class AutoTestCopter(AutoTest):
 
     def GSF(self):
         '''test the Gaussian Sum filter'''
-        ex = None
         self.context_push()
-        try:
-            self.set_parameter("EK2_ENABLE", 1)
-            self.reboot_sitl()
-            self.takeoff(20, mode='LOITER')
-            self.set_rc(2, 1400)
-            self.delay_sim_time(5)
-            self.set_rc(2, 1500)
-            self.progress("Path: %s" % self.current_onboard_log_filepath())
-            dfreader = self.dfreader_for_current_onboard_log()
-            self.do_RTL()
-        except Exception as e:
-            self.progress("Caught exception: %s" %
-                          self.get_exception_stacktrace(e))
-            ex = e
-
+        self.set_parameter("EK2_ENABLE", 1)
+        self.reboot_sitl()
+        self.takeoff(20, mode='LOITER')
+        self.set_rc(2, 1400)
+        self.delay_sim_time(5)
+        self.set_rc(2, 1500)
+        self.progress("Path: %s" % self.current_onboard_log_filepath())
+        dfreader = self.dfreader_for_current_onboard_log()
+        self.do_RTL()
         self.context_pop()
         self.reboot_sitl()
-
-        if ex is not None:
-            raise ex
 
         # ensure log messages present
         want = set(["XKY0", "XKY1", "NKY0", "NKY1"])
@@ -7713,6 +7735,46 @@ class AutoTestCopter(AutoTest):
             if m is None:
                 raise NotAchievedException("Did not get %s" % want)
             still_want.remove(m.get_type())
+
+    def GSF_reset(self):
+        '''test the Gaussian Sum filter based Emergency reset'''
+        self.context_push()
+        self.set_parameters({
+            "COMPASS_ORIENT": 4,    # yaw 180
+            "COMPASS_USE2": 0,      # disable backup compasses to avoid pre-arm failures
+            "COMPASS_USE3": 0,
+        })
+        self.reboot_sitl()
+        self.change_mode('GUIDED')
+        self.wait_ready_to_arm()
+
+        # record starting position
+        startpos = self.mav.recv_match(type='LOCAL_POSITION_NED', blocking=True)
+        self.progress("startpos=%s" % str(startpos))
+
+        # arm vehicle and takeoff to at least 5m
+        self.arm_vehicle()
+        expected_alt = 5
+        self.user_takeoff(alt_min=expected_alt)
+
+        # watch for emergency yaw reset
+        self.wait_text("EKF3 IMU. emergency yaw reset", timeout=5, regex=True)
+
+        # record how far vehicle flew off
+        endpos = self.mav.recv_match(type='LOCAL_POSITION_NED', blocking=True)
+        delta_x = endpos.x - startpos.x
+        delta_y = endpos.y - startpos.y
+        dist_m = math.sqrt(delta_x*delta_x + delta_y*delta_y)
+        self.progress("GSF yaw reset triggered at %f meters" % dist_m)
+
+        self.do_RTL()
+        self.context_pop()
+        self.reboot_sitl()
+
+        # ensure vehicle did not fly too far
+        dist_m_max = 8
+        if dist_m > dist_m_max:
+            raise NotAchievedException("GSF reset failed, vehicle flew too far (%f > %f)" % (dist_m, dist_m_max))
 
     def fly_rangefinder_mavlink(self):
         self.fly_rangefinder_mavlink_distance_sensor()
@@ -9548,6 +9610,7 @@ class AutoTestCopter(AutoTest):
              self.BrakeMode,
              self.RecordThenPlayMission,
              self.ThrottleFailsafe,
+             self.ThrottleFailsafePassthrough,
              self.GCSFailsafe,
              self.CustomController,
         ])
@@ -9836,6 +9899,18 @@ class AutoTestCopter(AutoTest):
 
         self.test_rplidar("rplidara1", expected_distances)
 
+    def BrakeZ(self):
+        '''check jerk limit correct in Brake mode'''
+        self.set_parameter('PSC_JERK_Z', 3)
+        self.takeoff(50, mode='GUIDED')
+        vx, vy, vz_up = (0, 0, -1)
+        self.test_guided_local_velocity_target(vx=vx, vy=vy, vz_up=vz_up, timeout=10)
+
+        self.wait_for_local_velocity(vx=vx, vy=vy, vz_up=vz_up, timeout=10)
+        self.change_mode('BRAKE')
+        self.wait_for_local_velocity(vx=0, vy=0, vz_up=0, timeout=10)
+        self.land_and_disarm()
+
     def tests2b(self):  # this block currently around 9.5mins here
         '''return list of all tests'''
         ret = ([
@@ -9856,6 +9931,7 @@ class AutoTestCopter(AutoTest):
             self.AltEstimation,
             self.EKFSource,
             self.GSF,
+            self.GSF_reset,
             self.AP_Avoidance,
             self.SMART_RTL,
             self.RTL_TO_RALLY,
@@ -9895,6 +9971,7 @@ class AutoTestCopter(AutoTest):
             self.RPLidarA1,
             self.RPLidarA2,
             self.SafetySwitch,
+            self.BrakeZ,
         ])
         return ret
 

@@ -43,6 +43,7 @@
 #include <AR_WPNav/AR_WPNav_OA.h>
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AC_PrecLand/AC_PrecLand_config.h>
+#include <AP_Follow/AP_Follow_config.h>
 
 // Configuration
 #include "defines.h"
@@ -91,7 +92,9 @@ public:
     friend class ModeManual;
     friend class ModeRTL;
     friend class ModeSmartRTL;
+#if MODE_FOLLOW_ENABLED == ENABLED
     friend class ModeFollow;
+#endif
     friend class ModeSimple;
 #if MODE_DOCK_ENABLED == ENABLED
     friend class ModeDock;
@@ -236,7 +239,9 @@ private:
     ModeSteering mode_steering;
     ModeRTL mode_rtl;
     ModeSmartRTL mode_smartrtl;
+#if MODE_FOLLOW_ENABLED == ENABLED
     ModeFollow mode_follow;
+#endif
     ModeSimple mode_simple;
 #if MODE_DOCK_ENABLED == ENABLED
     ModeDock mode_dock;
@@ -258,6 +263,7 @@ private:
     bool set_target_location(const Location& target_loc) override;
     bool set_target_velocity_NED(const Vector3f& vel_ned) override;
     bool set_steering_and_throttle(float steering, float throttle) override;
+    bool get_steering_and_throttle(float& steering, float& throttle) override;
     // set desired turn rate (degrees/sec) and speed (m/s). Used for scripting
     bool set_desired_turn_rate_and_speed(float turn_rate, float speed) override;
     bool set_desired_speed(float speed) override;
