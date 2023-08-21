@@ -70,7 +70,9 @@ def build(bld):
                      'AP_Stats',
                      'AP_EFI',
                      'AP_CheckFirmware',
+                     'AP_RPM',
                      'AP_Proximity',
+                     'AP_RCProtocol',
                      ]
     bld.ap_stlib(
         name= 'AP_Periph_libs',

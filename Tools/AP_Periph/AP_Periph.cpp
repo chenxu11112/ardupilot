@@ -163,6 +163,10 @@ void AP_Periph_FW::init()
     battery.lib.init();
 #endif
 
+#ifdef HAL_PERIPH_ENABLE_RCIN
+    rcin_init();
+#endif
+
 #if defined(HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY) || defined(HAL_PERIPH_ENABLE_RC_OUT)
     hal.rcout->init();
 #endif
@@ -267,6 +271,10 @@ void AP_Periph_FW::init()
 
 #if HAL_NMEA_OUTPUT_ENABLED
     nmea.init();
+#endif
+
+#ifdef HAL_PERIPH_ENABLE_RPM
+    rpm_sensor.init();
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_NOTIFY
@@ -453,6 +461,10 @@ void AP_Periph_FW::update()
     }
 #endif
 
+#ifdef HAL_PERIPH_ENABLE_RCIN
+    rcin_update();
+#endif
+
     static uint32_t fiftyhz_last_update_ms;
     if (now - fiftyhz_last_update_ms >= 20) {
         // update at 50Hz
@@ -472,6 +484,13 @@ void AP_Periph_FW::update()
 
 #if AP_TEMPERATURE_SENSOR_ENABLED
     temperature_sensor.update();
+#endif
+
+#ifdef HAL_PERIPH_ENABLE_RPM
+    if (now - rpm_last_update_ms >= 100) {
+        rpm_last_update_ms = now;
+        rpm_sensor.update();
+    }
 #endif
 
 #if HAL_LOGGING_ENABLED

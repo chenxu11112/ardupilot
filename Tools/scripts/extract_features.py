@@ -133,7 +133,7 @@ class ExtractFeatures(object):
             ('AP_EFI_NWPWU_ENABLED', r'AP_EFI_NWPMU::update\b',),
             ('AP_EFI_CURRAWONG_ECU_ENABLED', r'AP_EFI_Currawong_ECU::update\b',),
             ('HAL_GENERATOR_ENABLED', 'AP_Generator::AP_Generator',),
-            ('AP_GENERATOR_{type}_ENABLED', r'AP_Generator_(?P<type>.*)::update',),
+            ('AP_GENERATOR_{type}_ENABLED', r'AP_Generator_(?P<type>.*)::init',),
 
             ('OSD_ENABLED', 'AP_OSD::update_osd',),
             ('HAL_PLUSCODE_ENABLE', 'AP_OSD_Screen::draw_pluscode',),
@@ -201,6 +201,9 @@ class ExtractFeatures(object):
             ('AP_CRASHDUMP_ENABLED', 'CrashCatcher_DumpMemory'),
             ('AP_CAN_SLCAN_ENABLED', 'SLCAN::CANIface::var_info'),
             ('AC_POLYFENCE_FENCE_POINT_PROTOCOL_SUPPORT', 'AC_PolyFence_loader::handle_msg_fetch_fence_point'),
+            ('AP_MAVLINK_RALLY_POINT_PROTOCOL_ENABLED', 'GCS_MAVLINK::handle_common_rally_message'),
+
+            ('AP_SDCARD_STORAGE_ENABLED', 'StorageAccess::attach_file'),
         ]
 
     def progress(self, msg):

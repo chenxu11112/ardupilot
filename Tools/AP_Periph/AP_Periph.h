@@ -26,11 +26,14 @@
 #include <AP_HAL/CANIface.h>
 #include <AP_Stats/AP_Stats.h>
 #include <AP_Networking/AP_Networking.h>
+#include <AP_RPM/AP_RPM.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_ESC_Telem/AP_ESC_Telem_config.h>
 #if HAL_WITH_ESC_TELEM
 #include <AP_ESC_Telem/AP_ESC_Telem.h>
 #endif
+#include <AP_RCProtocol/AP_RCProtocol_config.h>
+#include "rc_in.h"
 
 #include <AP_NMEA_Output/AP_NMEA_Output.h>
 #if HAL_NMEA_OUTPUT_ENABLED && !(HAL_GCS_ENABLED && defined(HAL_PERIPH_ENABLE_GPS))
@@ -159,6 +162,11 @@ public:
     AP_Baro baro;
 #endif
 
+#ifdef HAL_PERIPH_ENABLE_RPM
+    AP_RPM rpm_sensor;
+    uint32_t rpm_last_update_ms;
+#endif
+
 #ifdef HAL_PERIPH_ENABLE_BATTERY
     struct AP_Periph_Battery {
         void handle_battery_failsafe(const char* type_str, const int8_t action) { }
@@ -270,6 +278,16 @@ public:
     void rcout_srv_PWM(const uint8_t actuator_id, const float command_value);
     void rcout_update();
     void rcout_handle_safety_state(uint8_t safety_state);
+#endif
+
+#ifdef HAL_PERIPH_ENABLE_RCIN
+    void rcin_init();
+    void rcin_update();
+    void can_send_RCInput(uint8_t quality, uint16_t *values, uint8_t nvalues, bool in_failsafe, bool quality_valid);
+    bool rcin_initialised;
+    uint32_t rcin_last_sent_RCInput_ms;
+    const char *rcin_rc_protocol;  // protocol currently being decoded
+    Parameters_RCIN g_rcin;
 #endif
 
 #if AP_TEMPERATURE_SENSOR_ENABLED
