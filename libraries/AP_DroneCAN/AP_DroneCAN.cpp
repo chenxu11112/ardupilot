@@ -1103,16 +1103,19 @@ void AP_DroneCAN::send_esc_ctrl_msg()
 
     uavcan_protocol_debug_KeyValue keyvalue_msg;
 
-    uint16_t value = hal.rcin->read(HAL_GPIO_ESC_RC_CH);
+    // uint16_t value = hal.rcin->read(HAL_GPIO_ESC_RC_CH);
 
-    if(value > 1700 )
-    {
-        keyvalue_msg.value = HAL_GPIO_ESC_OPEN_NUM;
-    }
-    else if(value < 1500 )
-    {
-        keyvalue_msg.value = HAL_GPIO_ESC_CLOSE_NUM;
-    }
+    // if(value > 1700 )
+    // {
+    //     keyvalue_msg.value = HAL_GPIO_ESC_OPEN_NUM;
+    // }
+    // else if(value < 1500 )
+    // {
+    //     keyvalue_msg.value = HAL_GPIO_ESC_CLOSE_NUM;
+    // }
+
+    keyvalue_msg.value = HAL_GPIO_ESC_OPEN_NUM;
+
     keyvalue_msg.key.len = sizeof("esc_control") - 1;
     strncpy_noterm((char*)keyvalue_msg.key.data, "esc_control", sizeof("esc_control") - 1);
 

@@ -1026,7 +1026,7 @@ static void onTransferReceived(CanardInstance* canard_instance,
 
 #ifdef HAL_GPIO_ESC_CTRL_ENABLED
     case UAVCAN_PROTOCOL_DEBUG_KEYVALUE_ID:
-        handle_esc_control(ins, transfer);
+        handle_esc_control(canard_instance, transfer);
         break;
 #endif
     }
