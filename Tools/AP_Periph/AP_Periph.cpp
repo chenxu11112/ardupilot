@@ -256,9 +256,19 @@ void AP_Periph_FW::init()
     hal.rcout->serial_led_send(5);
 #endif
 
-#ifdef HAL_FCU_PWR_ENABLED
-    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_PIN, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_GPIO_FCU_PWR_PIN, HAL_FCU_PWR_PIN_OPEN);
+#ifdef HAL_FCU_PWR_CTRL_ENABLED
+#   ifdef HAL_GPIO_FCU_PWR_CTRL1 
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL1, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL1, HAL_FCU_PWR_PIN_OPEN);
+#   endif
+#   ifdef HAL_GPIO_FCU_PWR_CTRL2
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL2, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL2, HAL_FCU_PWR_PIN_OPEN);
+#   endif
+#   ifdef HAL_GPIO_FCU_PWR_CTRL3
+    hal.gpio->pinMode(HAL_GPIO_FCU_PWR_CTRL3, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL3, HAL_FCU_PWR_PIN_OPEN);
+#   endif
 #endif
 }
 

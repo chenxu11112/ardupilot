@@ -907,11 +907,11 @@ static void handle_esc_control(CanardInstance* ins, CanardRxTransfer* transfer)
     {           
         // printf("esc_control\n");
 
-        if (msg.value == HAL_GPIO_ESC_OPEN_NUM)
+        if ((int)msg.value == (int)HAL_GPIO_ESC_OPEN_NUM)
         {
             hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_OPEN);
             // printf("ESC_OPEN\n");
-        }else if (msg.value == HAL_GPIO_ESC_CLOSE_NUM)
+        }else if ((int)msg.value == (int)HAL_GPIO_ESC_CLOSE_NUM)
         {
             hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_CLOSE);
             // printf("ESC_CLOSE\n");

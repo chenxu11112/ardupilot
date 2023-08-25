@@ -128,7 +128,7 @@ public:
     // buzzer
     void set_buzzer_tone(float frequency, float duration_s);
 
-#ifdef UAVCAN_ESC_CONTROL
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
     void esc_control_send();
 #endif
 
