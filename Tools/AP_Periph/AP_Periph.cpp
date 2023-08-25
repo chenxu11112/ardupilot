@@ -243,9 +243,9 @@ void AP_Periph_FW::init()
 #endif
     start_ms = AP_HAL::native_millis();
 
-#ifdef HAL_GPIO_ESC_ENABLED
-    hal.gpio->pinMode(HAL_GPIO_ESC_PIN, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_GPIO_ESC_PIN, HAL_GPIO_ESC_CLOSE);
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
+    hal.gpio->pinMode(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_OUTPUT);
+    hal.gpio->write(HAL_GPIO_ESC_CTRL_PIN, HAL_GPIO_ESC_CTRL_CLOSE);
 #endif
 
 

@@ -2,9 +2,16 @@
     "cSpell.language": "en-GB",
     "astyle.astylerc": "${workspaceFolder}/Tools/CodeStyle/astylerc",
     "files.associations": {
+        "*.px4board": "makefile",
+        "*.toml": "makefile",
+        "Kconfig": "makefile",
+        "*.map": "arm",
         "*.dat": "cmake",
-        "*.world": "xml",
+        ".config": "cmake",
         "*.inc": "cmake",
+        "*.sdf": "xml",
+        "*.parm": "cmake",
+        "*.world": "xml",
         "*.ipp": "cpp",
         "optional": "cpp",
         "istream": "cpp",
@@ -17,7 +24,10 @@
         "type_traits": "cpp",
         "utility": "cpp",
         "variant": "cpp",
-        "*.tcc": "cpp"
+        "*.tcc": "cpp",
+        "random": "cpp",
+        "string": "cpp",
+        "string_view": "cpp"
     },
     "editor.defaultFormatter": "xaver.clang-format",
     "[jsonc]": {

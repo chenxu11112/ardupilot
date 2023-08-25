@@ -62,7 +62,7 @@
 #include <AP_OpenDroneID/AP_OpenDroneID.h>
 #include "AP_UAVCAN_pool.h"
 
-#ifdef UAVCAN_ESC_CONTROL
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
 #include <uavcan/protocol/debug/KeyValue.hpp>
 #endif
 
@@ -170,7 +170,7 @@ static uavcan::Publisher<uavcan::equipment::safety::ArmingStatus>* arming_status
 static uavcan::Publisher<uavcan::equipment::gnss::RTCMStream>* rtcm_stream[HAL_MAX_CAN_PROTOCOL_DRIVERS];
 static uavcan::Publisher<ardupilot::indication::NotifyState>* notify_state[HAL_MAX_CAN_PROTOCOL_DRIVERS];
 
-#ifdef UAVCAN_ESC_CONTROL
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
 static uavcan::Publisher<uavcan::protocol::debug::KeyValue>* debug_key_value[HAL_MAX_CAN_PROTOCOL_DRIVERS];
 #endif
 // Clients
@@ -395,7 +395,7 @@ void AP_UAVCAN::init(uint8_t driver_index, bool enable_filters)
     notify_state[driver_index]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(20));
     notify_state[driver_index]->setPriority(uavcan::TransferPriority::OneHigherThanLowest);
 
-#ifdef UAVCAN_ESC_CONTROL
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
     debug_key_value[driver_index] = new uavcan::Publisher<uavcan::protocol::debug::KeyValue>(*_node);
     debug_key_value[driver_index]->setTxTimeout(uavcan::MonotonicDuration::fromMSec(50));
     debug_key_value[driver_index]->setPriority(uavcan::TransferPriority::OneHigherThanLowest);
@@ -502,7 +502,7 @@ void AP_UAVCAN::loop(void)
         safety_state_send();
         notify_state_send();
 
-#ifdef UAVCAN_ESC_CONTROL
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
         esc_control_send();
 #endif
         send_parameter_request();
@@ -723,7 +723,7 @@ void AP_UAVCAN::set_buzzer_tone(float frequency, float duration_s)
     _buzzer.pending_mask = 0xFF;
 }
 
-#ifdef UAVCAN_ESC_CONTROL
+#ifdef HAL_GPIO_ESC_CTRL_ENABLED
 // esc_control send
 void AP_UAVCAN::esc_control_send()
 {    
@@ -736,7 +736,7 @@ void AP_UAVCAN::esc_control_send()
     _last_esc_control_ms = now;
     uavcan::protocol::debug::KeyValue msg;
 
-    // uint16_t pwm_value = hal.rcin->read(UAVCAN_ESC_CONTROL_RC_CH);
+    // uint16_t pwm_value = hal.rcin->read(HAL_GPIO_ESC_CTRL_ENABLED_RC_CH);
     // if (pwm_value > 1500){ 
     //     msg.value = HAL_GPIO_ESC_OPEN_NUM;
     // }
