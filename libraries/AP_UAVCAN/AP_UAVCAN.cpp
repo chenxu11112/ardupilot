@@ -736,13 +736,16 @@ void AP_UAVCAN::esc_control_send()
     _last_esc_control_ms = now;
     uavcan::protocol::debug::KeyValue msg;
 
-    uint16_t pwm_value = hal.rcin->read(UAVCAN_ESC_CONTROL_RC_CH);
-    if (pwm_value > 1500){ 
-        msg.value = HAL_GPIO_ESC_OPEN_NUM;
-    }
-    else {
-        msg.value = HAL_GPIO_ESC_CLOSE_NUM;
-    }
+    // uint16_t pwm_value = hal.rcin->read(UAVCAN_ESC_CONTROL_RC_CH);
+    // if (pwm_value > 1500){ 
+    //     msg.value = HAL_GPIO_ESC_OPEN_NUM;
+    // }
+    // else {
+    //     msg.value = HAL_GPIO_ESC_CLOSE_NUM;
+    // }
+
+    msg.value = HAL_GPIO_ESC_OPEN_NUM;
+
     msg.key = "esc_control";
 
     debug_key_value[_driver_index]->broadcast(msg);
