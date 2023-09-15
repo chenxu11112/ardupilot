@@ -1103,7 +1103,7 @@ void AP_DroneCAN::safety_state_send()
 #ifdef HAL_GPIO_ESC_CTRL_ENABLED
 void AP_DroneCAN::send_esc_ctrl_msg()
 {
-    uint32_t now = AP_HAL::native_millis();
+    uint32_t now = AP_HAL::millis();
     if (now - _last_esc_ctrl_ms < 1000) {
         // update at 1Hz
         return;
