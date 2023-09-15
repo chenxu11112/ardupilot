@@ -696,7 +696,7 @@ void GCS_MAVLINK_Plane::handle_change_alt_request(AP_Mission::Mission_Command &c
 }
 
 
-MAV_RESULT GCS_MAVLINK_Plane::handle_command_preflight_calibration(const mavlink_command_long_t &packet, const mavlink_message_t &msg)
+MAV_RESULT GCS_MAVLINK_Plane::handle_command_preflight_calibration(const mavlink_command_int_t &packet, const mavlink_message_t &msg)
 {
     plane.in_calibration = true;
     MAV_RESULT ret = GCS_MAVLINK::handle_command_preflight_calibration(packet, msg);
@@ -950,7 +950,7 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_int_guided_slew_commands(const mavl
 
 }
 
-MAV_RESULT GCS_MAVLINK_Plane::handle_command_int_packet(const mavlink_command_int_t &packet)
+MAV_RESULT GCS_MAVLINK_Plane::handle_command_int_packet(const mavlink_command_int_t &packet, const mavlink_message_t &msg)
 {
     switch(packet.command) {
 
@@ -973,16 +973,29 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_int_packet(const mavlink_command_in
         return MAV_RESULT_DENIED;
 #endif
 
+#if AP_ICENGINE_ENABLED
+    case MAV_CMD_DO_ENGINE_CONTROL:
+        if (!plane.g2.ice_control.engine_control(packet.param1, packet.param2, packet.param3)) {
+            return MAV_RESULT_FAILED;
+        }
+        return MAV_RESULT_ACCEPTED;
+#endif
+
+    case MAV_CMD_DO_CHANGE_SPEED:
+        return handle_command_DO_CHANGE_SPEED(packet);
+
+#if HAL_QUADPLANE_ENABLED
+    case MAV_CMD_DO_VTOL_TRANSITION:
+        return handle_command_DO_VTOL_TRANSITION(packet);
+#endif
+
     default:
-        return GCS_MAVLINK::handle_command_int_packet(packet);
+        return GCS_MAVLINK::handle_command_int_packet(packet, msg);
     }
 }
 
-MAV_RESULT GCS_MAVLINK_Plane::handle_command_long_packet(const mavlink_command_long_t &packet)
+MAV_RESULT GCS_MAVLINK_Plane::handle_command_DO_CHANGE_SPEED(const mavlink_command_int_t &packet)
 {
-    switch(packet.command) {
-
-    case MAV_CMD_DO_CHANGE_SPEED: {
         // if we're in failsafe modes (e.g., RTL, LOITER) or in pilot
         // controlled modes (e.g., MANUAL, TRAINING)
         // this command should be ignored since it comes in from GCS
@@ -993,15 +1006,15 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_long_packet(const mavlink_command_l
             return MAV_RESULT_FAILED;
         }
 
-        AP_Mission::Mission_Command cmd;
-        if (AP_Mission::mavlink_cmd_long_to_mission_cmd(packet, cmd) != MAV_MISSION_ACCEPTED) {
-            return MAV_RESULT_DENIED;
-        }
-        if (plane.do_change_speed(cmd)) {
+        if (plane.do_change_speed(packet.param1, packet.param2, packet.param3)) {
             return MAV_RESULT_ACCEPTED;
         }
         return MAV_RESULT_FAILED;
-    }
+}
+
+MAV_RESULT GCS_MAVLINK_Plane::handle_command_long_packet(const mavlink_command_long_t &packet, const mavlink_message_t &msg)
+{
+    switch(packet.command) {
 
     case MAV_CMD_NAV_LOITER_UNLIM:
         plane.set_mode(plane.mode_loiter, ModeReason::GCS_COMMAND);
@@ -1086,26 +1099,22 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_long_packet(const mavlink_command_l
                                                         (uint16_t)packet.param3,
                                                         packet.param4,
                                                         (uint8_t)packet.param5);
+#endif
 
-    case MAV_CMD_DO_VTOL_TRANSITION:
+    default:
+        return GCS_MAVLINK::handle_command_long_packet(packet, msg);
+    }
+}
+
+#if HAL_QUADPLANE_ENABLED
+MAV_RESULT GCS_MAVLINK_Plane::handle_command_DO_VTOL_TRANSITION(const mavlink_command_int_t &packet)
+{
         if (!plane.quadplane.handle_do_vtol_transition((enum MAV_VTOL_STATE)packet.param1)) {
             return MAV_RESULT_FAILED;
         }
         return MAV_RESULT_ACCEPTED;
-#endif
-
-#if AP_ICENGINE_ENABLED
-    case MAV_CMD_DO_ENGINE_CONTROL:
-        if (!plane.g2.ice_control.engine_control(packet.param1, packet.param2, packet.param3)) {
-            return MAV_RESULT_FAILED;
-        }
-        return MAV_RESULT_ACCEPTED;
-#endif
-
-    default:
-        return GCS_MAVLINK::handle_command_long_packet(packet);
-    }
 }
+#endif
 
 // this is called on receipt of a MANUAL_CONTROL packet and is
 // expected to call manual_override to override RC input on desired

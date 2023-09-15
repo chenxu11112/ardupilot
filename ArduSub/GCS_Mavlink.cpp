@@ -431,9 +431,9 @@ MAV_RESULT GCS_MAVLINK_Sub::_handle_command_preflight_calibration_baro(const mav
     return MAV_RESULT_ACCEPTED;
 }
 
-MAV_RESULT GCS_MAVLINK_Sub::_handle_command_preflight_calibration(const mavlink_command_long_t &packet, const mavlink_message_t &msg)
+MAV_RESULT GCS_MAVLINK_Sub::_handle_command_preflight_calibration(const mavlink_command_int_t &packet, const mavlink_message_t &msg)
 {
-    if (is_equal(packet.param6,1.0f)) {
+    if (packet.y == 1) {
         // compassmot calibration
         //result = sub.mavlink_compassmot(chan);
         gcs().send_text(MAV_SEVERITY_INFO, "#CompassMot calibration not supported");
@@ -460,7 +460,7 @@ bool GCS_MAVLINK_Sub::set_home(const Location& loc, bool _lock) {
 }
 
 
-MAV_RESULT GCS_MAVLINK_Sub::handle_command_long_packet(const mavlink_command_long_t &packet)
+MAV_RESULT GCS_MAVLINK_Sub::handle_command_long_packet(const mavlink_command_long_t &packet, const mavlink_message_t &msg)
 {
     switch (packet.command) {
     case MAV_CMD_NAV_LOITER_UNLIM:
@@ -516,7 +516,7 @@ MAV_RESULT GCS_MAVLINK_Sub::handle_command_long_packet(const mavlink_command_lon
         return MAV_RESULT_ACCEPTED;
 
     default:
-        return GCS_MAVLINK::handle_command_long_packet(packet);
+        return GCS_MAVLINK::handle_command_long_packet(packet, msg);
     }
 }
 
