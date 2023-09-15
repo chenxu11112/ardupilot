@@ -125,8 +125,8 @@ void AP_Periph_FW::init()
     hal.gpio->write(HAL_GPIO_FCU_PWR_CTRL3, HAL_FCU_PWR_PIN_OPEN);
 #   endif
 #endif
-    hal.gpio->pinMode(HAL_TEMP_FAN2, HAL_GPIO_OUTPUT);
-    hal.gpio->write(HAL_TEMP_FAN2, 0);
+    // hal.gpio->pinMode(HAL_TEMP_FAN2, HAL_GPIO_OUTPUT);
+    // hal.gpio->write(HAL_TEMP_FAN2, 0);
 
     can_start();
 
