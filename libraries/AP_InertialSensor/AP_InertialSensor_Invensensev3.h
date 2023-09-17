@@ -117,4 +117,10 @@ private:
 
     float temp_filtered;
     LowPassFilter2pFloat temp_filter;
+
+    lpf_2khz_30hz_85hz acclpf;
+    lpf_2khz_30hz_85hz gyrolpf;
+
+    Vector3f acclpf_temp;
+    Vector3f gyrolpf_temp;
 };

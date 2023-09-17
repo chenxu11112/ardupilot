@@ -349,16 +349,22 @@ bool AP_InertialSensor_Invensensev3::accumulate_samples(const FIFOData *data, ui
         accel *= accel_scale;
         gyro *= gyro_scale;
 
+        acclpf_temp = acclpf.apply(accel);
+        gyrolpf_temp = gyrolpf.apply(gyro);
+
         const float temp = d.temperature * temp_sensitivity + temp_zero;
 
         // these four calls are about 40us
-        _rotate_and_correct_accel(accel_instance, accel);
-        _rotate_and_correct_gyro(gyro_instance, gyro);
+        _rotate_and_correct_accel(accel_instance, acclpf_temp);
+        _rotate_and_correct_gyro(gyro_instance, gyrolpf_temp);
 
-        _notify_new_accel_raw_sample(accel_instance, accel, 0);
-        _notify_new_gyro_raw_sample(gyro_instance, gyro);
+        _notify_new_accel_raw_sample(accel_instance, acclpf_temp, 0);
+        _notify_new_gyro_raw_sample(gyro_instance, gyrolpf_temp);
 
         temp_filtered = temp_filter.apply(temp);
+
+
+        
     }
     return true;
 }

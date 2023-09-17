@@ -32,6 +32,40 @@
 class AuxiliaryBus;
 class AP_Logger;
 
+class lpf_2khz_30hz_85hz
+{
+public:
+    Vector3f Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
+
+    Vector3f denAccum;
+    Vector3f rtb_Hlp;
+    Vector3f Out1;
+
+    /* Model step function */
+    Vector3f apply(Vector3f &xin)
+    {
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        denAccum = (xin * 0.089306201676634292f + Hlp_FILT_STATES[0] * 1.6008810288710587f) - Hlp_FILT_STATES[1] * 0.705675292315146f;
+        rtb_Hlp = (denAccum * 0.088568984335579318f + Hlp_FILT_STATES[0] * 0.17713796867115864f) + Hlp_FILT_STATES[1] * 0.088568984335579318f;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[2] * 0.69775695807524407f);
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = (denAccum * 0.50054203054148094f + Hlp_FILT_STATES[2] * 0.50054203054148094f);
+
+        /* S-Function (sdspbiquad): '<Root>/Hlp' */
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = denAccum;
+
+        return Out1;
+    }
+};
+
 class AP_InertialSensor_Backend
 {
 public:
@@ -322,3 +356,4 @@ private:
     void Write_GYR(const uint8_t instance, const uint64_t sample_us, const Vector3f &gyro) const __RAMFUNC__;  // Write GYR data packet: raw gyro data
 
 };
+
