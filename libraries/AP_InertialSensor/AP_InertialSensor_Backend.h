@@ -32,38 +32,104 @@
 class AuxiliaryBus;
 class AP_Logger;
 
+
+// #define Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30
+// #define Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30
+#define Chebyshev_II_SP_2000_PASS_20_STOP_40_DB_30
 class lpf_2khz_30hz_85hz
 {
 public:
-    Vector3f Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
 
-    Vector3f denAccum;
+#ifdef Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30
+    Vector3f Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
+    Vector3f numAccum;
     Vector3f rtb_Hlp;
     Vector3f Out1;
 
-    /* Model step function */
     Vector3f apply(Vector3f &xin)
     {
+
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
          */
-        denAccum = (xin * 0.089306201676634292f + Hlp_FILT_STATES[0] * 1.6008810288710587f) - Hlp_FILT_STATES[1] * 0.705675292315146f;
-        rtb_Hlp = (denAccum * 0.088568984335579318f + Hlp_FILT_STATES[0] * 0.17713796867115864f) + Hlp_FILT_STATES[1] * 0.088568984335579318f;
+        rtb_Hlp = (xin * 0.0084072664136534657f + Hlp_FILT_STATES[0] * 1.9133564380936847f) - Hlp_FILT_STATES[1] * 0.9278208369479326f;
+        numAccum = (rtb_Hlp * 0.77098298853080771f - Hlp_FILT_STATES[0] * 1.5100159920311977f) + Hlp_FILT_STATES[1] * 0.7709829885308076f;
         Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
-        Hlp_FILT_STATES[0] = denAccum;
-        denAccum = (rtb_Hlp + Hlp_FILT_STATES[2] * 0.69775695807524407f);
+        Hlp_FILT_STATES[0] = rtb_Hlp;
+        rtb_Hlp = (numAccum + Hlp_FILT_STATES[2] * 1.7532681726062895f) - Hlp_FILT_STATES[3] * 0.7721788425848245f;
+        numAccum = (rtb_Hlp * 1.1299605771807173f - Hlp_FILT_STATES[2] * 2.0f) + Hlp_FILT_STATES[3] * 1.1299605771807171f;
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = rtb_Hlp;
 
         /* Outport: '<Root>/Out1' incorporates:
          *  S-Function (sdspbiquad): '<Root>/Hlp'
          */
-        Out1 = (denAccum * 0.50054203054148094f + Hlp_FILT_STATES[2] * 0.50054203054148094f);
-
-        /* S-Function (sdspbiquad): '<Root>/Hlp' */
-        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
-        Hlp_FILT_STATES[2] = denAccum;
+        Out1 = numAccum * 3.9177814767596457f;
 
         return Out1;
     }
+#endif
+
+#ifdef Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30
+    Vector3f Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
+    Vector3f numAccum;
+    Vector3f rtb_Hlp;
+    Vector3f Out1;
+
+    Vector3f apply(Vector3f &xin)
+    {
+
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        rtb_Hlp = (xin * 0.0058752355182779591f + Hlp_FILT_STATES[0] * 1.929373685504771f) - Hlp_FILT_STATES[1] * 0.93947240725544578f;
+        numAccum = (rtb_Hlp * 0.7842265758607817f - Hlp_FILT_STATES[0] * 1.5458536427243097f) + Hlp_FILT_STATES[1] * 0.78422657586078159f;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = rtb_Hlp;
+        rtb_Hlp = (numAccum + Hlp_FILT_STATES[2] * 1.7929639941952533f) - Hlp_FILT_STATES[3] * 0.80634722719126184f;
+        numAccum = (rtb_Hlp * 1.0883257268080553f - Hlp_FILT_STATES[2] * 2.0f) + Hlp_FILT_STATES[3] * 1.0883257268080555f;
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = rtb_Hlp;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = numAccum * 5.7621683857646779f;
+
+        return Out1;
+    }
+#endif
+
+#ifdef Chebyshev_II_SP_2000_PASS_20_STOP_40_DB_30
+    Vector3f Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
+    Vector3f numAccum;
+    Vector3f rtb_Hlp;
+    Vector3f Out1;
+
+    Vector3f apply(Vector3f &xin)
+    {
+
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        rtb_Hlp = (xin * 0.0037838628F + Hlp_FILT_STATES[0] * 1.94477463F) - Hlp_FILT_STATES[1] * 0.95127362F;
+        numAccum = (rtb_Hlp * 0.798321545F - Hlp_FILT_STATES[0] * 1.58190298F) + Hlp_FILT_STATES[1] * 0.798321545F;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = rtb_Hlp;
+        rtb_Hlp = (numAccum + Hlp_FILT_STATES[2] * 1.8331989F) - Hlp_FILT_STATES[3] * 0.841931701F;
+        numAccum = (rtb_Hlp * 1.05555904F - Hlp_FILT_STATES[2] * 2.0f) + Hlp_FILT_STATES[3] * 1.05555904F ;
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = rtb_Hlp;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = numAccum * 9.15742302F;
+
+        return Out1;
+    }
+#endif
+
 };
 
 class AP_InertialSensor_Backend

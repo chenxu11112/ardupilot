@@ -37,6 +37,9 @@
 
 extern const AP_HAL::HAL& hal;
 
+// #define ACC_ONLY
+#define ACC_GYRO
+
 // set bit 0x80 in register ID for read on SPI
 #define BIT_READ_FLAG                           0x80
 
@@ -349,10 +352,10 @@ bool AP_InertialSensor_Invensensev3::accumulate_samples(const FIFOData *data, ui
         accel *= accel_scale;
         gyro *= gyro_scale;
 
+
+#ifdef ACC_GYRO
         acclpf_temp = acclpf.apply(accel);
         gyrolpf_temp = gyrolpf.apply(gyro);
-
-        const float temp = d.temperature * temp_sensitivity + temp_zero;
 
         // these four calls are about 40us
         _rotate_and_correct_accel(accel_instance, acclpf_temp);
@@ -361,6 +364,25 @@ bool AP_InertialSensor_Invensensev3::accumulate_samples(const FIFOData *data, ui
         _notify_new_accel_raw_sample(accel_instance, acclpf_temp, 0);
         _notify_new_gyro_raw_sample(gyro_instance, gyrolpf_temp);
 
+#elif defined ACC_ONLY
+        acclpf_temp = acclpf.apply(accel);
+
+        // these four calls are about 40us
+        _rotate_and_correct_accel(accel_instance, acclpf_temp);
+        _rotate_and_correct_gyro(gyro_instance, gyro);
+
+        _notify_new_accel_raw_sample(accel_instance, acclpf_temp, 0);
+        _notify_new_gyro_raw_sample(gyro_instance, gyro);
+#else 
+        // these four calls are about 40us
+        _rotate_and_correct_accel(accel_instance, accel);
+        _rotate_and_correct_gyro(gyro_instance, gyro);
+
+        _notify_new_accel_raw_sample(accel_instance, accel, 0);
+        _notify_new_gyro_raw_sample(gyro_instance, gyro);
+#endif
+
+        const float temp = d.temperature * temp_sensitivity + temp_zero;
         temp_filtered = temp_filter.apply(temp);
 
 
