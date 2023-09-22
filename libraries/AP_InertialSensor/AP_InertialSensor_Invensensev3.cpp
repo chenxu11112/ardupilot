@@ -37,8 +37,8 @@
 
 extern const AP_HAL::HAL& hal;
 
-// #define ACC_ONLY
-#define ACC_GYRO
+#define ACC_ONLY
+// #define ACC_GYRO
 
 // set bit 0x80 in register ID for read on SPI
 #define BIT_READ_FLAG                           0x80
