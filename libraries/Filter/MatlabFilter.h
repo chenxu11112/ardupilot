@@ -6,6 +6,8 @@
 #define AP_Chebyshev_II_SP_2000_PASS_20_STOP_40_DB_30
 #define AP_Chebyshev_II_SP_2000_PASS_10_STOP_30_DB_30
 #define AP_Butterworth_SP_2000_PASS_10_STOP_30_DB_60
+#define AP_Butterworth_SP_2000_PASS_5_STOP_20_DB_60
+#define AP_Butterworth_SP_2000_PASS_5_STOP_10_DB_60
 
 #ifdef AP_Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30
 template <class T>
@@ -188,3 +190,92 @@ public:
 };
 #endif
 
+#ifdef AP_Butterworth_SP_2000_PASS_5_STOP_20_DB_60
+template <class T>
+class Butterworth_SP_2000_PASS_5_STOP_20_DB_60
+{
+public:
+    T Hlp_FILT_STATES[6]; /* '<Root>/Hlp' */
+    T denAccum;
+    T rtb_Hlp;
+    T Out1;
+
+    T apply(T &In1)
+    {
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        denAccum = (In1 * 0.000387565204F + Hlp_FILT_STATES[0] * 1.96194243F) - Hlp_FILT_STATES[1] * 0.96233F;
+        rtb_Hlp = (denAccum * 8.50990255E-5F + Hlp_FILT_STATES[0] * 0.000170198051F) + Hlp_FILT_STATES[1] * 8.50990255E-5F;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[2] * 1.98937225F) - Hlp_FILT_STATES[3] * 0.989765227F;
+        rtb_Hlp = (denAccum * 0.000112426234F + Hlp_FILT_STATES[2] * 0.000224852469F) + Hlp_FILT_STATES[3] * 0.000112426234F;
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[4] * 1.97189426F) - Hlp_FILT_STATES[5] * 0.972283781F;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = (denAccum * 0.250002593F + Hlp_FILT_STATES[4] * 0.500005186F) + Hlp_FILT_STATES[5] * 0.250002593F;
+
+        /* S-Function (sdspbiquad): '<Root>/Hlp' */
+        Hlp_FILT_STATES[5] = Hlp_FILT_STATES[4];
+        Hlp_FILT_STATES[4] = denAccum;
+
+        return Out1;
+    }
+};
+#endif
+
+#ifdef AP_Butterworth_SP_2000_PASS_5_STOP_10_DB_60
+template <class T>
+class Butterworth_SP_2000_PASS_5_STOP_10_DB_60
+{
+public:
+    T Hlp_FILT_STATES[12]; /* '<Root>/Hlp' */
+    T denAccum;
+    T rtb_Hlp;
+    T Out1;
+
+    T apply(T &In1)
+    {
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        denAccum = (In1 * 0.000275240454F + Hlp_FILT_STATES[0] * 1.97800171F) - Hlp_FILT_STATES[1] * 0.978279769F;
+        rtb_Hlp = (denAccum * 6.98758304E-5F + Hlp_FILT_STATES[0] * 0.000139751661F) + Hlp_FILT_STATES[1] * 6.98758304E-5F;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[2] * 1.96805906F) - Hlp_FILT_STATES[3] * 0.968335807F;
+        rtb_Hlp = (denAccum * 4.57058668E-5F + Hlp_FILT_STATES[2] * 9.14117336E-5F) + Hlp_FILT_STATES[3] * 4.57058668E-5F;
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[4] * 1.99495888F) - Hlp_FILT_STATES[5] * 0.995239258F;
+        rtb_Hlp = (denAccum * 0.000106307205F + Hlp_FILT_STATES[4] * 0.00021261441F) + Hlp_FILT_STATES[5] * 0.000106307205F;
+        Hlp_FILT_STATES[5] = Hlp_FILT_STATES[4];
+        Hlp_FILT_STATES[4] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[6] * 1.9719063F) - Hlp_FILT_STATES[7] * 0.972183526F;
+        rtb_Hlp = (denAccum * 0.00415692898F + Hlp_FILT_STATES[6] * 0.00831385795F) + Hlp_FILT_STATES[7] * 0.00415692898F;
+        Hlp_FILT_STATES[7] = Hlp_FILT_STATES[6];
+        Hlp_FILT_STATES[6] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[8] * 0.983372271F);
+        rtb_Hlp = (denAccum * 0.000139583106F + Hlp_FILT_STATES[8] * 0.000139583106F);
+        Hlp_FILT_STATES[9] = Hlp_FILT_STATES[8];
+        Hlp_FILT_STATES[8] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[10] * 1.98588753F) - Hlp_FILT_STATES[11] * 0.986166716F;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = (denAccum * 0.250005186F + Hlp_FILT_STATES[10] * 0.500010371F) + Hlp_FILT_STATES[11] * 0.250005186F;
+
+        /* S-Function (sdspbiquad): '<Root>/Hlp' */
+        Hlp_FILT_STATES[11] = Hlp_FILT_STATES[10];
+        Hlp_FILT_STATES[10] = denAccum;
+
+        return Out1;
+    }
+};
+#endif
