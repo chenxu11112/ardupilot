@@ -120,8 +120,8 @@ private:
     float temp_filtered;
     LowPassFilter2pFloat temp_filter;
 
-    Butterworth_SP_2000_PASS_5_STOP_10_DB_60<Vector3f> acclpf;
-    Butterworth_SP_2000_PASS_5_STOP_10_DB_60<Vector3f> gyrolpf;
+    Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30<Vector3f> acclpf;
+    Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30<Vector3f> gyrolpf;
 
     Vector3f acclpf_temp;
     Vector3f gyrolpf_temp;

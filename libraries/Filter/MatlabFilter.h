@@ -5,6 +5,8 @@
 #define AP_Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30
 #define AP_Chebyshev_II_SP_2000_PASS_20_STOP_40_DB_30
 #define AP_Chebyshev_II_SP_2000_PASS_10_STOP_30_DB_30
+
+#define AP_Butterworth_SP_2000_PASS_25_STOP_50_DB_30
 #define AP_Butterworth_SP_2000_PASS_10_STOP_30_DB_60
 #define AP_Butterworth_SP_2000_PASS_5_STOP_20_DB_60
 #define AP_Butterworth_SP_2000_PASS_5_STOP_10_DB_60
@@ -143,6 +145,45 @@ public:
          *  S-Function (sdspbiquad): '<Root>/Hlp'
          */
         return Out1 = numAccum * 39.400383F;
+    }
+};
+#endif
+
+#ifdef AP_Butterworth_SP_2000_PASS_25_STOP_50_DB_30
+template <class T>
+class Butterworth_SP_2000_PASS_25_STOP_50_DB_30
+{
+public:
+    T Hlp_FILT_STATES[6]; /* '<Root>/Hlp' */
+    T denAccum;
+    T rtb_Hlp;
+    T Out1;
+
+    T apply(T &In1)
+    {
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        denAccum = (In1 * 0.0072058565F + Hlp_FILT_STATES[0] * 1.83553743F) - Hlp_FILT_STATES[1] * 0.842743337F;
+        rtb_Hlp = (denAccum * 0.00165310863F + Hlp_FILT_STATES[0] * 0.00330621726F) + Hlp_FILT_STATES[1] * 0.00165310863F;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[2] * 1.94764376F) - Hlp_FILT_STATES[3] * 0.955289662F;
+        rtb_Hlp = (denAccum * 0.00212706253F + Hlp_FILT_STATES[2] * 0.00425412506F) + Hlp_FILT_STATES[3] * 0.00212706253F;
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[4] * 1.8750416F) - Hlp_FILT_STATES[5] * 0.882402539F;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = (denAccum * 0.250094146F + Hlp_FILT_STATES[4] * 0.500188291F) + Hlp_FILT_STATES[5] * 0.250094146F;
+
+        /* S-Function (sdspbiquad): '<Root>/Hlp' */
+        Hlp_FILT_STATES[5] = Hlp_FILT_STATES[4];
+        Hlp_FILT_STATES[4] = denAccum;
+
+        return Out1;
     }
 };
 #endif
