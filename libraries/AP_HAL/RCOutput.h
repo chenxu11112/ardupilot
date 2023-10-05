@@ -139,17 +139,15 @@ public:
       microseconds, and represent minimum and maximum PWM values which
       will be used to convert channel writes into a percentage
      */
-    virtual void     set_esc_scaling(uint16_t min_pwm, uint16_t max_pwm) {}
+    void set_esc_scaling(uint16_t min_pwm, uint16_t max_pwm) {
+        _esc_pwm_min = min_pwm;
+        _esc_pwm_max = max_pwm;
+    }
 
-    /*
-      return ESC scaling value from set_esc_scaling()
-     */
-    virtual bool     get_esc_scaling(uint16_t &min_pwm, uint16_t &max_pwm) { return false; }
-    
     /*
       returns the pwm value scaled to [-1;1] regrading to set_esc_scaling ranges range without constraints.
      */
-    virtual float    scale_esc_to_unity(uint16_t pwm) { return 0; }
+    float scale_esc_to_unity(uint16_t pwm) const;
 
     /*
       return the erpm and error rate for a channel if available
@@ -217,6 +215,7 @@ public:
         MODE_PWM_DSHOT1200,
         MODE_NEOPIXEL,  // same as MODE_PWM_DSHOT at 800kHz but it's an LED
         MODE_PROFILED,  // same as MODE_PWM_DSHOT using separate clock and data
+        MODE_NEOPIXELRGB,  // same as MODE_NEOPIXEL but RGB ordering
     };
     // true when the output mode is of type dshot
     // static to allow use in the ChibiOS thread stuff
@@ -225,6 +224,7 @@ public:
     static bool is_led_protocol(const enum output_mode mode) {
       switch (mode) {
       case MODE_NEOPIXEL:
+      case MODE_NEOPIXELRGB:
       case MODE_PROFILED:
         return true;
       default:
@@ -353,7 +353,7 @@ public:
       and led number. A led number of -1 means all LEDs. LED 0 is the first LED
      */
     virtual void set_serial_led_rgb_data(const uint16_t chan, int8_t led, uint8_t red, uint8_t green, uint8_t blue) {}
-    
+
     /*
       trigger send of serial led
      */
@@ -374,7 +374,7 @@ public:
     /*
      * calculate the prescaler required to achieve the desire bitrate
      */
-    static uint32_t calculate_bitrate_prescaler(uint32_t timer_clock, uint32_t target_frequency, bool is_dshot);
+    static uint32_t calculate_bitrate_prescaler(uint32_t timer_clock, uint32_t target_frequency, bool at_least_freq = false);
 
     /*
      * bit width values for different protocols
@@ -415,4 +415,7 @@ protected:
     // helper functions for implementation of get_output_mode_banner
     void append_to_banner(char banner_msg[], uint8_t banner_msg_len, output_mode out_mode, uint8_t low_ch, uint8_t high_ch) const;
     const char* get_output_mode_string(enum output_mode out_mode) const;
+
+    uint16_t _esc_pwm_min;
+    uint16_t _esc_pwm_max;
 };

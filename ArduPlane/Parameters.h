@@ -356,6 +356,7 @@ public:
         k_param_fence,         // vehicle fence - unused
         k_param_acro_yaw_rate,
         k_param_takeoff_throttle_max_t,
+        k_param_autotune_options,
     };
 
     AP_Int16 format_version;
@@ -547,7 +548,7 @@ public:
 
 #if OFFBOARD_GUIDED == ENABLED
     // guided yaw heading PID
-    AC_PID guidedHeading{5000.0,  0.0,   0.0, 0 ,  10.0,   5.0,  5.0 ,  5.0  , 0.2};
+    AC_PID guidedHeading{5000.0,  0.0,   0.0, 0 ,  10.0,   5.0,  5.0 ,  5.0  , 0.0};
 #endif
 
 #if AP_SCRIPTING_ENABLED && AP_FOLLOW_ENABLED
