@@ -13,78 +13,85 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "AP_TemperatureSensor_Analog.h"
+#include "AP_TemperatureSensor_config.h"
 
 #if AP_TEMPERATURE_SENSOR_ANALOG_ENABLED
 
-#include <utility>
-#include <stdio.h>
-#include <AP_Math/AP_Math.h>
-#include <AP_Common/AP_Common.h>
+#include "AP_TemperatureSensor_Analog.h"
+
 
 extern const AP_HAL::HAL &hal;
 
-#define KELVIN_ZEROS_TEMPATURE 273.15f 
-
 const AP_Param::GroupInfo AP_TemperatureSensor_Analog::var_info[] = {
 
-    // @Param: VOLT_PIN
-    AP_GROUPINFO("PIN", 1, AP_TemperatureSensor_Analog, _volt_pin, AP_BATT_VOLT_PIN),
+    // @Param: PIN
+    // @DisplayName: Temperature sensor analog voltage sensing pin
+    // @Description: Sets the analog input pin that should be used for temprature monitoring.
+    // @Values: -1:Disabled, 2:Pixhawk/Pixracer/Navio2/Pixhawk2_PM1, 5:Navigator, 13:Pixhawk2_PM2/CubeOrange_PM2, 14:CubeOrange, 16:Durandal, 100:PX4-v1
+    // @User: Standard
+    AP_GROUPINFO("PIN", 1, AP_TemperatureSensor_Analog, _pin, -1),
 
-    // @Param: VOLT_MULT
-    // @DisplayName: Voltage Multiplier
-    // @Description: Used to convert the voltage of the voltage sensing pin (@PREFIX@VOLT_PIN) to the actual battery's voltage (pin_voltage * VOLT_MULT). For the 3DR Power brick with a Pixhawk, this should be set to 10.1. For the Pixhawk with the 3DR 4in1 ESC this should be 12.02. For the PX using the PX4IO power supply this should be set to 1.
-    // @User: Advanced
-    AP_GROUPINFO("MULT", 2, AP_TemperatureSensor_Analog, _volt_multiplier, AP_BATT_VOLTDIVIDER_DEFAULT),
+    // @Param: A0
+    // @DisplayName: Temperature sensor analog 0th polynomial coefficient
+    // @Description: a0 in polynomial of form temperature in deg = a0 + a1*voltage + a2*voltage^2 + a3*voltage^3 + a4*voltage^4
+    AP_GROUPINFO("A0", 2, AP_TemperatureSensor_Analog, _a[0], 0),
 
-    // @Param: VLT_OFFSET
-    // @DisplayName: Voltage offset
-    // @Description: Voltage offset on voltage pin. This allows for an offset due to a diode. This voltage is subtracted before the scaling is applied.
-    // @Units: V
-    // @User: Advanced
-    AP_GROUPINFO("OFFSET", 3, AP_TemperatureSensor_Analog, _volt_offset, 0),
-    
-    AP_GROUPINFO("Rp", 4, AP_TemperatureSensor_Analog, _Rp, 10000),
+    // @Param: A1
+    // @DisplayName: Temperature sensor analog 1st polynomial coefficient
+    // @Description: a1 in polynomial of form temperature in deg = a0 + a1*voltage + a2*voltage^2 + a3*voltage^3 + a4*voltage^4
+    AP_GROUPINFO("A1", 3, AP_TemperatureSensor_Analog, _a[1], 0),
 
-    AP_GROUPINFO("T2", 5, AP_TemperatureSensor_Analog, _T2, 25),
+    // @Param: A2
+    // @DisplayName: Temperature sensor analog 2nd polynomial coefficient
+    // @Description: a2 in polynomial of form temperature in deg = a0 + a1*voltage + a2*voltage^2 + a3*voltage^3 + a4*voltage^4
+    AP_GROUPINFO("A2", 4, AP_TemperatureSensor_Analog, _a[2], 0),
 
-    AP_GROUPINFO("B", 6, AP_TemperatureSensor_Analog, _B, 3950),
+    // @Param: A3
+    // @DisplayName: Temperature sensor analog 3rd polynomial coefficient
+    // @Description: a3 in polynomial of form temperature in deg = a0 + a1*voltage + a2*voltage^2 + a3*voltage^3 + a4*voltage^4
+    AP_GROUPINFO("A3", 5, AP_TemperatureSensor_Analog, _a[3], 0),
 
-    AP_GROUPINFO("Vcc", 7, AP_TemperatureSensor_Analog, _Vcc, 3.3),
-
-    // Param indexes must be less than 10 to avoid conflict with other battery monitor param tables loaded by pointer
+    // @Param: A4
+    // @DisplayName: Temperature sensor analog 4th polynomial coefficient
+    // @Description: a4 in polynomial of form temperature in deg = a0 + a1*voltage + a2*voltage^2 + a3*voltage^3 + a4*voltage^4
+    AP_GROUPINFO("A4", 6, AP_TemperatureSensor_Analog, _a[4], 0),
 
     AP_GROUPEND
 };
 
-AP_TemperatureSensor_Analog::AP_TemperatureSensor_Analog(AP_TemperatureSensor &mon, 
-                                AP_TemperatureSensor::TemperatureSensor_State &mon_state,
-                                AP_TemperatureSensor_Params &params):
-    AP_TemperatureSensor_Backend(mon, mon_state, params)
+AP_TemperatureSensor_Analog::AP_TemperatureSensor_Analog(AP_TemperatureSensor &front,
+                                                         AP_TemperatureSensor::TemperatureSensor_State &state,
+                                                         AP_TemperatureSensor_Params &params) :
+    AP_TemperatureSensor_Backend(front, state, params)
 {
     AP_Param::setup_object_defaults(this, var_info);
-
     _state.var_info = var_info;
-
-    _volt_pin_analog_source = hal.analogin->channel(_volt_pin);
-
+    _analog_source = hal.analogin->channel(_pin);
 }
 
-// read - read the voltage and current
+// Update function called at 5Hz
 void AP_TemperatureSensor_Analog::update()
 {
-    if(_volt_pin == -1)
-    {
-        return;
-    }
-    if(_volt_pin_analog_source->set_pin(_volt_pin)==false)
-    {
+    if ((_analog_source == nullptr) || !_analog_source->set_pin(_pin)) {
+        // Invalid pln
         return;
     }
 
-    float voltage = (_volt_pin_analog_source->voltage_average() - _volt_offset) * _volt_multiplier;
-    float rt = voltage / ((_Vcc - voltage) / _Rp);
-    _state.temperature = 1.0f / (logF(rt/_Rp)/_B + 1.0f/(_T2+KELVIN_ZEROS_TEMPATURE)) - KELVIN_ZEROS_TEMPATURE;
+    // Use ratiometric voltage, measured voltage is relative to supply
+    const float voltage = _analog_source->voltage_average_ratiometric();
+
+    // Evaluate polynomial
+    // temperature (deg) = a0 + a1*voltage + a2*voltage^2 + a3*voltage^3 + a4*voltage^4
+    float temp = 0.0;
+    float poly = 1.0;
+    for (uint8_t i = 0; i < ARRAY_SIZE(_a); i++) {
+        temp += _a[i] * poly;
+        poly *= voltage;
+    }
+
+    // update state
+    set_temperature(temp);
 }
 
-#endif // AP_TEMPERATURE_COPTER_SENSOR_ANALOG_ENABLED
+#endif // AP_TEMPERATURE_SENSOR_ANALOG_ENABLED
+

@@ -138,6 +138,7 @@ public:
     void can_airspeed_update();
     void can_rangefinder_update();
     void can_battery_update();
+    void can_battery_send_cells(uint8_t instance);
     void can_proximity_update();
     void can_buzzer_update(void);
     void can_safety_button_update(void);
@@ -236,6 +237,7 @@ public:
     struct {
         mavlink_message_t msg;
         mavlink_status_t status;
+        uint32_t last_heartbeat_ms;
     } adsb;
 #endif
 
@@ -477,9 +479,9 @@ public:
 
 #if AP_SIM_ENABLED
     SITL::SIM sitl;
+#endif
 #if AP_AHRS_ENABLED
     AP_AHRS ahrs;
-#endif
 #endif
 };
 

@@ -27,6 +27,7 @@ class AP_TemperatureSensor_MCP9600;
 class AP_TemperatureSensor_MAX31865;
 class AP_TemperatureSensor_Analog;
 class AP_TemperatureSensor_TSYS03;
+class AP_TemperatureSensor_Analog;
 
 class AP_TemperatureSensor
 {
@@ -36,6 +37,7 @@ class AP_TemperatureSensor
     friend class AP_TemperatureSensor_MAX31865;
     friend class AP_TemperatureSensor_Analog;
     friend class AP_TemperatureSensor_TSYS03;
+    friend class AP_TemperatureSensor_Analog;
 
 public:
 
@@ -65,6 +67,7 @@ public:
     int32_t get_source_id(const uint8_t instance = AP_TEMPERATURE_SENSOR_PRIMARY_INSTANCE) const;
 
     static const struct AP_Param::GroupInfo var_info[];
+    static const struct AP_Param::GroupInfo *backend_var_info[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];
 
 protected:
     // parameters
@@ -78,8 +81,7 @@ private:
         uint32_t    last_time_ms;              // time when the sensor was last read in milliseconds
         float       temperature;               // temperature (deg C)
         uint8_t     instance;                  // instance number
-
-        const struct AP_Param::GroupInfo *var_info;
+        const struct AP_Param::GroupInfo *var_info; 
     };
 
     TemperatureSensor_State _state[AP_TEMPERATURE_SENSOR_MAX_INSTANCES];

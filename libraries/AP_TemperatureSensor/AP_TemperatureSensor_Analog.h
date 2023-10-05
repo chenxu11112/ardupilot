@@ -13,45 +13,33 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-/*
- * I2C driver for Measurement Specialties MEAS TSYS01 digital temperature sensor
- */
-
 #pragma once
-#include "AP_TemperatureSensor_Backend.h"
+
+#include "AP_TemperatureSensor_config.h"
 
 #if AP_TEMPERATURE_SENSOR_ANALOG_ENABLED
 
-#define AP_BATT_VOLT_PIN            -1
-#define AP_BATT_VOLTDIVIDER_DEFAULT -1
+#include "AP_TemperatureSensor_Backend.h"
+#include <AP_Param/AP_Param.h>
 
 class AP_TemperatureSensor_Analog : public AP_TemperatureSensor_Backend {
 public:
-    AP_TemperatureSensor_Analog(AP_TemperatureSensor &mon, 
-                                AP_TemperatureSensor::TemperatureSensor_State &mon_state,
-                                AP_TemperatureSensor_Params &params);
+    AP_TemperatureSensor_Analog(AP_TemperatureSensor &front, AP_TemperatureSensor::TemperatureSensor_State &state, AP_TemperatureSensor_Params &params);
 
-    void init(void) override {};
-
-    void update() override;
+    void update(void) override;
 
     static const struct AP_Param::GroupInfo var_info[];
 
-protected:
+private:
 
-    AP_HAL::AnalogSource *_volt_pin_analog_source;
-    
-    // Parameters
-    AP_Float _Rp; 
-    AP_Float _T2;    
-    AP_Float _B;
-    AP_Float _Vcc; 
+    AP_HAL::AnalogSource *_analog_source;
 
-    AP_Float _volt_multiplier;          /// voltage on volt pin multiplied by this to calculate battery voltage
-    AP_Float _volt_offset;              /// offset voltage that is subtracted from voltage pin before conversion
-    AP_Int8  _volt_pin;                 /// board pin used to measure battery voltage
+    // Pin used to measure voltage
+    AP_Int8  _pin; 
+
+    // Polynomial coefficients to calculate temperature from voltage
+    AP_Float _a[5];
 
 };
 
-
-#endif // AP_TEMPERATURE_SENSOR_TSYS01_ENABLED
+#endif // AP_TEMPERATURE_SENSOR_ANALOG_ENABLED

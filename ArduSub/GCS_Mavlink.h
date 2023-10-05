@@ -15,7 +15,7 @@ protected:
         return 0;
     };
 
-    MAV_RESULT handle_flight_termination(const mavlink_command_long_t &packet) override;
+    MAV_RESULT handle_flight_termination(const mavlink_command_int_t &packet) override;
 
     MAV_RESULT handle_command_do_set_roi(const Location &roi_loc) override;
     MAV_RESULT _handle_command_preflight_calibration_baro(const mavlink_message_t &msg) override;
@@ -53,6 +53,9 @@ private:
 
     int16_t vfr_hud_throttle() const override;
 
+    MAV_RESULT handle_MAV_CMD_MISSION_START(const mavlink_command_int_t &packet);
+    MAV_RESULT handle_MAV_CMD_DO_CHANGE_SPEED(const mavlink_command_int_t &packet);
+    MAV_RESULT handle_MAV_CMD_DO_MOTOR_TEST(const mavlink_command_int_t &packet);
     MAV_RESULT handle_MAV_CMD_NAV_LOITER_UNLIM(const mavlink_command_int_t &packet);
     MAV_RESULT handle_MAV_CMD_NAV_LAND(const mavlink_command_int_t &packet);
 
