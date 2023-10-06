@@ -1,15 +1,164 @@
 
 #include <AP_Math/AP_Math.h>
 
-#define AP_Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30
-#define AP_Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30
-#define AP_Chebyshev_II_SP_2000_PASS_20_STOP_40_DB_30
-#define AP_Chebyshev_II_SP_2000_PASS_10_STOP_30_DB_30
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define AP_Butterworth_SP_2000_PASS_25_STOP_50_DB_30
-#define AP_Butterworth_SP_2000_PASS_10_STOP_30_DB_60
-#define AP_Butterworth_SP_2000_PASS_5_STOP_20_DB_60
-#define AP_Butterworth_SP_2000_PASS_5_STOP_10_DB_60
+#define AP_Chebyshev_II_SP_2000_PASS_70_STOP_140_DB_30
+#define AP_Chebyshev_II_SP_2000_PASS_60_STOP_120_DB_30
+#define AP_Chebyshev_II_SP_2000_PASS_50_STOP_100_DB_30
+#define AP_Chebyshev_II_SP_2000_PASS_40_STOP_80_DB_30
+#define AP_Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30
+// #define AP_Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30
+// #define AP_Chebyshev_II_SP_2000_PASS_20_STOP_40_DB_30
+// #define AP_Chebyshev_II_SP_2000_PASS_10_STOP_30_DB_30
+
+// #define AP_Butterworth_SP_2000_PASS_25_STOP_50_DB_30
+// #define AP_Butterworth_SP_2000_PASS_10_STOP_30_DB_60
+// #define AP_Butterworth_SP_2000_PASS_5_STOP_20_DB_60
+// #define AP_Butterworth_SP_2000_PASS_5_STOP_10_DB_60
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifdef AP_Chebyshev_II_SP_2000_PASS_70_STOP_140_DB_30
+template <class T>
+class Chebyshev_II_SP_2000_PASS_70_STOP_140_DB_30
+{
+public:
+    T Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
+    T denAccum;
+    T rtb_Hlp;
+    T Out1;
+
+    T apply(T &xin)
+    {
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        denAccum = (xin * 0.0434932634F + Hlp_FILT_STATES[0] * 1.76398361F) - Hlp_FILT_STATES[1] * 0.839866042F;
+        rtb_Hlp = (denAccum * 0.691343248F - Hlp_FILT_STATES[0] * 1.22976267F) + Hlp_FILT_STATES[1] * 0.691343248F;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[2] * 1.45252705F) - Hlp_FILT_STATES[3] * 0.542354882F;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = (denAccum * 1.00716901F - Hlp_FILT_STATES[2] * 0.989500165F) + Hlp_FILT_STATES[3] * 1.00716901F;
+
+        /* S-Function (sdspbiquad): '<Root>/Hlp' */
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = denAccum;
+
+        return Out1;
+    }
+};
+#endif
+
+#ifdef AP_Chebyshev_II_SP_2000_PASS_60_STOP_120_DB_30
+template <class T>
+class Chebyshev_II_SP_2000_PASS_60_STOP_120_DB_30
+{
+public:
+    T Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
+    T denAccum;
+    T rtb_Hlp;
+    T Out1;
+
+    T apply(T &xin)
+    {
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        denAccum = (xin * 0.0323699936F + Hlp_FILT_STATES[0] * 1.80477607F) - Hlp_FILT_STATES[1] * 0.860991776F;
+        rtb_Hlp = (denAccum * 0.707323492F - Hlp_FILT_STATES[0] * 1.29895806F) + Hlp_FILT_STATES[1] * 0.707323492F;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = denAccum;
+        denAccum = (rtb_Hlp + Hlp_FILT_STATES[2] * 1.52519429F) - Hlp_FILT_STATES[3] * 0.593317628F;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = (denAccum * 1.2845341F - Hlp_FILT_STATES[2] * 1.54643643F) + Hlp_FILT_STATES[3] * 1.2845341F;
+
+        /* S-Function (sdspbiquad): '<Root>/Hlp' */
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = denAccum;
+
+        return Out1;
+    }
+};
+#endif
+
+#ifdef AP_Chebyshev_II_SP_2000_PASS_40_STOP_80_DB_30
+template <class T>
+class Chebyshev_II_SP_2000_PASS_40_STOP_80_DB_30
+{
+public:
+    T Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
+    T numAccum;
+    T rtb_Hlp;
+    T Out1;
+
+    T apply(T &xin)
+    {
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        rtb_Hlp = (xin * 0.0147584584F + Hlp_FILT_STATES[0] * 1.87950945F) - Hlp_FILT_STATES[1] * 0.904962F;
+        numAccum = (rtb_Hlp * 0.746903956F - Hlp_FILT_STATES[0] * 1.43897283F) + Hlp_FILT_STATES[1] * 0.746903956F;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = rtb_Hlp;
+        rtb_Hlp = (numAccum + Hlp_FILT_STATES[2] * 1.67540455F) - Hlp_FILT_STATES[3] * 0.707817F;
+        numAccum = (rtb_Hlp * 1.24460757F - Hlp_FILT_STATES[2] * 2.0F) + Hlp_FILT_STATES[3] * 1.24460757F;
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = rtb_Hlp;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = numAccum * 2.08374548F;
+
+        return Out1;
+    }
+};
+#endif
+
+#ifdef AP_Chebyshev_II_SP_2000_PASS_50_STOP_100_DB_30
+template <class T>
+class Chebyshev_II_SP_2000_PASS_50_STOP_100_DB_30
+{
+public:
+    T Hlp_FILT_STATES[4]; /* '<Root>/Hlp' */
+    T numAccum;
+    T rtb_Hlp;
+    T Out1;
+
+    T apply(T &xin)
+    {
+        /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
+         *  Inport: '<Root>/In1'
+         */
+        rtb_Hlp = (xin * 0.0227687694F + Hlp_FILT_STATES[0] * 1.84329855F) - Hlp_FILT_STATES[1] * 0.882688224F;
+        numAccum = (rtb_Hlp * 0.725771844F - Hlp_FILT_STATES[0] * 1.3686589F) + Hlp_FILT_STATES[1] * 0.725771844F;
+        Hlp_FILT_STATES[1] = Hlp_FILT_STATES[0];
+        Hlp_FILT_STATES[0] = rtb_Hlp;
+        rtb_Hlp = (numAccum + Hlp_FILT_STATES[2] * 1.59943473F) - Hlp_FILT_STATES[3] * 0.648343205F;
+        numAccum = (rtb_Hlp * 1.41340518F - Hlp_FILT_STATES[2] * 2.0F) + Hlp_FILT_STATES[3] * 1.41340518F;
+        Hlp_FILT_STATES[3] = Hlp_FILT_STATES[2];
+        Hlp_FILT_STATES[2] = rtb_Hlp;
+
+        /* Outport: '<Root>/Out1' incorporates:
+         *  S-Function (sdspbiquad): '<Root>/Hlp'
+         */
+        Out1 = numAccum * 1.23466039F;
+        return Out1;
+    }
+};
+#endif
 
 #ifdef AP_Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30
 template <class T>

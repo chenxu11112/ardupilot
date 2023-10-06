@@ -120,8 +120,10 @@ private:
     float temp_filtered;
     LowPassFilter2pFloat temp_filter;
 
-    Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30<Vector3f> acclpf;
-    Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30<Vector3f> gyrolpf;
+    Chebyshev_II_SP_2000_PASS_60_STOP_120_DB_30<float> acclpfz;
+    Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30<Vector2f> acclpfxy;
+
+    Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30<Vector3f> gyrolpf;
 
     Vector3f acclpf_temp;
     Vector3f gyrolpf_temp;

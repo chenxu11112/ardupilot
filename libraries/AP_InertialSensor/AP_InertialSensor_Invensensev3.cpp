@@ -37,8 +37,8 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define ACC_ONLY
-// #define ACC_GYRO
+// #define ACC_ONLY
+#define ACC_GYRO
 
 // set bit 0x80 in register ID for read on SPI
 #define BIT_READ_FLAG                           0x80
@@ -354,7 +354,9 @@ bool AP_InertialSensor_Invensensev3::accumulate_samples(const FIFOData *data, ui
 
 
 #ifdef ACC_GYRO
-        acclpf_temp = acclpf.apply(accel);
+        acclpf_temp.xy() = acclpfxy.apply(accel.xy());
+        acclpf_temp.z = acclpfz.apply(accel.z);
+
         gyrolpf_temp = gyrolpf.apply(gyro);
 
         // these four calls are about 40us
