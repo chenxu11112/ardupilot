@@ -117,6 +117,8 @@ void AP_MotorsTri::output_to_motors()
             rc_write(AP_MOTORS_MOT_4, output_to_pwm(_actuator[4]));
             rc_write_angle(AP_MOTORS_CH_TRI_YAW, degrees(_pivot_angle)*100);
             break;
+        default:
+            break;
     }
 }
 

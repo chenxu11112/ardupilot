@@ -42,6 +42,7 @@ void ModeStabilize::run()
         pilot_desired_throttle = 0.0f;
         break;
 
+    case AP_Motors::SpoolState::SHUT_DOWN_Pre_GROUND_IDLE:
     case AP_Motors::SpoolState::GROUND_IDLE:
         // Landed
         attitude_control->reset_yaw_target_and_rate();

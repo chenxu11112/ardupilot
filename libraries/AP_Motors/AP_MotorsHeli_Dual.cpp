@@ -558,6 +558,8 @@ void AP_MotorsHeli_Dual::output_to_motors()
             // sends idle output to motors and wait for rotor to stop
             update_motor_control(ROTOR_CONTROL_IDLE);
             break;
+        default:
+            break;
     }
 }
 

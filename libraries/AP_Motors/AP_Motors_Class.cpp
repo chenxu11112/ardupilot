@@ -55,6 +55,8 @@ AP_Motors::AP_Motors(uint16_t speed_hz) :
     limit.throttle_upper = true;
     _thrust_boost = false;
     _thrust_balanced = true;
+
+    _motor_pre_start_finish = false;
 };
 
 void AP_Motors::get_frame_and_type_string(char *buffer, uint8_t buflen) const

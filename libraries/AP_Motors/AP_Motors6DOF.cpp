@@ -270,6 +270,9 @@ void AP_Motors6DOF::output_to_motors()
             }
         }
         break;
+
+    default:
+        break;
     }
 
     // send output to each motor

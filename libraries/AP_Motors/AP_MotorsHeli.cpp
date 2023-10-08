@@ -437,6 +437,9 @@ void AP_MotorsHeli::output_logic()
                 _spool_state = SpoolState::GROUND_IDLE;
             }
             break;
+
+        default:
+            break;
     }
 }
 

@@ -581,6 +581,7 @@ void Mode::make_safe_ground_handling(bool force_throttle_unlimited)
  
     switch (motors->get_spool_state()) {
     case AP_Motors::SpoolState::SHUT_DOWN:
+    case AP_Motors::SpoolState::SHUT_DOWN_Pre_GROUND_IDLE:
     case AP_Motors::SpoolState::GROUND_IDLE:
         // reset yaw targets and rates during idle states
         attitude_control->reset_yaw_target_and_rate();

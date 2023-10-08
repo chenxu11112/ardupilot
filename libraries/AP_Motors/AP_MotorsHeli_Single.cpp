@@ -541,7 +541,8 @@ void AP_MotorsHeli_Single::output_to_motors()
                 rc_write(AP_MOTORS_MOT_4, calculate_ddfp_output(0.0f));
             }
             break;
-
+        default:
+            break;
     }
 }
 

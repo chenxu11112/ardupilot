@@ -522,7 +522,7 @@ void AP_MotorsMulticopter::output_logic()
 
         // make sure the motors are spooling in the correct direction
         if (_spool_desired != DesiredSpoolState::SHUT_DOWN && _disarm_safe_timer >= _safe_time.get()) {
-            _spool_state = SpoolState::GROUND_IDLE;
+            _spool_state = SpoolState::SHUT_DOWN_Pre_GROUND_IDLE;
             break;
         }
 
@@ -533,6 +533,19 @@ void AP_MotorsMulticopter::output_logic()
         // initialise motor failure variables
         _thrust_boost = false;
         _thrust_boost_ratio = 0.0f;
+        break;
+
+    case SpoolState::SHUT_DOWN_Pre_GROUND_IDLE:
+        // set limits flags
+        limit.roll = true;
+        limit.pitch = true;
+        limit.yaw = true;
+        limit.throttle_lower = true;
+        limit.throttle_upper = true;
+
+        if (_motor_pre_start_finish == true) {
+            _spool_state = SpoolState::GROUND_IDLE;
+        }
         break;
 
     case SpoolState::GROUND_IDLE: {

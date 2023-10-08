@@ -184,6 +184,7 @@ public:
         SPOOLING_UP = 2,                       // increasing maximum throttle while stabilizing
         THROTTLE_UNLIMITED = 3,             // throttle is no longer constrained by start up procedure
         SPOOLING_DOWN = 4,                     // decreasing maximum throttle while stabilizing
+        SHUT_DOWN_Pre_GROUND_IDLE = 5,
     };
 
     // get_spool_state - get current spool state
@@ -379,6 +380,9 @@ protected:
     // external limits from scripting
     AP_Motors_limit external_limits;
 #endif
+
+    bool _motor_pre_start_finish;
+
 
 private:
 

@@ -63,6 +63,9 @@ void AP_MotorsMatrix_6DoF_Scripting::output_to_motors()
                 }
             }
             break;
+
+        default:
+            break;
     }
 
     // Send to each motor

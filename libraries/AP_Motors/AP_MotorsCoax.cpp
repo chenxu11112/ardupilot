@@ -96,6 +96,8 @@ void AP_MotorsCoax::output_to_motors()
             rc_write(AP_MOTORS_MOT_5, output_to_pwm(_actuator[AP_MOTORS_MOT_5]));
             rc_write(AP_MOTORS_MOT_6, output_to_pwm(_actuator[AP_MOTORS_MOT_6]));
             break;
+        default:
+            break;
     }
 }
 

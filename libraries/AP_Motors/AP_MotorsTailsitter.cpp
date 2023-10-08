@@ -99,6 +99,8 @@ void AP_MotorsTailsitter::output_to_motors()
             set_actuator_with_slew(_actuator[1], thr_lin.thrust_to_actuator(_thrust_right));
             set_actuator_with_slew(_actuator[2], thr_lin.thrust_to_actuator(_throttle));
             break;
+        default:
+            break;
     }
 
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));

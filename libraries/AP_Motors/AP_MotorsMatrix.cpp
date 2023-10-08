@@ -144,6 +144,13 @@ void AP_MotorsMatrix::output_to_motors()
 {
     int8_t i;
 
+    static uint8_t motor_start_num = 0;
+    static uint8_t motor_start_step = 0;
+    const uint8_t motor_start_cycle = 100;
+
+
+    uint8_t motor_frame_num;
+
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN: {
             // no output
@@ -154,6 +161,36 @@ void AP_MotorsMatrix::output_to_motors()
             }
             break;
         }
+
+        case SpoolState::SHUT_DOWN_Pre_GROUND_IDLE: {
+            if (get_frame_mav_type() == MAV_TYPE_QUADROTOR) {
+                motor_frame_num = 4;
+            } else if (get_frame_mav_type() == MAV_TYPE_OCTOROTOR) {
+                motor_frame_num = 8;
+            } else {
+                motor_frame_num = 0;
+            }
+
+            rc_write(motor_start_num, 1100);
+
+            motor_start_step++;
+            if (motor_start_num != (motor_frame_num - 1)) {
+                if (motor_start_step < motor_start_cycle) {
+                    break;
+                }
+            }
+
+            motor_start_step = 0;
+            motor_start_num += 1;
+
+            if (motor_start_num > motor_frame_num) {
+                motor_start_num = 0;
+                _motor_pre_start_finish = true;
+            }
+
+            return;
+        }
+
         case SpoolState::GROUND_IDLE:
             // sends output to motors when armed but not flying
             for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
