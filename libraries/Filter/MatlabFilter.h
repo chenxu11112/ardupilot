@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <AP_Math/AP_Math.h>
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -11,8 +13,8 @@
 #define AP_Chebyshev_II_SP_2000_PASS_40_STOP_80_DB_30
 #define AP_Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30
 // #define AP_Chebyshev_II_SP_2000_PASS_25_STOP_50_DB_30
-// #define AP_Chebyshev_II_SP_2000_PASS_20_STOP_40_DB_30
-// #define AP_Chebyshev_II_SP_2000_PASS_10_STOP_30_DB_30
+#define AP_Chebyshev_II_SP_2000_PASS_20_STOP_40_DB_30
+#define AP_Chebyshev_II_SP_2000_PASS_10_STOP_30_DB_30
 
 // #define AP_Butterworth_SP_2000_PASS_25_STOP_50_DB_30
 // #define AP_Butterworth_SP_2000_PASS_10_STOP_30_DB_60
@@ -33,7 +35,7 @@ public:
     T rtb_Hlp;
     T Out1;
 
-    T apply(T &xin)
+    T apply(const T &xin)
     {
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
@@ -68,7 +70,7 @@ public:
     T rtb_Hlp;
     T Out1;
 
-    T apply(T &xin)
+    T apply(const T &xin)
     {
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
@@ -103,7 +105,7 @@ public:
     T rtb_Hlp;
     T Out1;
 
-    T apply(T &xin)
+    T apply(const T &xin)
     {
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
@@ -137,7 +139,7 @@ public:
     T rtb_Hlp;
     T Out1;
 
-    T apply(T &xin)
+    T apply(const T &xin)
     {
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
@@ -170,7 +172,7 @@ public:
     T rtb_Hlp;
     T Out1;
 
-    T apply(T &xin)
+    T apply(const T &xin)
     {
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
@@ -204,7 +206,7 @@ public:
     T rtb_Hlp;
     T Out1;
 
-    T apply(T &xin)
+    T apply(const T &xin)
     {
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
@@ -238,7 +240,7 @@ public:
     T rtb_Hlp;
     T Out1;
 
-    T apply(T &xin)
+    T apply(const T &xin)
     {
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
@@ -272,7 +274,7 @@ public:
     T rtb_Hlp;
     T Out1;
 
-    T apply(T &xin)
+    T apply(const T &xin)
     {
         /* S-Function (sdspbiquad): '<Root>/Hlp' incorporates:
          *  Inport: '<Root>/In1'
