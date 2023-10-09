@@ -185,6 +185,8 @@
 
 #include "mode.h"
 
+#include <AP_SAW/AP_Saw.h>
+
 class Copter : public AP_Vehicle {
 public:
     friend class GCS_MAVLINK_Copter;
@@ -533,6 +535,8 @@ private:
 #if PARACHUTE == ENABLED
     AP_Parachute parachute;
 #endif
+
+    AP_SAW ap_saw;
 
     // Landing Gear Controller
 #if AP_LANDINGGEAR_ENABLED

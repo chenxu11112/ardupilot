@@ -19,6 +19,8 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
+    ap_saw.Receive();
+    ap_saw.Send();
 }
 #endif
 
