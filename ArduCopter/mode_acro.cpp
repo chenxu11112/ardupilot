@@ -56,6 +56,9 @@ void ModeAcro::run()
     case AP_Motors::SpoolState::SPOOLING_DOWN:
         // do nothing
         break;
+
+    default:
+        break;
     }
 
     // run attitude controller

@@ -17,6 +17,8 @@
 #include "AP_MotorsMatrix.h"
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 
+#include <GCS_MAVLink/GCS.h>
+
 extern const AP_HAL::HAL& hal;
 
 // init
@@ -140,16 +142,45 @@ void AP_MotorsMatrix::set_frame_class_and_type(motor_frame_class frame_class, mo
 
 }
 
+bool AP_MotorsMatrix::motor_ground_idle_check()
+{
+    uint8_t motor_frame_num;
+    static uint8_t motor_start_num = 0;
+    static uint16_t motor_start_step = 0;
+    static uint16_t motor_start_cycle = 400;
+
+    if (get_frame_mav_type() == MAV_TYPE_QUADROTOR) {
+        motor_frame_num = 4;
+    } else {
+        motor_frame_num = 0;
+    }
+
+    for (; motor_start_num < motor_frame_num; motor_start_num++)
+    {
+        rc_write(motor_start_num, 1200);
+
+        motor_start_step++;
+        if (motor_start_step < motor_start_cycle) {
+            return false;
+        } else {
+            motor_start_step = 0;
+            gcs().send_text(MAV_SEVERITY_WARNING, "motor_start_num: %d", motor_start_num);
+        }
+
+    }
+
+    motor_start_num = 0;
+    return true;
+}
+
 void AP_MotorsMatrix::output_to_motors()
 {
     int8_t i;
 
-    static uint8_t motor_start_num = 0;
-    static uint8_t motor_start_step = 0;
-    const uint8_t motor_start_cycle = 100;
-
-
-    uint8_t motor_frame_num;
+    // static uint8_t motor_start_num = 0;
+    // static uint8_t motor_start_step = 0;
+    // const uint8_t motor_start_cycle = 100;
+    // uint8_t motor_frame_num;
 
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN: {
@@ -163,31 +194,7 @@ void AP_MotorsMatrix::output_to_motors()
         }
 
         case SpoolState::SHUT_DOWN_Pre_GROUND_IDLE: {
-            if (get_frame_mav_type() == MAV_TYPE_QUADROTOR) {
-                motor_frame_num = 4;
-            } else if (get_frame_mav_type() == MAV_TYPE_OCTOROTOR) {
-                motor_frame_num = 8;
-            } else {
-                motor_frame_num = 0;
-            }
-
-            rc_write(motor_start_num, 1100);
-
-            motor_start_step++;
-            if (motor_start_num != (motor_frame_num - 1)) {
-                if (motor_start_step < motor_start_cycle) {
-                    break;
-                }
-            }
-
-            motor_start_step = 0;
-            motor_start_num += 1;
-
-            if (motor_start_num > motor_frame_num) {
-                motor_start_num = 0;
-                _motor_pre_start_finish = true;
-            }
-
+            _motor_pre_start_finish = motor_ground_idle_check();
             return;
         }
 
