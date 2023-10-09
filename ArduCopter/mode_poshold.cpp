@@ -68,7 +68,7 @@ bool ModePosHold::init(bool ignore_checks)
 void ModePosHold::run()
 {
     float controller_to_pilot_roll_mix; // mix of controller and pilot controls.  0 = fully last controller controls, 1 = fully pilot controls
-    float controller_to_pilot_pitch_mix;    // mix of controller and pilot controls.  0 = fully last controller controls, 1 = fully pilot controls
+    float controller_to_pilot_pitch_mix;    // mix of controller  and pilot controls.  0 = fully last controller controls, 1 = fully pilot controls
     const Vector3f& vel = inertial_nav.get_velocity_neu_cms();
 
     // set vertical speed and acceleration limits
@@ -81,6 +81,17 @@ void ModePosHold::run()
     // convert pilot input to lean angles
     float target_roll, target_pitch;
     get_pilot_desired_lean_angles(target_roll, target_pitch, copter.aparm.angle_max, attitude_control->get_althold_lean_angle_max_cd());
+
+    // tree mode control
+    int16_t rc_tree_mode_value = rc().channel(CH_8)->get_control_in(); 
+    if (rc_tree_mode_value > 1600) {
+        if (motors->get_spool_state() == AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
+            target_pitch = -g2.user_parameters.get_TREE_ANG_Param();
+            gcs().send_text(MAV_SEVERITY_NOTICE, "Start Tree Mode, Target Angle: %.3f", target_pitch);
+        } else {
+            gcs().send_text(MAV_SEVERITY_ERROR, "Set Tree Mode Need Flying");
+        }
+    }
 
     // get pilot's desired yaw rate
     float target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->norm_input_dz());
