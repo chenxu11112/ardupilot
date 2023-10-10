@@ -83,13 +83,26 @@ void ModePosHold::run()
     get_pilot_desired_lean_angles(target_roll, target_pitch, copter.aparm.angle_max, attitude_control->get_althold_lean_angle_max_cd());
 
     // tree mode control
-    int16_t rc_tree_mode_value = rc().channel(CH_8)->get_control_in(); 
-    if (rc_tree_mode_value > 1600) {
+    int16_t rc_tree_mode_value = rc().channel(CH_8)->get_radio_in(); 
+    static bool rc_tree_mode_switch = false;
+
+    if (rc_tree_mode_value > 1600 && rc_tree_mode_switch == false) {
+        rc_tree_mode_switch = true;
+        gcs().send_text(MAV_SEVERITY_NOTICE, "Open Tree Mode");
+    } else if (rc_tree_mode_value < 1400 && rc_tree_mode_switch == true) {
+        rc_tree_mode_switch = false;
+        gcs().send_text(MAV_SEVERITY_NOTICE, "Close Tree Mode");
+    }
+
+    static uint32_t rc_tree_mode_last_ms = 0;
+    if (rc_tree_mode_switch == true) {
         if (motors->get_spool_state() == AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
-            target_pitch = -g2.user_parameters.get_TREE_ANG_Param();
-            gcs().send_text(MAV_SEVERITY_NOTICE, "Start Tree Mode, Target Angle: %.3f", target_pitch);
+            target_pitch = -g2.user_parameters .get_TREE_ANG_Param();
         } else {
-            gcs().send_text(MAV_SEVERITY_ERROR, "Set Tree Mode Need Flying");
+            if ((AP_HAL::millis() - rc_tree_mode_last_ms) > 1500) {
+                rc_tree_mode_last_ms = AP_HAL::millis();
+                gcs().send_text(MAV_SEVERITY_ERROR, "Tree Mode Need Flying");    
+            }        
         }
     }
 
