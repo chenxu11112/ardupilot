@@ -494,7 +494,7 @@ void AP_InertialSensor_BMI270::parse_accel_frame(const uint8_t* d)
     acclpf_temp.z = acclpfz.apply(accel.z);
 
     _rotate_and_correct_accel(_accel_instance, acclpf_temp);
-    _notify_new_accel_raw_sample(_accel_instance, acclpf_temp, 0);
+    _notify_new_accel_raw_sample(_accel_instance, acclpf_temp);
 #else 
     _rotate_and_correct_accel(_accel_instance, accel);
     _notify_new_accel_raw_sample(_accel_instance, accel);
@@ -513,14 +513,11 @@ void AP_InertialSensor_BMI270::parse_gyro_frame(const uint8_t* d)
     Vector3f gyro(xyz[0], xyz[1], xyz[2]);
     gyro *= scale;
 
-    _rotate_and_correct_gyro(_gyro_instance, gyro);
-    _notify_new_gyro_raw_sample(_gyro_instance, gyro);
-
 #ifdef ACC_GYRO_LPF
     gyrolpf_temp = gyrolpf.apply(gyro);
 
-    _rotate_and_correct_accel(_gyro_instance, acclpf_temp);
-    _notify_new_accel_raw_sample(_gyro_instance, acclpf_temp, 0);
+    _rotate_and_correct_gyro(_gyro_instance, gyrolpf_temp);
+    _notify_new_gyro_raw_sample(_gyro_instance, gyrolpf_temp);
 #else 
     _rotate_and_correct_gyro(_gyro_instance, gyro);
     _notify_new_gyro_raw_sample(_gyro_instance, gyro);
