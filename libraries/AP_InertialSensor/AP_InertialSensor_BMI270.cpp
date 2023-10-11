@@ -23,6 +23,8 @@
 
 //#define BMI270_DEBUG
 
+#define ACC_GYRO_LPF
+
 // BMI270 registers (not the complete list)
 enum BMI270Register : uint8_t {
     BMI270_REG_CHIP_ID = 0x00,
@@ -487,8 +489,17 @@ void AP_InertialSensor_BMI270::parse_accel_frame(const uint8_t* d)
 
     accel *= scale;
 
+#ifdef ACC_GYRO_LPF
+    acclpf_temp.xy() = acclpfxy.apply(accel.xy());
+    acclpf_temp.z = acclpfz.apply(accel.z);
+
+    _rotate_and_correct_accel(_accel_instance, acclpf_temp);
+    _notify_new_accel_raw_sample(_accel_instance, acclpf_temp, 0);
+#else 
     _rotate_and_correct_accel(_accel_instance, accel);
     _notify_new_accel_raw_sample(_accel_instance, accel);
+#endif
+
 }
 
 void AP_InertialSensor_BMI270::parse_gyro_frame(const uint8_t* d)
@@ -504,6 +515,17 @@ void AP_InertialSensor_BMI270::parse_gyro_frame(const uint8_t* d)
 
     _rotate_and_correct_gyro(_gyro_instance, gyro);
     _notify_new_gyro_raw_sample(_gyro_instance, gyro);
+
+#ifdef ACC_GYRO_LPF
+    gyrolpf_temp = gyrolpf.apply(gyro);
+
+    _rotate_and_correct_accel(_gyro_instance, acclpf_temp);
+    _notify_new_accel_raw_sample(_gyro_instance, acclpf_temp, 0);
+#else 
+    _rotate_and_correct_gyro(_gyro_instance, gyro);
+    _notify_new_gyro_raw_sample(_gyro_instance, gyro);
+#endif
+
 }
 
 bool AP_InertialSensor_BMI270::hardware_init()

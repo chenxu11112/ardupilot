@@ -25,10 +25,17 @@ public:
     void Send(void);
 
     struct PACKED FCU_to_SAW_struct {
-        uint8_t header[2];
-        uint8_t len;
-        uint8_t is_open;
-        uint8_t tail;
+        uint8_t MSG_OP;
+        uint8_t OP_IS_START;
+        uint8_t MSG_DP;
+        uint8_t MSG_DP_IS_ON;
+        uint8_t THROTTLE_CMD;
+        uint8_t THROTTLE_Value;
+        uint8_t MSG_SC_DATA;
+        uint8_t LIMIT_CMD;
+        uint8_t CURRENT_LIMI;
+
+        uint8_t zeros[11];
     };
 
     union FCU_to_SAW_Union {
@@ -37,12 +44,19 @@ public:
     };
 
     struct PACKED SAW_to_FCU_struct {
-        uint8_t header[2];
-        uint8_t len;
-        uint8_t saw_state;
-        int16_t saw_voltage;
-        int16_t saw_current;
-        uint8_t tail;
+        uint8_t MSG_OP;
+        uint8_t OP_IS_START;
+        uint8_t MSG_DP;
+        uint8_t MSG_DP_IS_ON;
+        uint8_t THROTTLE_CMD;
+        uint8_t THROTTLE_Value;
+        uint8_t MSG_SC_DATA;
+        uint8_t LIMIT_CMD;
+        uint8_t CURRENT_LIMI;
+
+        uint16_t   Voltage;
+        uint16_t   SC_Current[4];        //刀具电流
+        uint16_t   ADC_VOL[2];           //电流传感器ADC采样        
     };
     union SAW_to_FCU_Union {
         struct SAW_to_FCU_struct saw_to_fcu_struct;
@@ -57,5 +71,5 @@ private:
 
     uint8_t _rx_step;
 
-    uint8_t receive_buff[20];
+    uint8_t receive_buff[50];
 };

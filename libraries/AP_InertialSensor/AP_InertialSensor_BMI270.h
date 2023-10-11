@@ -21,6 +21,9 @@
 #include "AP_InertialSensor.h"
 #include "AP_InertialSensor_Backend.h"
 
+#include <Filter/MatlabFilter.h>
+
+
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_AERO
 #define BMI270_DEFAULT_ROTATION ROTATION_ROLL_180
 #else
@@ -120,4 +123,12 @@ private:
     uint8_t temperature_counter;
 
     static const uint8_t maximum_fifo_config_file[];
+
+    ACCZ_LPF_CLASS<float> acclpfz;
+    Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30<Vector2f> acclpfxy;
+
+    Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30<Vector3f> gyrolpf;
+
+    Vector3f acclpf_temp;
+    Vector3f gyrolpf_temp;
 };
