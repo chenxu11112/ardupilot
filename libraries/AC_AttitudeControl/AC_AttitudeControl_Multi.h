@@ -5,6 +5,7 @@
 
 #include "AC_AttitudeControl.h"
 #include <AP_Motors/AP_MotorsMulticopter.h>
+#include <AC_LADRC/AC_LESO.h>
 
 // default rate controller PID gains
 #ifndef AC_ATC_MULTI_RATE_RP_P
@@ -38,6 +39,15 @@
  # define AC_ATC_MULTI_RATE_YAW_FILT_HZ     2.5f
 #endif
 
+#ifndef AC_ATC_MULTI_LESO_RP_W0
+    #define AC_ATC_MULTI_LESO_RP_W0 10.0f
+#endif
+#ifndef AC_ATC_MULTI_LESO_RP_B0
+    #define AC_ATC_MULTI_LESO_RP_B0 0.1f
+#endif
+#ifndef AC_ATC_MULTI_LESO_RP_H0
+    #define AC_ATC_MULTI_LESO_RP_H0 0.001f
+#endif
 
 class AC_AttitudeControl_Multi : public AC_AttitudeControl {
 public:
@@ -45,6 +55,13 @@ public:
 
 	// empty destructor to suppress compiler warning
 	virtual ~AC_AttitudeControl_Multi() {}
+
+    AC_LESO& get_rate_roll_leso()  override { return _leso_rate_roll; }
+    AC_LESO& get_rate_pitch_leso() override { return _leso_rate_pitch; }
+    AC_LESO& get_rate_yaw_leso() override { return _leso_rate_yaw; }
+    const AC_LESO& get_rate_roll_leso() const  override { return _leso_rate_roll; }
+    const AC_LESO& get_rate_pitch_leso() const  override { return _leso_rate_pitch; }
+    const AC_LESO& get_rate_yaw_leso() const  override { return _leso_rate_yaw; }
 
     // pid accessors
     AC_PID& get_rate_roll_pid() override { return _pid_rate_roll; }
@@ -146,4 +163,27 @@ protected:
 
     // angle_p/pd boost multiplier
     AP_Float              _throttle_gain_boost;
+
+    AC_LESO _leso_rate_roll {
+        AC_LESO::Defaults {
+            .w0 = AC_ATC_MULTI_LESO_RP_W0,
+            .b0 = AC_ATC_MULTI_LESO_RP_B0,
+            .h0 = AC_ATC_MULTI_LESO_RP_H0
+        }
+    };
+    AC_LESO _leso_rate_pitch {
+        AC_LESO::Defaults {
+            .w0 = AC_ATC_MULTI_LESO_RP_W0,
+            .b0 = AC_ATC_MULTI_LESO_RP_B0,
+            .h0 = AC_ATC_MULTI_LESO_RP_H0
+        }
+    };
+    AC_LESO _leso_rate_yaw {
+        AC_LESO::Defaults {
+            .w0 = AC_ATC_MULTI_LESO_RP_W0,
+            .b0 = AC_ATC_MULTI_LESO_RP_B0,
+            .h0 = AC_ATC_MULTI_LESO_RP_H0
+        }
+    };
+
 };

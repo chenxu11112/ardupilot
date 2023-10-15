@@ -11,6 +11,7 @@
 #include <AC_PID/AC_PID.h>
 #include <AC_PID/AC_P.h>
 #include <AP_Vehicle/AP_MultiCopter.h>
+#include <AC_LADRC/AC_LESO.h>
 
 #define AC_ATTITUDE_CONTROL_ANGLE_P                     4.5f             // default angle P gain for roll, pitch and yaw
 
@@ -87,6 +88,13 @@ public:
     virtual const AC_PID& get_rate_roll_pid() const = 0;
     virtual const AC_PID& get_rate_pitch_pid() const = 0;
     virtual const AC_PID& get_rate_yaw_pid() const = 0;
+
+    virtual  AC_LESO& get_rate_roll_leso() = 0;
+    virtual  AC_LESO& get_rate_pitch_leso() = 0;
+    virtual  AC_LESO& get_rate_yaw_leso() = 0;
+    virtual const AC_LESO& get_rate_roll_leso() const = 0;
+    virtual const AC_LESO& get_rate_pitch_leso() const = 0;
+    virtual const AC_LESO& get_rate_yaw_leso() const = 0;
 
     // get the roll acceleration limit in centidegrees/s/s or radians/s/s
     float get_accel_roll_max_cdss() const { return _accel_roll_max; }

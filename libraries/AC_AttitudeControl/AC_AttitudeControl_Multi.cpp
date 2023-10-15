@@ -2,6 +2,7 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <AC_PID/AC_PID.h>
+#include <AC_LADRC/AC_LESO.h>
 
 // table of user settable parameters
 const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
@@ -261,6 +262,12 @@ const AP_Param::GroupInfo AC_AttitudeControl_Multi::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("THR_G_BOOST", 7, AC_AttitudeControl_Multi, _throttle_gain_boost, 0.0f),
 
+    AP_SUBGROUPINFO(_leso_rate_roll, "ESO_RLL_", 8, AC_AttitudeControl_Multi, AC_LESO),
+
+    AP_SUBGROUPINFO(_leso_rate_pitch, "ESO_PIT_", 9, AC_AttitudeControl_Multi, AC_LESO),
+
+    AP_SUBGROUPINFO(_leso_rate_yaw, "ESO_YAW_", 10, AC_AttitudeControl_Multi, AC_LESO),
+
     AP_GROUPEND
 };
 
@@ -391,13 +398,16 @@ void AC_AttitudeControl_Multi::rate_controller_run()
 
     Vector3f gyro_latest = _ahrs.get_gyro_latest();
 
-    _motors.set_roll(get_rate_roll_pid().update_all(_ang_vel_body.x, gyro_latest.x,  _dt, _motors.limit.roll, _pd_scale.x) + _actuator_sysid.x);
+    float rate_roll_pid_out = get_rate_roll_pid().update_all(_ang_vel_body.x, gyro_latest.x,  _dt, _motors.limit.roll, _pd_scale.x);
+    _motors.set_roll(get_rate_roll_leso().update(_ang_vel_body.x, rate_roll_pid_out) + _actuator_sysid.x);
     _motors.set_roll_ff(get_rate_roll_pid().get_ff());
 
-    _motors.set_pitch(get_rate_pitch_pid().update_all(_ang_vel_body.y, gyro_latest.y,  _dt, _motors.limit.pitch, _pd_scale.y) + _actuator_sysid.y);
+    float rate_pitch_pid_out = get_rate_pitch_pid().update_all(_ang_vel_body.y, gyro_latest.y,  _dt, _motors.limit.pitch, _pd_scale.y);
+    _motors.set_pitch(get_rate_pitch_leso().update(_ang_vel_body.y, rate_pitch_pid_out) + _actuator_sysid.y);
     _motors.set_pitch_ff(get_rate_pitch_pid().get_ff());
 
-    _motors.set_yaw(get_rate_yaw_pid().update_all(_ang_vel_body.z, gyro_latest.z,  _dt, _motors.limit.yaw, _pd_scale.z) + _actuator_sysid.z);
+    float rate_yaw_pid_out = get_rate_yaw_pid().update_all(_ang_vel_body.z, gyro_latest.z,  _dt, _motors.limit.yaw, _pd_scale.z);
+    _motors.set_yaw(rate_yaw_pid_out + _actuator_sysid.z);
     _motors.set_yaw_ff(get_rate_yaw_pid().get_ff()*_feedforward_scalar);
 
     _sysid_ang_vel_body.zero();

@@ -284,6 +284,11 @@ public:
 
     void Write_PID(uint8_t msg_type, const class AP_PIDInfo &info);
 
+    void Write_LESO(LogMessages ID, float leso_z1, float leso_z2, float leso_u0, float leso_u1);
+    void Write_LESOX(float leso_z1, float leso_z2, float leso_u0, float leso_u1);
+    void Write_LESOY(float leso_z1, float leso_z2, float leso_u0, float leso_u1);
+    void Write_LESOZ(float leso_z1, float leso_z2, float leso_u0, float leso_u1);
+
     // returns true if logging of a message should be attempted
     bool should_log(uint32_t mask) const;
 

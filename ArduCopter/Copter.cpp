@@ -588,6 +588,22 @@ void Copter::ten_hz_logging_loop()
         camera_mount.write_log();
     }
 #endif
+
+    logger.Write_LESOX(attitude_control->get_rate_roll_leso().get_z1(),
+                       attitude_control->get_rate_roll_leso().get_z2(),
+                       attitude_control->get_rate_roll_leso().get_u0(),
+                       attitude_control->get_rate_roll_leso().get_u1());
+
+    logger.Write_LESOY(attitude_control->get_rate_pitch_leso().get_z1(),
+                       attitude_control->get_rate_pitch_leso().get_z2(),
+                       attitude_control->get_rate_pitch_leso().get_u0(),
+                       attitude_control->get_rate_pitch_leso().get_u1());
+
+    logger.Write_LESOZ(attitude_control->get_rate_yaw_leso().get_z1(),
+                       attitude_control->get_rate_yaw_leso().get_z2(),
+                       attitude_control->get_rate_yaw_leso().get_u0(),
+                       attitude_control->get_rate_yaw_leso().get_u1());
+
 }
 
 // twentyfive_hz_logging - should be run at 25hz

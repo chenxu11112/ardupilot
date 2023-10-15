@@ -572,4 +572,32 @@ void AP_Logger::Write_PSCD(float pos_target, float pos, float vel_desired, float
     Write_PSCx(LOG_PSCD_MSG, pos_target, pos, vel_desired, vel_target, vel, accel_desired, accel_target, accel);
 }
 
+void AP_Logger::Write_LESO(LogMessages id, float leso_z1, float leso_z2, float leso_u0, float leso_u1)
+{
+    const struct log_LESO pkt{
+        LOG_PACKET_HEADER_INIT(id),
+            time_us     : AP_HAL::micros64(),
+            leso_z1     : leso_z1,
+            leso_z2     : leso_z2,
+            leso_u0     : leso_u0,
+            leso_u1     : leso_u1,
+    };
+    WriteBlock(&pkt, sizeof(pkt));
+}
+
+void AP_Logger::Write_LESOX(float leso_z1, float leso_z2, float leso_u0, float leso_u1)
+{
+    Write_LESO(LOG_LESO_X_MSG, leso_z1, leso_z2, leso_u0, leso_u1);
+}
+
+void AP_Logger::Write_LESOY(float leso_z1, float leso_z2, float leso_u0, float leso_u1)
+{
+    Write_LESO(LOG_LESO_Y_MSG, leso_z1, leso_z2, leso_u0, leso_u1);
+}
+
+void AP_Logger::Write_LESOZ(float leso_z1, float leso_z2, float leso_u0, float leso_u1)
+{
+    Write_LESO(LOG_LESO_Z_MSG, leso_z1, leso_z2, leso_u0, leso_u1);
+}
+
 #endif  // HAL_LOGGING_ENABLED

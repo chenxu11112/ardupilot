@@ -71,6 +71,8 @@ void Copter::Log_Write_Attitude()
     targets.z = wrap_360_cd(targets.z);
     ahrs.Write_Attitude(targets);
     ahrs_view->Write_Rate(*motors, *attitude_control, *pos_control);
+
+    
  }
 
 // Write PIDS packets
