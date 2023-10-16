@@ -669,6 +669,33 @@ void Copter::one_hz_loop()
 #endif
 
     AP_Notify::flags.flying = !ap.land_complete;
+
+
+    logger.Write_PIDParam_RPY(
+        attitude_control->get_angle_roll_p().kP(),
+        attitude_control->get_angle_pitch_p().kP(),
+        attitude_control->get_angle_yaw_p().kP(),
+        attitude_control->get_rate_roll_pid().kP(),
+        attitude_control->get_rate_roll_pid().kI(),
+        attitude_control->get_rate_roll_pid().kD(),
+        attitude_control->get_rate_pitch_pid().kP(),
+        attitude_control->get_rate_pitch_pid().kI(),
+        attitude_control->get_rate_pitch_pid().kD(),
+        attitude_control->get_rate_yaw_pid().kP(),
+        attitude_control->get_rate_yaw_pid().kI(),
+        attitude_control->get_rate_yaw_pid().kD()
+    );
+
+    logger.Write_PIDParam_POSZ(
+        pos_control->get_pos_z_p().kP(),
+        pos_control->get_vel_z_pid().kP(),
+        pos_control->get_vel_z_pid().kI(),
+        pos_control->get_vel_z_pid().kD(),
+        pos_control->get_accel_z_pid().kP(),
+        pos_control->get_accel_z_pid().kI(),
+        pos_control->get_accel_z_pid().kD()
+    );
+
 }
 
 void Copter::init_simple_bearing()

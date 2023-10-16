@@ -284,6 +284,10 @@ public:
 
     void Write_PID(uint8_t msg_type, const class AP_PIDInfo &info);
 
+    void Write_PIDParam_RPY(float _GR, float _GP, float _GY, float _RP, float _RI, float _RD, float _PP, float _PI, float _PD, float _YP, float _YI, float _YD);
+
+    void Write_PIDParam_POSZ(float _ZP, float VZP, float VZI, float VZD, float AZP, float AZI, float AZD);
+
     // returns true if logging of a message should be attempted
     bool should_log(uint32_t mask) const;
 

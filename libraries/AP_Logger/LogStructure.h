@@ -671,6 +671,34 @@ struct PACKED log_VER {
     uint16_t _APJ_BOARD_ID;
 };
 
+struct PACKED log_pid_rpy_param {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float _GR;
+    float _GP;
+    float _GY;
+    float _RP;
+    float _RI;
+    float _RD;
+    float _PP;
+    float _PI;
+    float _PD;
+    float _YP;
+    float _YI;
+    float _YD;
+};
+
+struct PACKED log_pid_posz_param {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float _ZP;
+    float VZP;
+    float VZI;
+    float VZD;
+    float AZP;
+    float AZI;
+    float AZD;
+};
 
 // FMT messages define all message formats other than FMT
 // UNIT messages define units which can be referenced by FMTU messages
@@ -1317,7 +1345,11 @@ LOG_STRUCTURE_FROM_AIS \
     { LOG_VER_MSG, sizeof(log_VER), \
       "VER",   "QBHBBBBIZH", "TimeUS,BT,BST,Maj,Min,Pat,FWT,GH,FWS,APJ", "s---------", "F---------", false }, \
     { LOG_MOTBATT_MSG, sizeof(log_MotBatt), \
-      "MOTB", "QfffffB",  "TimeUS,LiftMax,BatVolt,ThLimit,ThrAvMx,ThrOut,FailFlags", "s------", "F------" , true }
+      "MOTB", "QfffffB",  "TimeUS,LiftMax,BatVolt,ThLimit,ThrAvMx,ThrOut,FailFlags", "s------", "F------" , true }, \
+    { LOG_PIDParam_RPY, sizeof(log_pid_rpy_param), \
+      "RPYM", "Qffffffffffff",  "TimeUS,GR,GP,GY,RP,RI,RD,PP,PI,PD,YP,YI,YD", "s------------", "F------------" , true }, \
+    { LOG_PIDParam_POSZ, sizeof(log_pid_posz_param), \
+      "PSZM", "Qfffffff",  "TimeUS,ZP,VZP,VZI,VZD,AZP,AZI,AZD", "s-------", "F-------" , true }
 
 // message types 0 to 63 reserved for vehicle specific use
 
@@ -1405,6 +1437,9 @@ enum LogMessages : uint8_t {
     LOG_RCOUT2_MSG,
     LOG_RCOUT3_MSG,
     LOG_IDS_FROM_FENCE,
+
+    LOG_PIDParam_RPY,
+    LOG_PIDParam_POSZ,
 
     _LOG_LAST_MSG_
 };
