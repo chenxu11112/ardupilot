@@ -29,7 +29,7 @@ public:
 
     float get_z1() const { return _z1; }
     float get_z2() const { return _z2; }
-    float get_u1() const { return _u_last; }
+    float get_u1() const { return _u1_current; }
     float get_u0() const { return _u0; }
 
     static const struct AP_Param::GroupInfo var_info[];
@@ -42,8 +42,8 @@ protected:
     float _beta1;
     float _beta2;
 
-    float _u_last;
-    float _u_current;
+    float _u1_last;
+    float _u1_current;
     float _u0;
 
     /* LESO */

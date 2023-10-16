@@ -25,24 +25,24 @@ AC_LESO::AC_LESO(float init_w0, float init_b0, float init_h0)
     _z1 = 0;
     _z2 = 0;
 
-    _u_last    = 0;
-    _u_current = 0;
-    _u0        = 0;
+    _u1_last    = 0;
+    _u1_current = 0;
+    _u0         = 0;
 }
 
 float AC_LESO::update(float feedback, float output_u0)
 {
     float error = _z1 - feedback;
 
-    _u_last = _u_current;
+    _u1_last = _u1_current;
 
     _u0 = output_u0;
 
-    _z1 += _h0 * (_z2 + _b0 * _u_last - _beta1 * error);
+    _z1 += _h0 * (_z2 + _b0 * _u1_last - _beta1 * error);
 
     _z2 -= _h0 * _beta2 * error;
 
-    _u_current = _u0 - _z2 / _b0;
+    _u1_current = _u0 - _z2 / _b0;
 
-    return _u_current;
+    return _u1_current;
 }
