@@ -124,10 +124,10 @@ private:
 
     static const uint8_t maximum_fifo_config_file[];
 
-    ACCZ_LPF_CLASS<float> acclpfz;
-    Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30<Vector2f> acclpfxy;
+    ACC_Z_LPF_CLASS<float> acclpfz;
+    ACC_XY_LPF_CLASS<Vector2f> acclpfxy;
 
-    Chebyshev_II_SP_2000_PASS_30_STOP_60_DB_30<Vector3f> gyrolpf;
+    GYRO_XYZ_LPF_CLASS<Vector3f> gyrolpf;
 
     Vector3f acclpf_temp;
     Vector3f gyrolpf_temp;
