@@ -671,6 +671,14 @@ struct PACKED log_VER {
     uint16_t _APJ_BOARD_ID;
 };
 
+struct PACKED log_PIDParam {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float   kP;
+    float   kI;
+    float   kD;
+ 
+};
 
 // FMT messages define all message formats other than FMT
 // UNIT messages define units which can be referenced by FMTU messages
@@ -1317,7 +1325,15 @@ LOG_STRUCTURE_FROM_AIS \
     { LOG_VER_MSG, sizeof(log_VER), \
       "VER",   "QBHBBBBIZH", "TimeUS,BT,BST,Maj,Min,Pat,FWT,GH,FWS,APJ", "s---------", "F---------", false }, \
     { LOG_MOTBATT_MSG, sizeof(log_MotBatt), \
-      "MOTB", "QfffffB",  "TimeUS,LiftMax,BatVolt,ThLimit,ThrAvMx,ThrOut,FailFlags", "s------", "F------" , true }
+      "MOTB", "QfffffB",  "TimeUS,LiftMax,BatVolt,ThLimit,ThrAvMx,ThrOut,FailFlags", "s------", "F------" , true }, \
+    { LOG_PIDParam_R_MSG, sizeof(log_PIDParam), \
+      "PMR", "Qfff",  "TimeUS,kP,kI,kD", "s---", "F---" , true }, \
+    { LOG_PIDParam_P_MSG, sizeof(log_PIDParam), \
+      "PMP", "Qfff",  "TimeUS,kP,kI,kD", "s---", "F---" , true }, \
+    { LOG_PIDParam_Y_MSG, sizeof(log_PIDParam), \
+      "PMY", "Qfff",  "TimeUS,kP,kI,kD", "s---" "F---" , true }, \
+    { LOG_PIDParam_A_MSG, sizeof(log_PIDParam), \
+      "PMA", "Qfff",  "TimeUS,kP,kI,kD", "s---" "F---" , true }
 
 // message types 0 to 63 reserved for vehicle specific use
 
@@ -1405,6 +1421,11 @@ enum LogMessages : uint8_t {
     LOG_RCOUT2_MSG,
     LOG_RCOUT3_MSG,
     LOG_IDS_FROM_FENCE,
+
+    LOG_PIDParam_R_MSG,
+    LOG_PIDParam_P_MSG,
+    LOG_PIDParam_Y_MSG,
+    LOG_PIDParam_A_MSG,
 
     _LOG_LAST_MSG_
 };

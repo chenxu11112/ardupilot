@@ -572,4 +572,36 @@ void AP_Logger::Write_PSCD(float pos_target, float pos, float vel_desired, float
     Write_PSCx(LOG_PSCD_MSG, pos_target, pos, vel_desired, vel_target, vel, accel_desired, accel_target, accel);
 }
 
+void AP_Logger::Write_PMx(LogMessages id, float kP, float kI, float kD)
+{
+    const struct log_PIDParam pkt{
+        LOG_PACKET_HEADER_INIT(id),
+            time_us         : AP_HAL::micros64(),
+            kP    : kP,
+            kI    : kI,
+            kD    : kD
+    };
+    WriteBlock(&pkt, sizeof(pkt));
+}
+
+void AP_Logger::Write_PMR(float kP, float kI, float kD)
+{
+    Write_PMx(LOG_PIDParam_R_MSG, kP, kI, kD);
+}
+
+void AP_Logger::Write_PMP(float kP, float kI, float kD)
+{
+    Write_PMx(LOG_PIDParam_P_MSG, kP, kI, kD);
+}
+
+void AP_Logger::Write_PMY(float kP, float kI, float kD)
+{
+    Write_PMx(LOG_PIDParam_Y_MSG, kP, kI, kD);
+}
+
+void AP_Logger::Write_PMA(float kP, float kI, float kD)
+{
+    Write_PMx(LOG_PIDParam_A_MSG, kP, kI, kD);
+}
+
 #endif  // HAL_LOGGING_ENABLED

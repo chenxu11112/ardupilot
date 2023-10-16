@@ -588,6 +588,7 @@ void Copter::ten_hz_logging_loop()
         camera_mount.write_log();
     }
 #endif
+
 }
 
 // twentyfive_hz_logging - should be run at 25hz
@@ -686,6 +687,22 @@ void Copter::init_simple_bearing()
     if (should_log(MASK_LOG_ANY)) {
         Log_Write_Data(LogDataID::INIT_SIMPLE_BEARING, ahrs.yaw_sensor);
     }
+
+    logger.Write_PMR(attitude_control->get_rate_roll_pid().kP(),
+                     attitude_control->get_rate_roll_pid().kI(),
+                     attitude_control->get_rate_roll_pid().kD());
+
+    logger.Write_PMP(attitude_control->get_rate_pitch_pid().kP(),
+                     attitude_control->get_rate_pitch_pid().kI(),
+                     attitude_control->get_rate_pitch_pid().kD());
+                    
+    logger.Write_PMY(attitude_control->get_rate_yaw_pid().kP(),
+                     attitude_control->get_rate_yaw_pid().kI(),
+                     attitude_control->get_rate_yaw_pid().kD());
+
+    logger.Write_PMA(pos_control->get_accel_z_pid().kP(),
+                     pos_control->get_accel_z_pid().kI(),
+                     pos_control->get_accel_z_pid().kD());
 }
 
 // update_simple_mode - rotates pilot input if we are in simple mode
