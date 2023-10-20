@@ -185,7 +185,7 @@
 
 #include "mode.h"
 
-#include <AP_SAW/AP_Saw.h>
+#include <AP_SAWProtocol/AP_SAWProtocol.h>
 
 class Copter : public AP_Vehicle {
 public:
@@ -536,7 +536,7 @@ private:
     AP_Parachute parachute;
 #endif
 
-    AP_SAW ap_saw;
+    AP_SAWProtocol ap_saw;
 
     // Landing Gear Controller
 #if AP_LANDINGGEAR_ENABLED
