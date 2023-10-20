@@ -141,6 +141,7 @@ void AP_SAWProtocol::Send(void)
 
     static uint16_t count_tick = 0;
 
+    const uint8_t checkConnect_tick      = 20;
     const uint8_t send_heartbeat_tick    = 8;
     const uint8_t send_switchstatus_tick = 3;
     const uint8_t send_throttle_tick     = 2;
@@ -148,6 +149,9 @@ void AP_SAWProtocol::Send(void)
     count_tick++;
     if (count_tick % send_heartbeat_tick == (send_heartbeat_tick - 1)) {
         send_heartbeat();
+    }
+
+    if (count_tick % checkConnect_tick == (checkConnect_tick - 1)) {
         checkConnected();
     }
 
