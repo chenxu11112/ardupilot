@@ -227,6 +227,8 @@ class TeeBoth(object):
         self.file = None
 
     def write(self, data):
+        if isinstance(data, bytes):
+            data = data.decode('ascii')
         self.file.write(data)
         if not self.suppress_stdout:
             self.stdout.write(data)
@@ -3808,21 +3810,23 @@ class AutoTest(ABC):
         self.progress("log list: %s" % str(ret))
         return ret
 
-    def assert_parameter_values(self, parameters):
+    def assert_parameter_values(self, parameters, epsilon=None):
         names = parameters.keys()
         got = self.get_parameters(names)
         for name in names:
-            if got[name] != parameters[name]:
+            equal = got[name] == parameters[name]
+            if epsilon is not None:
+                delta = abs(got[name] - parameters[name])
+                equal = delta <= epsilon
+            if not equal:
                 raise NotAchievedException("parameter %s want=%f got=%f" %
                                            (name, parameters[name], got[name]))
             self.progress("%s has expected value %f" % (name, got[name]))
 
-    def assert_parameter_value(self, parameter, required):
-        got = self.get_parameter(parameter)
-        if got != required:
-            raise NotAchievedException("%s has unexpected value; want=%f got=%f" %
-                                       (parameter, required, got))
-        self.progress("%s has value %f" % (parameter, required))
+    def assert_parameter_value(self, parameter, required, **kwargs):
+        self.assert_parameter_values({
+            parameter: required,
+        }, **kwargs)
 
     def assert_reach_imu_temperature(self, target, timeout):
         '''wait to reach a target temperature'''
@@ -4297,9 +4301,17 @@ class AutoTest(ABC):
                                mav=None,
                                condition=None,
                                delay_fn=None,
-                               instance=None):
+                               instance=None,
+                               check_context=False):
         if mav is None:
             mav = self.mav
+
+        if check_context:
+            collection = self.context_collection(type)
+            if len(collection) > 0:
+                # return the most-recently-received message:
+                return collection[-1]
+
         m = None
         tstart = time.time()  # timeout in wallclock
         while True:
@@ -4309,8 +4321,10 @@ class AutoTest(ABC):
                     continue
             if m is not None:
                 break
-            if time.time() - tstart > timeout:
-                raise NotAchievedException("Did not get %s" % type)
+            elapsed_time = time.time() - tstart
+            if elapsed_time > timeout:
+                raise NotAchievedException("Did not get %s after %s seconds" %
+                                           (type, elapsed_time))
             if delay_fn is not None:
                 delay_fn()
         if verbose:
@@ -6079,10 +6093,13 @@ class AutoTest(ABC):
     def run_cmd_do_set_mode(self,
                             mode,
                             timeout=30,
+                            run_cmd=None,
                             want_result=mavutil.mavlink.MAV_RESULT_ACCEPTED):
+        if run_cmd is None:
+            run_cmd = self.run_cmd
         base_mode = mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED
         custom_mode = self.get_mode_from_mode_mapping(mode)
-        self.run_cmd(
+        run_cmd(
             mavutil.mavlink.MAV_CMD_DO_SET_MODE,
             p1=base_mode,
             p2=custom_mode,
@@ -6090,7 +6107,7 @@ class AutoTest(ABC):
             timeout=timeout,
         )
 
-    def do_set_mode_via_command_long(self, mode, timeout=30):
+    def do_set_mode_via_command_XYZZY(self, mode, run_cmd, timeout=30):
         """Set mode with a command long message."""
         tstart = self.get_sim_time()
         want_custom_mode = self.get_mode_from_mode_mapping(mode)
@@ -6098,11 +6115,17 @@ class AutoTest(ABC):
             remaining = timeout - (self.get_sim_time_cached() - tstart)
             if remaining <= 0:
                 raise AutoTestTimeoutException("Failed to change mode")
-            self.run_cmd_do_set_mode(mode, timeout=10)
+            self.run_cmd_do_set_mode(mode, run_cmd=run_cmd, timeout=10)
             m = self.wait_heartbeat()
             self.progress("Got mode=%u want=%u" % (m.custom_mode, want_custom_mode))
             if m.custom_mode == want_custom_mode:
                 return
+
+    def do_set_mode_via_command_long(self, mode, timeout=30):
+        self.do_set_mode_via_command_XYZZY(mode, self.run_cmd, timeout=timeout)
+
+    def do_set_mode_via_command_int(self, mode, timeout=30):
+        self.do_set_mode_via_command_XYZZY(mode, self.run_cmd_int, timeout=timeout)
 
     def mavproxy_do_set_mode_via_command_long(self, mavproxy, mode, timeout=30):
         """Set mode with a command long message with Mavproxy."""
@@ -7082,6 +7105,35 @@ class AutoTest(ABC):
         if value != m_value:
             raise NotAchievedException("Expected %s to be %u got %u" %
                                        (channel, value, m_value))
+
+    def do_reposition(self,
+                      loc,
+                      frame=mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT):
+        '''send a DO_REPOSITION command for a location'''
+        self.run_cmd_int(
+            mavutil.mavlink.MAV_CMD_DO_REPOSITION,
+            0,
+            0,
+            0,
+            0,
+            int(loc.lat*1e7), # lat* 1e7
+            int(loc.lng*1e7), # lon* 1e7
+            loc.alt,
+            frame=frame
+        )
+
+    def add_rally_point(self, loc, seq, total):
+        '''add a rally point at the given location'''
+        self.mav.mav.rally_point_send(1, # target system
+                                      0, # target component
+                                      seq, # sequence number
+                                      total, # total count
+                                      int(loc.lat * 1e7),
+                                      int(loc.lng * 1e7),
+                                      loc.alt, # relative alt
+                                      0, # "break" alt?!
+                                      0, # "land dir"
+                                      0) # flags
 
     def wait_location(self,
                       loc,
