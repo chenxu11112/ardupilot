@@ -1010,6 +1010,18 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_int_packet(const mavlink_command_in
         }
         return MAV_RESULT_FAILED;
 
+    case MAV_CMD_MISSION_START:
+        plane.set_mode(plane.mode_auto, ModeReason::GCS_COMMAND);
+        return MAV_RESULT_ACCEPTED;
+
+    case MAV_CMD_NAV_LOITER_UNLIM:
+        plane.set_mode(plane.mode_loiter, ModeReason::GCS_COMMAND);
+        return MAV_RESULT_ACCEPTED;
+
+    case MAV_CMD_NAV_RETURN_TO_LAUNCH:
+        plane.set_mode(plane.mode_rtl, ModeReason::GCS_COMMAND);
+        return MAV_RESULT_ACCEPTED;
+
     default:
         return GCS_MAVLINK::handle_command_int_packet(packet, msg);
     }
@@ -1037,14 +1049,6 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_long_packet(const mavlink_command_l
 {
     switch(packet.command) {
 
-    case MAV_CMD_NAV_LOITER_UNLIM:
-        plane.set_mode(plane.mode_loiter, ModeReason::GCS_COMMAND);
-        return MAV_RESULT_ACCEPTED;
-
-    case MAV_CMD_NAV_RETURN_TO_LAUNCH:
-        plane.set_mode(plane.mode_rtl, ModeReason::GCS_COMMAND);
-        return MAV_RESULT_ACCEPTED;
-
 #if HAL_QUADPLANE_ENABLED
     case MAV_CMD_NAV_TAKEOFF: {
         // user takeoff only works with quadplane code for now
@@ -1056,10 +1060,6 @@ MAV_RESULT GCS_MAVLINK_Plane::handle_command_long_packet(const mavlink_command_l
         return MAV_RESULT_FAILED;
     }
 #endif  // HAL_QUADPLANE_ENABLED
-
-    case MAV_CMD_MISSION_START:
-        plane.set_mode(plane.mode_auto, ModeReason::GCS_COMMAND);
-        return MAV_RESULT_ACCEPTED;
 
     default:
         return GCS_MAVLINK::handle_command_long_packet(packet, msg);

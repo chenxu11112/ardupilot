@@ -8653,9 +8653,10 @@ class AutoTestCopter(AutoTest):
                 if m.yawspeed > yawspeed_thresh_rads:
                     raise NotAchievedException("Excessive yaw on takeoff: %f deg/s > %f deg/s (frame=%s)" %
                                                (math.degrees(m.yawspeed), math.degrees(yawspeed_thresh_rads), frame))
-            self.install_message_hook(verify_yaw)
+            self.context_push()
+            self.install_message_hook_context(verify_yaw)
             self.takeoff(10)
-            self.remove_message_hook(verify_yaw)
+            self.context_pop()
             self.hover()
             self.change_mode('ALT_HOLD')
             self.delay_sim_time(1)
@@ -8671,13 +8672,14 @@ class AutoTestCopter(AutoTest):
                 if m.roll > roll_thresh_rad:
                     raise NotAchievedException("Excessive roll %f deg > %f deg" %
                                                (math.degrees(m.roll), math.degrees(roll_thresh_rad)))
-            self.install_message_hook(verify_rollpitch)
+            self.context_push()
+            self.install_message_hook_context(verify_rollpitch)
             for i in range(5):
                 self.set_rc(4, 2000)
                 self.delay_sim_time(0.5)
                 self.set_rc(4, 1500)
                 self.delay_sim_time(5)
-            self.remove_message_hook(verify_rollpitch)
+            self.context_pop()
 
             self.do_RTL()
 
@@ -10346,6 +10348,28 @@ class AutoTestCopter(AutoTest):
         self.zero_throttle()
         self._MAV_CMD_DO_LAND_START(self.run_cmd_int)
 
+    def _MAV_CMD_SET_EKF_SOURCE_SET(self, run_cmd):
+        run_cmd(
+            mavutil.mavlink.MAV_CMD_SET_EKF_SOURCE_SET,
+            17,
+            want_result=mavutil.mavlink.MAV_RESULT_DENIED,
+        )
+
+        self.change_mode('LOITER')
+        self.wait_ready_to_arm()
+
+        run_cmd(mavutil.mavlink.MAV_CMD_SET_EKF_SOURCE_SET, 2)
+
+        self.assert_prearm_failure('Need Position Estimate')
+        run_cmd(mavutil.mavlink.MAV_CMD_SET_EKF_SOURCE_SET, 1)
+
+        self.wait_ready_to_arm()
+
+    def MAV_CMD_SET_EKF_SOURCE_SET(self):
+        '''test setting of source sets using mavlink command'''
+        self._MAV_CMD_SET_EKF_SOURCE_SET(self.run_cmd)
+        self._MAV_CMD_SET_EKF_SOURCE_SET(self.run_cmd_int)
+
     def tests2b(self):  # this block currently around 9.5mins here
         '''return list of all tests'''
         ret = ([
@@ -10412,6 +10436,7 @@ class AutoTestCopter(AutoTest):
             self.BrakeZ,
             self.MAV_CMD_DO_FLIGHTTERMINATION,
             self.MAV_CMD_DO_LAND_START,
+            self.MAV_CMD_SET_EKF_SOURCE_SET,
         ])
         return ret
 

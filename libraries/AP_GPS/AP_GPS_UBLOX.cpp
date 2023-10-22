@@ -594,11 +594,10 @@ AP_GPS_UBLOX::read(void)
     for (uint16_t i = 0; i < numc; i++) {        // Process bytes received
 
         // read the next byte
-        const int16_t rdata = port->read();
-        if (rdata < 0) {
+        uint8_t data;
+        if (!port->read(data)) {
             break;
         }
-        const uint8_t data = rdata;
 #if AP_GPS_DEBUG_LOGGING_ENABLED
         log_data(&data, 1);
 #endif
@@ -1103,7 +1102,7 @@ AP_GPS_UBLOX::_parse_gps(void)
                             }
                             if(GNSS_GALILEO ==_buffer.gnss.configBlock[i].gnssId) {
                                 _buffer.gnss.configBlock[i].resTrkCh = (_buffer.gnss.numTrkChHw - 3) / (gnssCount * 2);
-                                _buffer.gnss.configBlock[i].maxTrkCh = 8; //Per the M8 receiver description UBX-13003221 - R16, 4.1.1.3 it is not recommended to set the number of galileo channels higher then eigh
+                                _buffer.gnss.configBlock[i].maxTrkCh = 8; //Per the M8 receiver description UBX-13003221 - R16, 4.1.1.3 it is not recommended to set the number of galileo channels higher then eight
                             }
                         }
                         _buffer.gnss.configBlock[i].flags = _buffer.gnss.configBlock[i].flags | 0x00000001;
