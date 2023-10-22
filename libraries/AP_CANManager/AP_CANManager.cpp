@@ -39,6 +39,8 @@
 #include <AP_HAL_ChibiOS/CANIface.h>
 #endif
 
+#include <AP_RoboCAN/AP_RoboCAN.h>
+
 #include <AP_Common/ExpandingString.h>
 #include <AP_Common/sorting.h>
 
@@ -220,6 +222,17 @@ void AP_CANManager::init()
             AP_Param::load_object_from_eeprom((AP_PiccoloCAN*)_drivers[drv_num], AP_PiccoloCAN::var_info);
         } else
 #endif
+         if (drv_type[drv_num] == AP_CAN::Protocol::RoboCAN) {
+            _drivers[drv_num] = _drv_param[drv_num]._robocan = new AP_RoboCAN;
+
+            if (_drivers[drv_num] == nullptr) {
+                AP_BoardConfig::allocation_error("RoboCAN %d", drv_num + 1);
+                continue;
+            }
+
+            AP_Param::load_object_from_eeprom((AP_RoboCAN*)_drivers[drv_num], AP_RoboCAN::var_info);
+        } else
+
         {
             continue;
         }

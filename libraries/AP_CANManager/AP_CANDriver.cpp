@@ -22,6 +22,7 @@
 #include <AP_DroneCAN/AP_DroneCAN.h>
 #include <AP_PiccoloCAN/AP_PiccoloCAN.h>
 #include <AP_KDECAN/AP_KDECAN.h>
+#include <AP_RoboCAN/AP_RoboCAN.h>
 
 
 // table of user settable CAN bus parameters
@@ -50,6 +51,9 @@ const AP_Param::GroupInfo AP_CANManager::CANDriver_Params::var_info[] = {
     // @Path: ../AP_PiccoloCAN/AP_PiccoloCAN.cpp
     AP_SUBGROUPPTR(_piccolocan, "PC_", 5, AP_CANManager::CANDriver_Params, AP_PiccoloCAN),
 #endif
+
+    AP_SUBGROUPPTR(_robocan, "RB_", 6, AP_CANManager::CANDriver_Params, AP_RoboCAN),
+
 
     AP_GROUPEND
 };

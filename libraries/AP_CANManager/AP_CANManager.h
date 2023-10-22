@@ -143,6 +143,8 @@ private:
         AP_Int8 _driver_type;
         AP_CANDriver* _uavcan;
         AP_CANDriver* _piccolocan;
+        AP_CANDriver* _robocan;
+
     };
 
     CANIface_Params _interfaces[HAL_NUM_CAN_IFACES];
