@@ -1,5 +1,10 @@
 include ../TSDPilot-S4-PDU-Periph/hwdef-bl.inc
 
+undef PB13
+undef PB14
+PC13 LED_BOOTLOADER OUTPUT LOW GPIO(0)  # blue
+PC14 LED_ACTIVITY OUTPUT LOW GPIO(1)  # Green
+
 define CAN_APP_NODE_NAME "tsdpilot.S4.PDU.L"
 
 
