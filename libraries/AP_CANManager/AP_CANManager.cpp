@@ -39,6 +39,7 @@
 #include <hal.h>
 #include <AP_HAL_ChibiOS/CANIface.h>
 #endif
+#include <AP_BalanceCAN/AP_BalanceCAN.h>
 
 #include <AP_Common/ExpandingString.h>
 #include <AP_Common/sorting.h>
@@ -244,6 +245,16 @@ void AP_CANManager::init()
             }
             AP_Param::load_object_from_eeprom((CANTester*)_drivers[drv_num], CANTester::var_info);
 #endif
+        } else if (drv_type[drv_num] == Driver_Type_BalanceCAN) {
+#if HAL_NUM_CAN_IFACES > 1 
+            _drivers[drv_num] = _drv_param[drv_num]._balancecan = new AP_BalanceCAN;
+
+            if (_drivers[drv_num] == nullptr) {
+                AP_BoardConfig::allocation_error("BalanceCAN %d", drv_num + 1);
+                continue;
+            }
+#endif
+
         } else {
             continue;
         }
