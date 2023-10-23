@@ -61,7 +61,7 @@ public:
     // empty destructor to suppress compiler warning
     virtual ~AC_BalanceControl() { }
 
-    void MotorSpeed(float left_speed, float right_speed);
+    void  MotorSpeed(float left_speed, float right_speed);
     float Balance(float Angle, float Gyro);
     float Velocity(float encoder_left, float encoder_right);
     float Turn(float gyro);
@@ -69,8 +69,6 @@ public:
     void RollControl(float roll);
 
     void balance_all_control(void);
-
-    void set_control_zeros(void);
 
     uint8_t get_Balance_Mode() { return balanceMode; }
 
@@ -190,11 +188,6 @@ protected:
 
     AP_Float Target_Velocity_X;
     AP_Float Target_Velocity_Z;
-
-    ///////////////////////////////////////////////////////
-    // 平衡环参数
-    float Balance_Angle_bias;
-    float Balance_Gyro_bias;
 
     ///////////////////////////////////////////////////////
     // 速度环参数

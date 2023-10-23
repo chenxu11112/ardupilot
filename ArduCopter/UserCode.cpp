@@ -13,7 +13,6 @@ void Copter::userhook_init()
 void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
-    balanceControl->balance_all_control();
 }
 #endif
 

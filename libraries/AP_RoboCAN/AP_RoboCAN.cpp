@@ -95,7 +95,7 @@ void AP_RoboCAN::loop()
             send_current(i + 1, target_current[i]);
         }
 
-        hal.scheduler->delay_microseconds(4000);
+        hal.scheduler->delay_microseconds(2500);
 
         uint64_t timeout = AP_HAL::micros64() + 250ULL;
         // Look for any message responses on the CAN bus
