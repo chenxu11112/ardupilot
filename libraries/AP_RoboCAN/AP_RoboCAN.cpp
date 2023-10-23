@@ -45,12 +45,12 @@ void AP_RoboCAN::init(uint8_t driver_index, bool enable_filters)
     snprintf(_thread_name, sizeof(_thread_name), "RoboCAN_%u", driver_index);
 }
 
-int16_t AP_RoboCAN::get_current(uint8_t id)
+int16_t AP_RoboCAN::getSpeed(uint8_t id)
 {
     if (id < 1)
         return 0;
 
-    return real_current[id - 1];
+    return real_speed[id - 1];
 }
 
 AP_RoboCAN::AP_RoboCAN()
@@ -90,13 +90,14 @@ void AP_RoboCAN::loop()
             hal.scheduler->delay_microseconds(10000);
             continue;
         }
-        uint64_t timeout = AP_HAL::micros64() + 250ULL;
 
-        send_current(1, 330);
+        for (uint8_t i = 0; i < 4; i++) {
+            send_current(i, target_current[i]);
+        }
 
-        // 1ms loop delay
         hal.scheduler->delay_microseconds(4000);
 
+        uint64_t timeout = AP_HAL::micros64() + 250ULL;
         // Look for any message responses on the CAN bus
         while (read_frame(rxFrame, timeout)) {
 
@@ -155,7 +156,7 @@ bool AP_RoboCAN::write_frame(AP_HAL::CANFrame& out_frame, uint64_t timeout)
 // parse inbound frames
 void AP_RoboCAN::handle_moto_measure(AP_HAL::CANFrame& frame, uint8_t id)
 {
-    real_current[id] = (frame.data[2] << 8 | frame.data[3]);
+    real_speed[id] = (frame.data[2] << 8 | frame.data[3]);
 }
 
 bool AP_RoboCAN::send_current(const uint8_t id, const int16_t data)

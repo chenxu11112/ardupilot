@@ -1,4 +1,5 @@
 #include "Copter.h"
+#include <AP_RoboCAN/AP_RoboCAN.h>
 
 #ifdef USERHOOK_INIT
 void Copter::userhook_init()
@@ -12,6 +13,11 @@ void Copter::userhook_init()
 void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
+    if (can_mgr.get_driver_type(0) != AP_CAN::Protocol::RoboCAN)
+        return;
+
+    AP_RoboCAN* can_driver = (AP_RoboCAN*)can_mgr.get_driver(0);
+
 }
 #endif
 

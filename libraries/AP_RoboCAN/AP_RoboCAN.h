@@ -19,7 +19,9 @@ public:
     void init(uint8_t driver_index, bool enable_filters) override;
     bool add_interface(AP_HAL::CANIface* can_iface) override;
 
-    int16_t get_current(uint8_t id);
+    int16_t getSpeed(uint8_t id);
+
+    void setCurrent(uint8_t id, int16_t _cuur){target_current[id]=_cuur;}
 
     static AP_RoboCAN* get_singleton() { return _singleton; }
 
@@ -52,7 +54,8 @@ private:
     void handle_moto_measure(AP_HAL::CANFrame& frame, uint8_t id);
     bool send_current(const uint8_t id, const int16_t data);
 
-    int16_t real_current[4];
+    int16_t target_current[4];
+    int16_t real_speed[4];
     uint8_t send_current_buffer[8];
 };
 namespace AP {
