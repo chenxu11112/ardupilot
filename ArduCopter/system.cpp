@@ -1,5 +1,6 @@
 #include "Copter.h"
 #include <AP_ESC_Telem/AP_ESC_Telem.h>
+#include <AP_RoboCAN/AP_RoboCAN.h>
 
 /*****************************************************************************
 *   The init_ardupilot function processes everything we need for an in - air restart
@@ -531,6 +532,14 @@ void Copter::allocate_motors(void)
     convert_prx_parameters();
 #endif
 
+    if (can_mgr.get_driver_type(0) == AP_CAN::Protocol::RoboCAN){
+        can_driver = (AP_RoboCAN*)can_mgr.get_driver(0);
+    } else {
+        can_driver = nullptr;
+    }
+
+    balanceControl = new AC_BalanceControl(*motors, *ahrs_view, *can_driver);
+    AP_Param::load_object_from_eeprom(balanceControl, balanceControl->var_info);
     // param count could have changed
     AP_Param::invalidate_count();
 }

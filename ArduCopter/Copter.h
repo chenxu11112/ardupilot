@@ -73,6 +73,8 @@
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_Winch/AP_Winch_config.h>
 
+#include <AC_BalanceControl/AC_BalanceControl.h>
+
 // Configuration
 #include "defines.h"
 #include "config.h"
@@ -251,6 +253,9 @@ private:
     // used to detect MAVLink acks from GCS to stop compassmot
     uint8_t command_ack_counter;
 
+    AC_BalanceControl *balanceControl;
+    AP_RoboCAN* can_driver;
+    
     // primary input control channels
     RC_Channel *channel_roll;
     RC_Channel *channel_pitch;

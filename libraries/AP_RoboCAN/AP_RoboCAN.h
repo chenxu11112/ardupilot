@@ -21,7 +21,13 @@ public:
 
     int16_t getSpeed(uint8_t id);
 
-    void setCurrent(uint8_t id, int16_t _cuur){target_current[id]=_cuur;}
+    void setCurrent(uint8_t id, int16_t _cuur)
+    {
+        if (id < 1) {
+            return;
+        }
+        target_current[id - 1] = _cuur;
+    }
 
     static AP_RoboCAN* get_singleton() { return _singleton; }
 

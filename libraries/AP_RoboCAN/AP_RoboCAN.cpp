@@ -92,7 +92,7 @@ void AP_RoboCAN::loop()
         }
 
         for (uint8_t i = 0; i < 4; i++) {
-            send_current(i, target_current[i]);
+            send_current(i + 1, target_current[i]);
         }
 
         hal.scheduler->delay_microseconds(4000);
