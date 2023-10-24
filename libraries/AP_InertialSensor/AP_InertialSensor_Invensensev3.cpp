@@ -373,8 +373,6 @@ bool AP_InertialSensor_Invensensev3::accumulate_samples(const FIFOData *data, ui
 
         gyrolpf_temp = gyrolpf.apply(gyro);
 
-        const float temp = d.temperature * temp_sensitivity + temp_zero;
-
         // these four calls are about 40us
         _rotate_and_correct_accel(accel_instance, acclpf_temp);
         _rotate_and_correct_gyro(gyro_instance, gyrolpf_temp);
