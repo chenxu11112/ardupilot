@@ -34,21 +34,21 @@ bool ModeLoiter::init(bool ignore_checks)
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
     pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
-#if AC_PRECLAND_ENABLED
+    #if AC_PRECLAND_ENABLED
     _precision_loiter_active = false;
-#endif
+    #endif
 
     return true;
 }
 
-#if AC_PRECLAND_ENABLED
+    #if AC_PRECLAND_ENABLED
 bool ModeLoiter::do_precision_loiter()
 {
     if (!_precision_loiter_enabled) {
         return false;
     }
     if (copter.ap.land_complete_maybe) {
-        return false;        // don't move on the ground
+        return false; // don't move on the ground
     }
     // if the pilot *really* wants to move the vehicle, let them....
     if (loiter_nav->get_pilot_desired_acceleration().length() > 50.0f) {
@@ -77,15 +77,15 @@ void ModeLoiter::precision_loiter_xy()
     // run pos controller
     pos_control->update_xy_controller();
 }
-#endif
+    #endif
 
 // loiter_run - runs the loiter controller
 // should be called at 100hz or more
 void ModeLoiter::run()
 {
-    float target_roll, target_pitch;
-    float target_yaw_rate = 0.0f;
-    float target_climb_rate = 0.0f;
+    float target_roll, target_pitch; // 目标滚转和俯仰角
+    float target_yaw_rate   = 0.0f;  // 目标偏航速率
+    float target_climb_rate = 0.0f;  // 目标爬升速率
 
     // 设置垂直速度和加速度限幅 -- set vertical speed and acceleration limits
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
@@ -126,7 +126,7 @@ void ModeLoiter::run()
     case AltHold_MotorStopped:
         attitude_control->reset_rate_controller_I_terms();
         attitude_control->reset_yaw_target_and_rate();
-        pos_control->relax_z_controller(0.0f);   // forces throttle output to decay to zero
+        pos_control->relax_z_controller(0.0f); // 强制油门输出衰减到零
         loiter_nav->init_target();
         attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
         break;
@@ -139,33 +139,33 @@ void ModeLoiter::run()
         attitude_control->reset_rate_controller_I_terms_smoothly();
         loiter_nav->init_target();
         attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
-        pos_control->relax_z_controller(0.0f);   // forces throttle output to decay to zero
+        pos_control->relax_z_controller(0.0f); // 强制油门输出衰减到零
         break;
 
     case AltHold_Takeoff:
-        // initiate take-off
+        // 启动起飞
         if (!takeoff.running()) {
-            takeoff.start(constrain_float(g.pilot_takeoff_alt,0.0f,1000.0f));
+            takeoff.start(constrain_float(g.pilot_takeoff_alt, 0.0f, 1000.0f));
         }
 
-        // get avoidance adjusted climb rate
+        // 获取避障调整后的爬升速率
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
 
-        // set position controller targets adjusted for pilot input
+        // 设置位置控制器目标，根据飞行员输入进行调整
         takeoff.do_pilot_takeoff(target_climb_rate);
 
-        // run loiter controller
+        // 运行loiter控制器
         loiter_nav->update();
 
-        // call attitude controller
+        // 调用姿态控制器
         attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
         break;
 
     case AltHold_Flying:
-        // set motors to full range
+        // 设置电机为全速状态
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
 
-#if AC_PRECLAND_ENABLED
+    #if AC_PRECLAND_ENABLED
         bool precision_loiter_old_state = _precision_loiter_active;
         if (do_precision_loiter()) {
             precision_loiter_xy();
@@ -177,29 +177,29 @@ void ModeLoiter::run()
             // prec loiter was active, not any more, let's init again as user takes control
             loiter_nav->init_target();
         }
-        // run loiter controller if we are not doing prec loiter
+        // 如果我们不在做精密悬停，运行loiter控制器
         if (!_precision_loiter_active) {
             loiter_nav->update();
         }
-#else
+    #else
         loiter_nav->update();
-#endif
+    #endif
 
-        // 调用姿态控制器 -- call attitude controller
+        // 调用姿态控制器
         attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
 
-        // 获取避障爬升率 -- get avoidance adjusted climb rate
+        // 获取避障调整的爬升速率
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
 
-        // update the vertical offset based on the surface measurement
+        // 根据地面测量更新垂直偏移
         copter.surface_tracking.update_surface_offset();
 
-        // Send the commanded climb rate to the position controller
+        // 将指令的爬升速率发送给位置控制器
         pos_control->set_pos_target_z_from_climb_rate_cm(target_climb_rate);
         break;
     }
 
-    // run the vertical position controller and set output throttle
+    // 运行垂直位置控制器并设置输出油门
     pos_control->update_z_controller();
 }
 
