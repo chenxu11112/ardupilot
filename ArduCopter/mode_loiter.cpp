@@ -11,13 +11,13 @@ bool ModeLoiter::init(bool ignore_checks)
 {
     if (!copter.failsafe.radio) {
         float target_roll, target_pitch;
-        // apply SIMPLE mode transform to pilot inputs
+        // 从简单模式转换成飞行员输入 -- apply SIMPLE mode transform to pilot inputs
         update_simple_mode();
 
-        // convert pilot input to lean angles
+        // 获取飞行员期望的倾斜角度
         get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
 
-        // process pilot's roll and pitch input
+        // 处理飞行员的俯仰滚转输入 -- process pilot's roll and pitch input
         loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
     } else {
         // clear out pilot desired acceleration in case radio failsafe event occurs and we do not switch to RTL for some reason
@@ -25,12 +25,12 @@ bool ModeLoiter::init(bool ignore_checks)
     }
     loiter_nav->init_target();
 
-    // initialise the vertical position controller
+    // 初始化垂直位置控制器 -- initialise the vertical position controller
     if (!pos_control->is_active_z()) {
         pos_control->init_z_controller();
     }
 
-    // set vertical speed and acceleration limits
+    // 设置垂直速度和加速度限幅 -- set vertical speed and acceleration limits
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
     pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
@@ -87,24 +87,24 @@ void ModeLoiter::run()
     float target_yaw_rate = 0.0f;
     float target_climb_rate = 0.0f;
 
-    // set vertical speed and acceleration limits
+    // 设置垂直速度和加速度限幅 -- set vertical speed and acceleration limits
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
-    // process pilot inputs unless we are in radio failsafe
+    // 处理飞行员输入直到无线电失控 -- process pilot inputs unless we are in radio failsafe
     if (!copter.failsafe.radio) {
-        // apply SIMPLE mode transform to pilot inputs
+        // 从简单模式转换成飞行员输入 -- apply SIMPLE mode transform to pilot inputs
         update_simple_mode();
 
-        // convert pilot input to lean angles
+        // 获取飞行员期望的倾斜角度 -- convert pilot input to lean angles
         get_pilot_desired_lean_angles(target_roll, target_pitch, loiter_nav->get_angle_max_cd(), attitude_control->get_althold_lean_angle_max_cd());
 
-        // process pilot's roll and pitch input
+        // 处理飞行员的俯仰滚转输入 -- process pilot's roll and pitch input
         loiter_nav->set_pilot_desired_acceleration(target_roll, target_pitch);
 
-        // get pilot's desired yaw rate
+        // 获取飞行员希望得到的航向速度 -- get pilot's desired yaw rate
         target_yaw_rate = get_pilot_desired_yaw_rate(channel_yaw->norm_input_dz());
 
-        // get pilot desired climb rate
+        // 获取飞行员希望得到的爬升速度 -- get pilot desired climb rate
         target_climb_rate = get_pilot_desired_climb_rate(channel_throttle->get_control_in());
         target_climb_rate = constrain_float(target_climb_rate, -get_pilot_speed_dn(), g.pilot_speed_up);
     } else {
@@ -112,15 +112,15 @@ void ModeLoiter::run()
         loiter_nav->clear_pilot_desired_acceleration();
     }
 
-    // relax loiter target if we might be landed
+    // 放弃loiter目标如果可能降落 -- relax loiter target if we might be landed
     if (copter.ap.land_complete_maybe) {
         loiter_nav->soften_for_landing();
     }
 
-    // Loiter State Machine Determination
+    // loiter状态机的状态 -- Loiter State Machine Determination
     AltHoldModeState loiter_state = get_alt_hold_state(target_climb_rate);
 
-    // Loiter State Machine
+    // loiter状态机 -- Loiter State Machine
     switch (loiter_state) {
 
     case AltHold_MotorStopped:
@@ -185,10 +185,10 @@ void ModeLoiter::run()
         loiter_nav->update();
 #endif
 
-        // call attitude controller
+        // 调用姿态控制器 -- call attitude controller
         attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
 
-        // get avoidance adjusted climb rate
+        // 获取避障爬升率 -- get avoidance adjusted climb rate
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
 
         // update the vertical offset based on the surface measurement

@@ -465,14 +465,14 @@ void Copter::notify_flight_mode() {
 // returns desired angle in centi-degrees
 void Mode::get_pilot_desired_lean_angles(float &roll_out_cd, float &pitch_out_cd, float angle_max_cd, float angle_limit_cd) const
 {
-    // throttle failsafe check
+    // 油门故障检查 -- throttle failsafe check
     if (copter.failsafe.radio || !copter.ap.rc_receiver_present) {
         roll_out_cd = 0.0;
         pitch_out_cd = 0.0;
         return;
     }
 
-    //transform pilot's normalised roll or pitch stick input into a roll and pitch euler angle command
+    // 获取俯仰、横滚输入并限制最大角度-- transform pilot's normalised roll or pitch stick input into a roll and pitch euler angle command
     float roll_out_deg;
     float pitch_out_deg;
     rc_input_to_roll_pitch(channel_roll->get_control_in()*(1.0/ROLL_PITCH_YAW_INPUT_MAX), channel_pitch->get_control_in()*(1.0/ROLL_PITCH_YAW_INPUT_MAX), angle_max_cd * 0.01,  angle_limit_cd * 0.01, roll_out_deg, pitch_out_deg);
