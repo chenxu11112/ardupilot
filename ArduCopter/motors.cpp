@@ -1,167 +1,165 @@
 #include "Copter.h"
 
-#define ARM_DELAY               20  // called at 10hz so 2 seconds
-#define DISARM_DELAY            20  // called at 10hz so 2 seconds
-#define AUTO_TRIM_DELAY         100 // called at 10hz so 10 seconds
-#define LOST_VEHICLE_DELAY      10  // called at 10hz so 1 second
+#define ARM_DELAY          20  // 武装（解锁）延迟，以10赫兹频率计算，相当于2秒
+#define DISARM_DELAY       20  // 解除武装（锁定）延迟，以10赫兹频率计算，相当于2秒
+#define AUTO_TRIM_DELAY    100 // 自动校准延迟，以10赫兹频率计算，相当于10秒
+#define LOST_VEHICLE_DELAY 10  // 载具丢失警报延迟，以10赫兹频率计算，相当于1秒
 
 static uint32_t auto_disarm_begin;
 
-// arm_motors_check - checks for pilot input to arm or disarm the copter
-// called at 10hz
+// arm_motors_check - 检查激活或解除激活直升机的飞行器输入
+// 每秒调用10次
 void Copter::arm_motors_check()
 {
-    static int16_t arming_counter;
+    static int16_t arming_counter; // 静态变量，用于跟踪激活计数
 
-    // check if arming/disarm using rudder is allowed
+    // 检查是否允许使用方向舵进行激活/解除激活
     AP_Arming::RudderArming arming_rudder = arming.get_rudder_arming_type();
     if (arming_rudder == AP_Arming::RudderArming::IS_DISABLED) {
-        return;
+        return; // 如果禁用了方向舵激活/解除激活，则返回
     }
 
 #if TOY_MODE_ENABLED == ENABLED
     if (g2.toy_mode.enabled()) {
-        // not armed with sticks in toy mode
+        // 玩具模式下不使用摇杆激活
         return;
     }
 #endif
 
-    // ensure throttle is down
+    // 确保油门关闭
     if (channel_throttle->get_control_in() > 0) {
         arming_counter = 0;
         return;
     }
 
-    int16_t yaw_in = channel_yaw->get_control_in();
+    int16_t yaw_in = channel_yaw->get_control_in(); // 获取方向舵输入值
 
-    // full right
+    // 向最右
     if (yaw_in > 4000) {
 
-        // increase the arming counter to a maximum of 1 beyond the auto trim counter
+        // 增加激活计数，最多比自动校准计数器多1
         if (arming_counter <= AUTO_TRIM_DELAY) {
             arming_counter++;
         }
 
-        // arm the motors and configure for flight
+        // 激活电机并配置为飞行
         if (arming_counter == ARM_DELAY && !motors->armed()) {
-            // reset arming counter if arming fail
+            // 如果激活失败，则重置激活计数
             if (!arming.arm(AP_Arming::Method::RUDDER)) {
                 arming_counter = 0;
             }
         }
 
-        // arm the motors and configure for flight
+        // 激活电机并配置为飞行
         if (arming_counter == AUTO_TRIM_DELAY && motors->armed() && flightmode->mode_number() == Mode::Number::STABILIZE) {
-            gcs().send_text(MAV_SEVERITY_INFO, "AutoTrim start");
+            gcs().send_text(MAV_SEVERITY_INFO, "AutoTrim 启动");
             auto_trim_counter = 250;
             auto_trim_started = false;
-            // ensure auto-disarm doesn't trigger immediately
+            // 确保自动解除激活不会立即触发
             auto_disarm_begin = millis();
         }
 
-    // full left and rudder disarming is enabled
+        // 向最左，且启用了方向舵激活/解除激活
     } else if ((yaw_in < -4000) && (arming_rudder == AP_Arming::RudderArming::ARMDISARM)) {
         if (!flightmode->has_manual_throttle() && !ap.land_complete) {
             arming_counter = 0;
             return;
         }
 
-        // increase the counter to a maximum of 1 beyond the disarm delay
+        // 增加计数，最多比解除激活延迟多1
         if (arming_counter <= DISARM_DELAY) {
             arming_counter++;
         }
 
-        // disarm the motors
+        // 解除激活电机
         if (arming_counter == DISARM_DELAY && motors->armed()) {
             arming.disarm(AP_Arming::Method::RUDDER);
         }
 
-    // Yaw is centered so reset arming counter
+        // 方向舵处于中心位置，重置激活计数
     } else {
         arming_counter = 0;
     }
 }
 
-// auto_disarm_check - disarms the copter if it has been sitting on the ground in manual mode with throttle low for at least 15 seconds
+// auto_disarm_check - 如果直升机在手动模式下油门低并且静止在地面上至少15秒，则上锁直升机电机
 void Copter::auto_disarm_check()
 {
-    uint32_t tnow_ms = millis();
-    uint32_t disarm_delay_ms = 1000*constrain_int16(g.disarm_delay, 0, 127);
+    uint32_t tnow_ms         = millis();                                       // 获取当前时间（毫秒）
+    uint32_t disarm_delay_ms = 1000 * constrain_int16(g.disarm_delay, 0, 127); // 获取上锁延迟时间（毫秒）
 
-    // exit immediately if we are already disarmed, or if auto
-    // disarming is disabled
+    // 如果电机已上锁，或者已禁用自动上锁，或者处于THROW模式下，立即退出
     if (!motors->armed() || disarm_delay_ms == 0 || flightmode->mode_number() == Mode::Number::THROW) {
         auto_disarm_begin = tnow_ms;
         return;
     }
 
-    // if the rotor is still spinning, don't initiate auto disarm
+    // 如果旋翼仍在旋转，不要启动自动上锁
     if (motors->get_spool_state() > AP_Motors::SpoolState::GROUND_IDLE) {
         auto_disarm_begin = tnow_ms;
         return;
     }
 
-    // always allow auto disarm if using interlock switch or motors are Emergency Stopped
+    // 总是允许自动上锁，如果使用了联锁开关或电机已经紧急停止
     if ((ap.using_interlock && !motors->get_interlock()) || SRV_Channels::get_emergency_stop()) {
+        // 如果使用了油门联锁开关或紧急停止，延迟时间更短，因为电机不旋转，难以确定是否已上锁
 #if FRAME_CONFIG != HELI_FRAME
-        // use a shorter delay if using throttle interlock switch or Emergency Stop, because it is less
-        // obvious the copter is armed as the motors will not be spinning
         disarm_delay_ms /= 2;
 #endif
     } else {
+        // 检查油门是否低，如果是则继续检查上锁条件
         bool sprung_throttle_stick = (g.throttle_behavior & THR_BEHAVE_FEEDBACK_FROM_MID_STICK) != 0;
         bool thr_low;
         if (flightmode->has_manual_throttle() || !sprung_throttle_stick) {
             thr_low = ap.throttle_zero;
         } else {
             float deadband_top = get_throttle_mid() + g.throttle_deadzone;
-            thr_low = channel_throttle->get_control_in() <= deadband_top;
+            thr_low            = channel_throttle->get_control_in() <= deadband_top;
         }
 
         if (!thr_low || !ap.land_complete) {
-            // reset timer
+            // 重置计时器
             auto_disarm_begin = tnow_ms;
         }
     }
 
-    // disarm once timer expires
-    if ((tnow_ms-auto_disarm_begin) >= disarm_delay_ms) {
+    // 当计时器超过上锁延迟时间时，执行上锁
+    if ((tnow_ms - auto_disarm_begin) >= disarm_delay_ms) {
         arming.disarm(AP_Arming::Method::DISARMDELAY);
         auto_disarm_begin = tnow_ms;
     }
 }
 
-// motors_output - send output to motors library which will adjust and send to ESCs and servos
+// motors_output - 将输出发送到电机库，该库将进行调整并将信号发送给电子速度控制器（ESCs）和伺服电机
 void Copter::motors_output()
 {
 #if ADVANCED_FAILSAFE == ENABLED
-    // this is to allow the failsafe module to deliberately crash
-    // the vehicle. Only used in extreme circumstances to meet the
-    // OBC rules
+    // 高级故障保护：用于允许故障保护模块有意终止载具的情况。
+    // 仅在极端情况下使用，以满足特殊规则（例如OBC规则）。
     if (g2.afs.should_crash_vehicle()) {
         g2.afs.terminate_vehicle();
         if (!g2.afs.terminating_vehicle_via_landing()) {
-            return;
+            return; // 如果未通过着陆终止，立即退出
         }
-        // landing must continue to run the motors output
+        // 仍需继续执行电机输出以完成着陆
     }
 #endif
 
-    // Update arming delay state
-    if (ap.in_arming_delay && (!motors->armed() || millis()-arm_time_ms > ARMING_DELAY_SEC*1.0e3f || flightmode->mode_number() == Mode::Number::THROW)) {
+    // 更新解锁延迟状态，用于确保飞机安全地解锁
+    if (ap.in_arming_delay && (!motors->armed() || millis() - arm_time_ms > ARMING_DELAY_SEC * 1.0e3f || flightmode->mode_number() == Mode::Number::THROW)) {
         ap.in_arming_delay = false;
     }
 
-    // output any servo channels
+    // 计算并输出伺服通道的PWM信号
     SRV_Channels::calc_pwm();
 
-    // cork now, so that all channel outputs happen at once
+    // 现在锁定通道，以便所有通道输出同时进行
     SRV_Channels::cork();
 
-    // update output on any aux channels, for manual passthru
+    // 更新所有辅助通道的输出，用于手动通行（例如手动控制伺服）
     SRV_Channels::output_ch_all();
 
-    // update motors interlock state
+    // 更新电机联锁状态，确保电机可以安全运行
     bool interlock = motors->armed() && !ap.in_arming_delay && (!ap.using_interlock || ap.motor_interlock_switch) && !SRV_Channels::get_emergency_stop();
     if (!motors->get_interlock() && interlock) {
         motors->set_interlock(true);
@@ -172,39 +170,40 @@ void Copter::motors_output()
     }
 
     if (ap.motor_test) {
-        // check if we are performing the motor test
+        // 执行电机测试，用于验证电机性能
         motor_test_output();
     } else {
-        // send output signals to motors
+        // 将输出信号发送到电机，以实现飞行控制
         flightmode->output_to_motors();
     }
 
-    // push all channels
+    // 推送所有通道输出
     SRV_Channels::push();
 }
 
-// check for pilot stick input to trigger lost vehicle alarm
+// lost_vehicle_check - 检查飞手遥杆输入以触发丢失载具警报
 void Copter::lost_vehicle_check()
 {
-    static uint8_t soundalarm_counter;
+    static uint8_t soundalarm_counter; // 静态计数器，用于触发声音警报
 
-    // disable if aux switch is setup to vehicle alarm as the two could interfere
+    // 如果设置了辅助开关用于载具丢失警报，禁用此功能以避免干扰
     if (rc().find_channel_for_option(RC_Channel::AUX_FUNC::LOST_VEHICLE_SOUND)) {
         return;
     }
 
-    // ensure throttle is down, motors not armed, pitch and roll rc at max. Note: rc1=roll rc2=pitch
+    // 确保油门关闭、电机未解锁、俯仰和横滚通道遥杆位置在最大值。
+    // 注意：rc1=横滚通道、rc2=俯仰通道
     if (ap.throttle_zero && !motors->armed() && (channel_roll->get_control_in() > 4000) && (channel_pitch->get_control_in() > 4000)) {
         if (soundalarm_counter >= LOST_VEHICLE_DELAY) {
             if (AP_Notify::flags.vehicle_lost == false) {
                 AP_Notify::flags.vehicle_lost = true;
-                gcs().send_text(MAV_SEVERITY_NOTICE,"Locate Copter alarm");
+                gcs().send_text(MAV_SEVERITY_NOTICE, "Locate Copter alarm"); // 发送警告消息
             }
         } else {
-            soundalarm_counter++;
+            soundalarm_counter++; // 增加计数以触发警报
         }
     } else {
-        soundalarm_counter = 0;
+        soundalarm_counter = 0; // 重置计数
         if (AP_Notify::flags.vehicle_lost == true) {
             AP_Notify::flags.vehicle_lost = false;
         }

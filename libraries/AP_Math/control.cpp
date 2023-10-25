@@ -25,7 +25,7 @@
 #include <AP_InternalError/AP_InternalError.h>
 
 // control default definitions
-#define CORNER_ACCELERATION_RATIO   1.0/safe_sqrt(2.0)   // acceleration reduction to enable zero overshoot corners
+#define CORNER_ACCELERATION_RATIO 1.0 / safe_sqrt(2.0) // acceleration reduction to enable zero overshoot corners
 
 // update_vel_accel - single axis projection of velocity, vel, forwards in time based on a time step of dt and acceleration of accel.
 // the velocity is not moved in the direction of limit if limit is not set to zero.
@@ -120,7 +120,7 @@ void shape_accel(float accel_input, float& accel,
     // jerk limit acceleration change
     if (is_positive(dt)) {
         float accel_delta = accel_input - accel;
-        accel_delta = constrain_float(accel_delta, -jerk_max * dt, jerk_max * dt);
+        accel_delta       = constrain_float(accel_delta, -jerk_max * dt, jerk_max * dt);
         accel += accel_delta;
     }
 }
@@ -146,8 +146,8 @@ void shape_accel_xy(const Vector2f& accel_input, Vector2f& accel,
 void shape_accel_xy(const Vector3f& accel_input, Vector3f& accel,
                     float jerk_max, float dt)
 {
-    const Vector2f accel_input_2f {accel_input.x, accel_input.y};
-    Vector2f accel_2f {accel.x, accel.y};
+    const Vector2f accel_input_2f { accel_input.x, accel_input.y };
+    Vector2f       accel_2f { accel.x, accel.y };
 
     shape_accel_xy(accel_input_2f, accel_2f, jerk_max, dt);
     accel.x = accel_2f.x;
@@ -231,10 +231,10 @@ void shape_vel_accel_xy(const Vector2f& vel_input, const Vector2f& accel_input,
     } else {
         // calculate acceleration in the direction of and perpendicular to the velocity input
         const Vector2f vel_input_unit = vel_input.normalized();
-        float accel_dir = vel_input_unit * accel_target;
-        Vector2f accel_cross =  accel_target - (vel_input_unit * accel_dir);
+        float          accel_dir      = vel_input_unit * accel_target;
+        Vector2f       accel_cross    = accel_target - (vel_input_unit * accel_dir);
 
-        // ensure 1/sqrt(2) of maximum acceleration is available to correct cross component 
+        // ensure 1/sqrt(2) of maximum acceleration is available to correct cross component
         // relative to vel_input
         if (sq(accel_dir) <= accel_cross.length_squared()) {
             // accel_target can be simply limited in magnitude
@@ -245,8 +245,8 @@ void shape_vel_accel_xy(const Vector2f& vel_input, const Vector2f& accel_input,
             // acceleration as possible.
             accel_cross.limit_length(CORNER_ACCELERATION_RATIO * accel_max);
             float accel_max_dir = safe_sqrt(sq(accel_max) - accel_cross.length_squared());
-            accel_dir = constrain_float(accel_dir, -accel_max_dir, accel_max_dir);
-            accel_target = accel_cross + vel_input_unit * accel_dir;
+            accel_dir           = constrain_float(accel_dir, -accel_max_dir, accel_max_dir);
+            accel_target        = accel_cross + vel_input_unit * accel_dir;
         }
     }
 
@@ -295,10 +295,10 @@ void shape_pos_vel_accel(postype_t pos_input, float vel_input, float accel_input
     float KPv;
     if (is_positive(pos_error)) {
         accel_tc_max = -0.5 * accel_min;
-        KPv = 0.5 * jerk_max / (-accel_min);
+        KPv          = 0.5 * jerk_max / (-accel_min);
     } else {
         accel_tc_max = 0.5 * accel_max;
-        KPv = 0.5 * jerk_max / accel_max;
+        KPv          = 0.5 * jerk_max / accel_max;
     }
 
     // velocity to correct position
@@ -350,7 +350,7 @@ void shape_pos_vel_accel_xy(const Vector2p& pos_input, const Vector2f& vel_input
 
     // velocity correction with input velocity
     vel_target = vel_target + vel_input;
-    
+
     // limit velocity to vel_max
     if (limit_total) {
         vel_target.limit_length(vel_max);
@@ -388,7 +388,7 @@ bool limit_accel_xy(const Vector2f& vel, Vector2f& accel, float accel_max)
                 accel_dir = 0.0;
             } else {
                 float accel_max_dir = safe_sqrt(sq(accel_max) - accel_cross.length_squared());
-                accel_dir = constrain_float(accel_dir, -accel_max_dir, accel_max_dir);
+                accel_dir           = constrain_float(accel_dir, -accel_max_dir, accel_max_dir);
             }
             accel = accel_cross + vel_input_unit * accel_dir;
         }
@@ -437,7 +437,7 @@ Vector2f sqrt_controller(const Vector2f& error, float p, float second_ord_lim, f
 {
     const float error_length = error.length();
     if (!is_positive(error_length)) {
-        return Vector2f{};
+        return Vector2f {};
     }
 
     const float correction_length = sqrt_controller(error_length, p, second_ord_lim, dt);
@@ -466,7 +466,7 @@ float inv_sqrt_controller(float output, float p, float D_max)
         return output / p;
     }
 
-    const float linear_dist = D_max / sq(p);
+    const float linear_dist   = D_max / sq(p);
     const float stopping_dist = (linear_dist * 0.5f) + sq(output) / (2.0 * D_max);
     return is_positive(output) ? stopping_dist : -stopping_dist;
 }
@@ -485,12 +485,12 @@ float kinematic_limit(Vector3f direction, float max_xy, float max_z_pos, float m
         return 0.0;
     }
 
-    max_xy = fabsf(max_xy);
+    max_xy    = fabsf(max_xy);
     max_z_pos = fabsf(max_z_pos);
     max_z_neg = fabsf(max_z_neg);
 
     direction.normalize();
-    const float xy_length = Vector2f{direction.x, direction.y}.length();
+    const float xy_length = Vector2f { direction.x, direction.y }.length();
 
     if (is_zero(xy_length)) {
         return is_positive(direction.z) ? max_z_pos : max_z_neg;
@@ -500,71 +500,86 @@ float kinematic_limit(Vector3f direction, float max_xy, float max_z_pos, float m
         return max_xy;
     }
 
-    const float slope = direction.z/xy_length;
+    const float slope = direction.z / xy_length;
     if (is_positive(slope)) {
-        if (fabsf(slope) < max_z_pos/max_xy) {
-            return max_xy/xy_length;
+        if (fabsf(slope) < max_z_pos / max_xy) {
+            return max_xy / xy_length;
         }
-        return fabsf(max_z_pos/direction.z);
+        return fabsf(max_z_pos / direction.z);
     }
 
-    if (fabsf(slope) < max_z_neg/max_xy) {
-        return max_xy/xy_length;
+    if (fabsf(slope) < max_z_neg / max_xy) {
+        return max_xy / xy_length;
     }
-    return fabsf(max_z_neg/direction.z);
+    return fabsf(max_z_neg / direction.z);
 }
 
-// input_expo calculates the expo function on the normalised input.
-// The input must be in the range of -1 to 1.
-// The expo should be less than 1.0 but limited to be less than 0.95.
+// 计算输入值的"曲线响应"（expo function）。
+// "曲线响应"是为了改变输入信号的响应特性，通常用于调整飞行器的控制性能，使其更加灵敏或平稳
+// input_expo 计算输入值的曲线响应。
+// 输入值必须在 -1 到 1 的范围内。
+// 曲线响应的程度应小于 1.0，但限制在小于 0.95。
 float input_expo(float input, float expo)
 {
+    // 将输入值限制在 -1 到 1 的范围内
     input = constrain_float(input, -1.0, 1.0);
+
+    // 如果曲线响应的程度小于 0.95
     if (expo < 0.95) {
+        // 计算曲线响应后的输出值
         return (1 - expo) * input / (1 - expo * fabsf(input));
     }
+
+    // 如果曲线响应的程度不小于 0.95，直接返回原始输入值
     return input;
 }
 
-// angle_to_accel converts a maximum lean angle in degrees to an accel limit in m/s/s
+// angle_to_accel 将最大倾斜角度（以度为单位）转换为最大加速度限制（以 m/s² 为单位）
 float angle_to_accel(float angle_deg)
 {
+    // 使用标准重力加速度（以 m/s² 为单位）和 tan 函数将角度转换为加速度
     return GRAVITY_MSS * tanf(radians(angle_deg));
 }
 
-// accel_to_angle converts a maximum accel in m/s/s to a lean angle in degrees
+// accel_to_angle 将最大加速度（以 m/s² 为单位）转换为最大倾斜角度（以度为单位）
 float accel_to_angle(float accel)
 {
-    return degrees(atanf((accel/GRAVITY_MSS)));
+    // 使用 atan 和 degrees 函数将加速度转换为角度
+    return degrees(atanf((accel / GRAVITY_MSS)));
 }
 
-// rc_input_to_roll_pitch - transform pilot's normalised roll or pitch stick input into a roll and pitch euler angle command
-// roll_in_unit and pitch_in_unit - are normalised roll and pitch stick input
-// angle_max_deg - maximum lean angle from the z axis
-// angle_limit_deg - provides the ability to reduce the maximum output lean angle to less than angle_max_deg
-// returns roll and pitch angle in degrees
-void rc_input_to_roll_pitch(float roll_in_unit, float pitch_in_unit, float angle_max_deg, float angle_limit_deg, float &roll_out_deg, float &pitch_out_deg)
+// 这段代码执行了从标准化滚动和俯仰遥杆输入到滚动和俯仰的欧拉角命令的转换，同时考虑了最大倾斜角度和可调的角度限制。
+// 这对于将飞行员的输入转化为飞行器的控制命令非常重要，以确保飞行器以安全和合适的方式响应飞行员的操作。
+// rc_input_to_roll_pitch - 将飞行员的标准化滚动或俯仰遥杆输入转换为滚动和俯仰的欧拉角命令
+// roll_in_unit 和 pitch_in_unit - 是标准化的滚动和俯仰遥杆输入
+// angle_max_deg - 允许的最大倾斜角度，相对于飞行器的Z轴
+// angle_limit_deg - 提供减小最大输出倾斜角至小于angle_max_deg的能力
+// 返回滚动和俯仰角度，单位为度
+void rc_input_to_roll_pitch(float roll_in_unit, float pitch_in_unit, float angle_max_deg, float angle_limit_deg, float& roll_out_deg, float& pitch_out_deg)
 {
+    // 限制angle_max_deg不超过85度
     angle_max_deg = MIN(angle_max_deg, 85.0);
+
+    // 将遥杆输入转换为弧度（radians）表示
     float rc_2_rad = radians(angle_max_deg);
 
-    // fetch roll and pitch stick positions and convert them to normalised horizontal thrust
+    // 获取滚动和俯仰遥杆位置并将它们转换为标准化的水平推力
     Vector2f thrust;
-    thrust.x = - tanf(rc_2_rad * pitch_in_unit);
+    thrust.x = -tanf(rc_2_rad * pitch_in_unit);
     thrust.y = tanf(rc_2_rad * roll_in_unit);
 
-    // calculate the horizontal thrust limit based on the angle limit
-    angle_limit_deg = constrain_float(angle_limit_deg, 10.0f, angle_max_deg);
+    // 基于角度限制计算水平推力的极限
+    angle_limit_deg    = constrain_float(angle_limit_deg, 10.0f, angle_max_deg);
     float thrust_limit = tanf(radians(angle_limit_deg));
 
-    // apply horizontal thrust limit
+    // 应用水平推力限制
     thrust.limit_length(thrust_limit);
 
-    // Conversion from angular thrust vector to euler angles.
-    float pitch_rad = - atanf(thrust.x);
-    float roll_rad = atanf(cosf(pitch_rad) * thrust.y);
+    // 从角推力矢量转换为欧拉角度
+    float pitch_rad = -atanf(thrust.x);
+    float roll_rad  = atanf(cosf(pitch_rad) * thrust.y);
 
-    // Convert to degrees
-    roll_out_deg = degrees(roll_rad);
+    // 转换为度数表示
+    roll_out_deg  = degrees(roll_rad);
     pitch_out_deg = degrees(pitch_rad);
 }

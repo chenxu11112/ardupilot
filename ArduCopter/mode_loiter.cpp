@@ -232,11 +232,13 @@ void ModeLoiter::run()
     pos_control->update_z_controller();
 }
 
+// wp_distance - 获取飞行器当前位置到Loiter模式目标的直线距离
 uint32_t ModeLoiter::wp_distance() const
 {
     return loiter_nav->get_distance_to_target();
 }
 
+// wp_bearing - 获取飞行器当前位置到Loiter模式目标的方位角
 int32_t ModeLoiter::wp_bearing() const
 {
     return loiter_nav->get_bearing_to_target();
