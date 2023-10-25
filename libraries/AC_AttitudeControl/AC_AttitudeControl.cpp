@@ -556,24 +556,30 @@ void AC_AttitudeControl::input_angle_step_bf_roll_pitch_yaw(float roll_angle_ste
     attitude_controller_run_quat();
 }
 
+// 控制飞行器的姿态和姿态速率，根据传递的推力矢量和航向速率。
+// 函数的工作原理包括将输入值从厘度转换为弧度，根据一些条件和参数进行姿态控制计算，包括角速度限制、角速度整形和航向速率限制。
+// 最后，将计算得到的目标姿态和姿态速率传递给四元数姿态控制器以控制飞行器的姿态。
+// 这个函数在飞行控制系统中起到关键作用，以确保飞行器按照期望的姿态飞行。
 // Command a thrust vector and heading rate
 void AC_AttitudeControl::input_thrust_vector_rate_heading(const Vector3f& thrust_vector, float heading_rate_cds, bool slew_yaw)
 {
-    // Convert from centidegrees on public interface to radians
+    // 将以厘度为单位的公共接口中的值转换为弧度
     float heading_rate = radians(heading_rate_cds * 0.01f);
+
     if (slew_yaw) {
-        // a zero _angle_vel_yaw_max means that setting is disabled
+        // 如果启用了航向速率控制，则限制航向速率在指定范围内
+        // 如果航向速率限制设置为零，表示禁用限制
         const float slew_yaw_max_rads = get_slew_yaw_max_rads();
         heading_rate = constrain_float(heading_rate, -slew_yaw_max_rads, slew_yaw_max_rads);
     }
 
-    // calculate the attitude target euler angles
+    // 计算目标姿态的欧拉角
     _attitude_target.to_euler(_euler_angle_target);
 
-    // convert thrust vector to a quaternion attitude
+    // 将推力矢量转换为四元数姿态
     Quaternion thrust_vec_quat = attitude_from_thrust_vector(thrust_vector, 0.0f);
 
-    // calculate the angle error in x and y.
+    // 计算x和y轴上的角度误差
     float thrust_vector_diff_angle;
     Quaternion thrust_vec_correction_quat;
     Vector3f attitude_error;
@@ -581,31 +587,30 @@ void AC_AttitudeControl::input_thrust_vector_rate_heading(const Vector3f& thrust
     thrust_vector_rotation_angles(thrust_vec_quat, _attitude_target, thrust_vec_correction_quat, attitude_error, returned_thrust_vector_angle, thrust_vector_diff_angle);
 
     if (_rate_bf_ff_enabled) {
-        // When yaw acceleration limiting is enabled, the yaw input shaper constrains angular acceleration about the yaw axis, slewing
-        // the output rate towards the input rate.
+        // 当启用偏航加速度限制时，偏航输入整形器约束绕偏航轴的角加速度，将输出速率转向输入速率。
         _ang_vel_target.x = input_shaping_angle(attitude_error.x, _input_tc, get_accel_roll_max_radss(), _ang_vel_target.x, _dt);
         _ang_vel_target.y = input_shaping_angle(attitude_error.y, _input_tc, get_accel_pitch_max_radss(), _ang_vel_target.y, _dt);
 
-        // When yaw acceleration limiting is enabled, the yaw input shaper constrains angular acceleration about the yaw axis, slewing
-        // the output rate towards the input rate.
+        // 当启用偏航加速度限制时，偏航输入整形器约束绕偏航轴的角加速度，将输出速率转向输入速率。
         _ang_vel_target.z = input_shaping_ang_vel(_ang_vel_target.z, heading_rate, get_accel_yaw_max_radss(), _dt, _rate_y_tc);
 
-        // Limit the angular velocity
+        // 限制角速度
         ang_vel_limit(_ang_vel_target, radians(_ang_vel_roll_max), radians(_ang_vel_pitch_max), radians(_ang_vel_yaw_max));
     } else {
+        // 当未启用偏航加速度限制时，通过四元数姿态计算姿态目标
         Quaternion yaw_quat;
         yaw_quat.from_axis_angle(Vector3f{0.0f, 0.0f, heading_rate * _dt});
         _attitude_target = _attitude_target * thrust_vec_correction_quat * yaw_quat;
 
-        // Set rate feedforward requests to zero
+        // 将速率前馈请求设置为零
         _euler_rate_target.zero();
         _ang_vel_target.zero();
     }
 
-    // Convert body-frame angular velocity into euler angle derivative of desired attitude
+    // 将机体坐标系下的角速度转换为期望姿态的欧拉角导数
     ang_vel_to_euler_rate(_euler_angle_target, _ang_vel_target, _euler_rate_target);
 
-    // Call quaternion attitude controller
+    // 调用四元数姿态控制器
     attitude_controller_run_quat();
 }
 

@@ -55,27 +55,29 @@ void Copter::update_throttle_hover()
     }
 }
 
-// get_pilot_desired_climb_rate - transform pilot's throttle input to climb rate in cm/s
-// without any deadzone at the bottom
+// 这个函数的主要目的是根据飞行员的油门输入，计算期望的爬升速度。首先，它执行油门失效检查，以确保飞行器处于正常状态。
+// 然后，根据油门值和一些设定参数，如死区（deadzone）和速度参数，来计算期望的爬升速度。根据油门值是否在死区的上方、下方或
+// 在死区内，它会计算不同的爬升速度。这有助于控制飞行器的上升和下降速度，以响应飞行员的输入。
+// get_pilot_desired_climb_rate - 将飞行员的油门输入转换为以厘米每秒为单位的爬升速度，底部没有死区（deadzone）
 float Copter::get_pilot_desired_climb_rate(float throttle_control)
 {
-    // throttle failsafe check
+    // 油门失效检查
     if (failsafe.radio || !ap.rc_receiver_present) {
+        // 如果飞行器处于油门失效状态或者遥控接收器未连接，返回0.0f，表示没有期望的爬升速度
         return 0.0f;
     }
 
 #if TOY_MODE_ENABLED == ENABLED
     if (g2.toy_mode.enabled()) {
-        // allow throttle to be reduced after throttle arming and for
-        // slower descent close to the ground
+        // 在启用玩具模式时，允许在油门解锁后减小油门，并在靠近地面时减慢下降速度
         g2.toy_mode.throttle_adjust(throttle_control);
     }
 #endif
 
-    // ensure a reasonable throttle value
-    throttle_control = constrain_float(throttle_control,0.0f,1000.0f);
+    // 确保油门值在合理范围内（0.0f 到 1000.0f）
+    throttle_control = constrain_float(throttle_control, 0.0f, 1000.0f);
 
-    // ensure a reasonable deadzone
+    // 确保有合理的死区值
     g.throttle_deadzone.set(constrain_int16(g.throttle_deadzone, 0, 400));
 
     float desired_rate = 0.0f;
@@ -83,15 +85,15 @@ float Copter::get_pilot_desired_climb_rate(float throttle_control)
     const float deadband_top = mid_stick + g.throttle_deadzone;
     const float deadband_bottom = mid_stick - g.throttle_deadzone;
 
-    // check throttle is above, below or in the deadband
+    // 检查油门值是在死区的上方、下方还是在死区内
     if (throttle_control < deadband_bottom) {
-        // below the deadband
-        desired_rate = get_pilot_speed_dn() * (throttle_control-deadband_bottom) / deadband_bottom;
+        // 在死区下方
+        desired_rate = get_pilot_speed_dn() * (throttle_control - deadband_bottom) / deadband_bottom;
     } else if (throttle_control > deadband_top) {
-        // above the deadband
-        desired_rate = g.pilot_speed_up * (throttle_control-deadband_top) / (1000.0f-deadband_top);
+        // 在死区上方
+        desired_rate = g.pilot_speed_up * (throttle_control - deadband_top) / (1000.0f - deadband_top);
     } else {
-        // must be in the deadband
+        // 必须在死区内
         desired_rate = 0.0f;
     }
 

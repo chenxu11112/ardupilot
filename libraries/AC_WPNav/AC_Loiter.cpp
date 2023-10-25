@@ -127,35 +127,40 @@ void AC_Loiter::soften_for_landing()
 {
     _pos_control.soften_for_landing_xy();
 }
-/// 设置飞手期望的加速度（以百分度为单位）
-// dt应该是上一次调用该函数到现在的时间（秒）
+
+/// 以厘度为单位设置飞行员期望的加速度
+// dt 应该是自上次调用此函数以来的时间（以秒为单位）
 void AC_Loiter::set_pilot_desired_acceleration(float euler_roll_angle_cd, float euler_pitch_angle_cd)
 {
+    // 获取时间间隔 dt，通常是从上次调用该函数到现在的时间差（秒）
     const float dt = _attitude_control.get_dt();
-    // 从公共接口上的百分度转换为弧度
-    const float euler_roll_angle  = radians(euler_roll_angle_cd * 0.01f);
+
+    // 将以厘度为单位的横滚和俯仰角度转换为弧度
+    const float euler_roll_angle = radians(euler_roll_angle_cd * 0.01f);
     const float euler_pitch_angle = radians(euler_pitch_angle_cd * 0.01f);
 
-    // 假设我们垂直方向不加速时，将我们的期望姿态转换为加速度向量
-    const Vector3f desired_euler { euler_roll_angle, euler_pitch_angle, _ahrs.yaw };
+    // 假设飞行器在垂直方向不加速时，将飞行员的期望姿态转换为加速度向量
+    const Vector3f desired_euler {euler_roll_angle, euler_pitch_angle, _ahrs.yaw};
     const Vector3f desired_accel = _pos_control.lean_angles_to_accel(desired_euler);
 
+    // 将计算得到的加速度分量存储在 _desired_accel 中
     _desired_accel.x = desired_accel.x;
     _desired_accel.y = desired_accel.y;
 
-    // 我们认为应该在我们的期望和预测的姿态之间的差异
+    // 计算我们认为应该在的姿态与我们期望的姿态之间的差异
     Vector2f angle_error(wrap_PI(euler_roll_angle - _predicted_euler_angle.x), wrap_PI(euler_pitch_angle - _predicted_euler_angle.y));
 
-    // 计算给定我们期望和预测的姿态的角速度
+    // 根据期望姿态和预测姿态计算角速度
     _attitude_control.input_shaping_rate_predictor(angle_error, _predicted_euler_rate, dt);
 
-    // 基于我们的预测的角速度更新我们的预测姿态
+    // 基于预测的角速度更新预测姿态
     _predicted_euler_angle += _predicted_euler_rate * dt;
 
-    // 当我们不垂直加速时，将我们的预测姿态转换为加速度向量
-    const Vector3f predicted_euler { _predicted_euler_angle.x, _predicted_euler_angle.y, _ahrs.yaw };
+    // 假设飞行器在垂直方向不加速时，将预测的姿态转换为加速度向量
+    const Vector3f predicted_euler {_predicted_euler_angle.x, _predicted_euler_angle.y, _ahrs.yaw};
     const Vector3f predicted_accel = _pos_control.lean_angles_to_accel(predicted_euler);
 
+    // 将计算得到的加速度分量存储在 _predicted_accel 中
     _predicted_accel.x = predicted_accel.x;
     _predicted_accel.y = predicted_accel.y;
 }
@@ -171,9 +176,14 @@ void AC_Loiter::get_stopping_point_xy(Vector2f& stopping_point) const
 /// 获取悬停时的最大倾斜角
 float AC_Loiter::get_angle_max_cd() const
 {
+    // 如果 _angle_max 不是正数，执行以下操作：
     if (!is_positive(_angle_max)) {
+        // 返回 _attitude_control.lean_angle_max_cd() 和 _pos_control.get_lean_angle_max_cd() 的较小值
+        // 然后将其乘以 (2.0f / 3.0f) 并返回
         return MIN(_attitude_control.lean_angle_max_cd(), _pos_control.get_lean_angle_max_cd()) * (2.0f / 3.0f);
     }
+    // 如果 _angle_max 是正数，执行以下操作：
+    // 返回 _angle_max 乘以 100.0f 和 _pos_control.get_lean_angle_max_cd() 中的较小值
     return MIN(_angle_max * 100.0f, _pos_control.get_lean_angle_max_cd());
 }
 

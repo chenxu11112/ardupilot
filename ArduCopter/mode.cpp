@@ -461,23 +461,25 @@ void Copter::notify_flight_mode() {
     notify.set_flight_mode_str(flightmode->name4());
 }
 
-// get_pilot_desired_angle - transform pilot's roll or pitch input into a desired lean angle
-// returns desired angle in centi-degrees
+// get_pilot_desired_angle - 将飞行员的横滚或俯仰输入转换为期望的倾斜角度
+// 返回值为以厘度表示的期望角度
 void Mode::get_pilot_desired_lean_angles(float &roll_out_cd, float &pitch_out_cd, float angle_max_cd, float angle_limit_cd) const
 {
-    // 油门故障检查 -- throttle failsafe check
+    // 油门故障检查 -- 油门失效检查
     if (copter.failsafe.radio || !copter.ap.rc_receiver_present) {
+        // 如果飞行器处于油门失效状态或者遥控接收器未连接，那么：
+        // 将横滚和俯仰的期望角度都设置为0
         roll_out_cd = 0.0;
         pitch_out_cd = 0.0;
         return;
     }
 
-    // 获取俯仰、横滚输入并限制最大角度-- transform pilot's normalised roll or pitch stick input into a roll and pitch euler angle command
+    // 获取飞行员的横滚和俯仰输入并限制最大角度-- 将飞行员的标准化横滚或俯仰遥杆输入转换为横滚和俯仰的欧拉角度命令
     float roll_out_deg;
     float pitch_out_deg;
-    rc_input_to_roll_pitch(channel_roll->get_control_in()*(1.0/ROLL_PITCH_YAW_INPUT_MAX), channel_pitch->get_control_in()*(1.0/ROLL_PITCH_YAW_INPUT_MAX), angle_max_cd * 0.01,  angle_limit_cd * 0.01, roll_out_deg, pitch_out_deg);
+    rc_input_to_roll_pitch(channel_roll->get_control_in() * (1.0 / ROLL_PITCH_YAW_INPUT_MAX), channel_pitch->get_control_in() * (1.0 / ROLL_PITCH_YAW_INPUT_MAX), angle_max_cd * 0.01,  angle_limit_cd * 0.01, roll_out_deg, pitch_out_deg);
 
-    // Convert to centi-degrees
+    // 转换为厘度
     roll_out_cd = roll_out_deg * 100.0;
     pitch_out_cd = pitch_out_deg * 100.0;
 }
@@ -952,12 +954,14 @@ void Mode::output_to_motors()
 
 Mode::AltHoldModeState Mode::get_alt_hold_state(float target_climb_rate_cms)
 {
-    // Alt Hold State Machine Determination
+    // 确定高度保持模式（AltHold）的状态机
+
+    // 如果飞行器未解锁（未启动引擎）：
     if (!motors->armed()) {
-        // the aircraft should moved to a shut down state
+        // 飞行器应该进入关闭状态
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::SHUT_DOWN);
 
-        // transition through states as aircraft spools down
+        // 根据飞行器关闭状态进行状态转换
         switch (motors->get_spool_state()) {
 
         case AP_Motors::SpoolState::SHUT_DOWN:
@@ -970,56 +974,61 @@ Mode::AltHoldModeState Mode::get_alt_hold_state(float target_climb_rate_cms)
             return AltHold_Landed_Pre_Takeoff;
         }
 
+    // 如果飞行器正在进行起飞或已经触发了起飞条件（要求正的爬升速率，并且限制油门）：
     } else if (takeoff.running() || takeoff.triggered(target_climb_rate_cms)) {
-        // the aircraft is currently landed or taking off, asking for a positive climb rate and in THROTTLE_UNLIMITED
-        // the aircraft should progress through the take off procedure
+        // 飞行器当前处于着陆或正在起飞，要求正的爬升速率并处于不受油门限制状态
+        // 飞行器应该按照起飞程序的步骤进行操作
         return AltHold_Takeoff;
 
+    // 如果飞行器已经解锁但仍然着陆或已完成着陆（land_complete）：
     } else if (!copter.ap.auto_armed || copter.ap.land_complete) {
-        // the aircraft is armed and landed
+        // 飞行器已解锁且着陆
         if (target_climb_rate_cms < 0.0f && !copter.ap.using_interlock) {
-            // the aircraft should move to a ground idle state
+            // 飞行器应该进入地面怠速状态
             motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::GROUND_IDLE);
 
         } else {
-            // the aircraft should prepare for imminent take off
+            // 飞行器应该准备进行即将发生的起飞
             motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
         }
 
         if (motors->get_spool_state() == AP_Motors::SpoolState::GROUND_IDLE) {
-            // the aircraft is waiting in ground idle
+            // 飞行器在地面怠速等待
             return AltHold_Landed_Ground_Idle;
 
         } else {
-            // the aircraft can leave the ground at any time
+            // 飞行器随时可以离地
             return AltHold_Landed_Pre_Takeoff;
         }
 
+    // 如果飞行器正在飞行状态：
     } else {
-        // the aircraft is in a flying state
+        // 飞行器处于飞行状态
         motors->set_desired_spool_state(AP_Motors::DesiredSpoolState::THROTTLE_UNLIMITED);
         return AltHold_Flying;
     }
 }
 
-// transform pilot's yaw input into a desired yaw rate
-// returns desired yaw rate in centi-degrees per second
+// 将飞行员的偏航输入转换为期望的偏航速率
+// 返回值以厘度每秒为单位的期望偏航速率
 float Mode::get_pilot_desired_yaw_rate(float yaw_in)
 {
-    // throttle failsafe check
+    // 油门故障检查
     if (copter.failsafe.radio || !copter.ap.rc_receiver_present) {
+        // 如果飞行器处于油门故障状态或者遥控接收器未连接，返回0.0f，表示没有期望的偏航速率
         return 0.0f;
     }
 
-    // convert pilot input to the desired yaw rate
+    // 将飞行员的输入转换为期望的偏航速率
+    // 通过获取 g2.command_model_pilot 中的速率和曲线形状（expo），然后应用 input_expo 函数进行转换
+    // 最后将结果乘以 100.0 以将速率单位转换为厘度每秒
     return g2.command_model_pilot.get_rate() * 100.0 * input_expo(yaw_in, g2.command_model_pilot.get_expo());
 }
 
-// pass-through functions to reduce code churn on conversion;
-// these are candidates for moving into the Mode base
-// class.
+// 通过函数委托将功能传递给 copter 对象，以获取飞行员期望的上升速率
 float Mode::get_pilot_desired_climb_rate(float throttle_control)
 {
+    // 调用 copter 对象的相应函数，将 throttle_control 参数传递给它
     return copter.get_pilot_desired_climb_rate(throttle_control);
 }
 
