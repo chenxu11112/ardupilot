@@ -317,69 +317,93 @@ void AC_AttitudeControl_Multi::set_throttle_out(float throttle_in, bool apply_an
 
 void AC_AttitudeControl_Multi::set_throttle_mix_max(float ratio)
 {
-    ratio                     = constrain_float(ratio, 0.0f, 1.0f);
+    // 限制输入的比率在 0.0 到 1.0 之间
+    ratio = constrain_float(ratio, 0.0f, 1.0f);
+
+    // 根据比率计算期望的油门混合值
     _throttle_rpy_mix_desired = (1.0f - ratio) * _thr_mix_min + ratio * _thr_mix_max;
 }
 
-// returns a throttle including compensation for roll/pitch angle
-// throttle value should be 0 ~ 1
+// 返回一个包括对滚转/俯仰角度补偿的油门值
+// 油门值应在 0 ~ 1 之间
 float AC_AttitudeControl_Multi::get_throttle_boosted(float throttle_in)
 {
     if (!_angle_boost_enabled) {
+        // 如果角度增益被禁用，重置角度增益并返回原始油门值
         _angle_boost = 0;
         return throttle_in;
     }
-    // inverted_factor is 1 for tilt angles below 60 degrees
-    // inverted_factor reduces from 1 to 0 for tilt angles between 60 and 90 degrees
 
-    float cos_tilt        = _ahrs.cos_pitch() * _ahrs.cos_roll();
+    // 计算当前倾斜角度下的余弦值
+    float cos_tilt = _ahrs.cos_pitch() * _ahrs.cos_roll();
+
+    // 计算反转因子，倾斜角度在 60 度以下时为 1，倾斜角度在 60 到 90 度之间时从 1 递减到 0
     float inverted_factor = constrain_float(10.0f * cos_tilt, 0.0f, 1.0f);
-    float cos_tilt_target = cosf(_thrust_angle);
-    float boost_factor    = 1.0f / constrain_float(cos_tilt_target, 0.1f, 1.0f);
 
+    // 计算目标余弦值，这是期望的油门补偿目标
+    float cos_tilt_target = cosf(_thrust_angle);
+
+    // 计算角度增益因子，确保它在 0.1 到 1 之间
+    float boost_factor = 1.0f / constrain_float(cos_tilt_target, 0.1f, 1.0f);
+
+    // 计算经过补偿后的油门值
     float throttle_out = throttle_in * inverted_factor * boost_factor;
-    _angle_boost       = constrain_float(throttle_out - throttle_in, -1.0f, 1.0f);
+
+    // 计算角度增益，这是补偿前后的油门变化量
+    _angle_boost = constrain_float(throttle_out - throttle_in, -1.0f, 1.0f);
+
+    // 返回经过补偿后的油门值
     return throttle_out;
 }
 
-// returns a throttle including compensation for roll/pitch angle
-// throttle value should be 0 ~ 1
+// 返回一个包括对滚转/俯仰角度和油门混合最大值的油门值
+// 油门值应在 0 ~ 1 之间
 float AC_AttitudeControl_Multi::get_throttle_avg_max(float throttle_in)
 {
+    // 将输入的油门值限制在 0.0 到 1.0 之间
     throttle_in = constrain_float(throttle_in, 0.0f, 1.0f);
-    return MAX(throttle_in, throttle_in * MAX(0.0f, 1.0f - _throttle_rpy_mix) + _motors.get_throttle_hover() * _throttle_rpy_mix);
+
+    // 计算考虑油门混合最大值的油门值
+    // 使用 MAX 函数来取最大值，考虑了油门混合最大值的影响
+    // 油门混合最大值 _throttle_rpy_mix 控制油门混合的权重
+    float throttle_out = MAX(throttle_in, throttle_in * MAX(0.0f, 1.0f - _throttle_rpy_mix) + _motors.get_throttle_hover() * _throttle_rpy_mix);
+
+    // 返回计算后的油门值
+    return throttle_out;
 }
 
-// update_throttle_gain_boost - boost angle_p/pd each cycle on high throttle slew
+// update_throttle_gain_boost - 在高油门变化时增强角度P/PD
 void AC_AttitudeControl_Multi::update_throttle_gain_boost()
 {
-    // Boost PD and Angle P on very rapid throttle changes
+    // 如果油门的变化速率高于阈值 AC_ATTITUDE_CONTROL_THR_G_BOOST_THRESH
     if (_motors.get_throttle_slew_rate() > AC_ATTITUDE_CONTROL_THR_G_BOOST_THRESH) {
+        // 增强 PD 增益
         const float pd_boost = constrain_float(_throttle_gain_boost + 1.0f, 1.0, 2.0);
         set_PD_scale_mult(Vector3f(pd_boost, pd_boost, 1.0f));
 
+        // 增强角度P增益
         const float angle_p_boost = constrain_float((_throttle_gain_boost + 1.0f) * (_throttle_gain_boost + 1.0f), 1.0, 4.0);
         set_angle_P_scale_mult(Vector3f(angle_p_boost, angle_p_boost, 1.0f));
     }
 }
 
-// update_throttle_rpy_mix - slew set_throttle_rpy_mix to requested value
+// update_throttle_rpy_mix - 逐渐将 _throttle_rpy_mix 调整到所需值
 void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
 {
-    // slew _throttle_rpy_mix to _throttle_rpy_mix_desired
+    // 逐渐将 _throttle_rpy_mix 调整到 _throttle_rpy_mix_desired
     if (_throttle_rpy_mix < _throttle_rpy_mix_desired) {
-        // increase quickly (i.e. from 0.1 to 0.9 in 0.4 seconds)
+        // 快速增加（例如，从 0.1 增加到 0.9 需要 0.4 秒）
         _throttle_rpy_mix += MIN(2.0f * _dt, _throttle_rpy_mix_desired - _throttle_rpy_mix);
     } else if (_throttle_rpy_mix > _throttle_rpy_mix_desired) {
-        // reduce more slowly (from 0.9 to 0.1 in 1.6 seconds)
+        // 缓慢减少（从 0.9 减少到 0.1 需要 1.6 秒）
         _throttle_rpy_mix -= MIN(0.5f * _dt, _throttle_rpy_mix - _throttle_rpy_mix_desired);
 
-        // if the mix is still higher than that being used, reset immediately
+        // 如果混合仍然高于正在使用的混合，立即重置
         const float throttle_hover = _motors.get_throttle_hover();
         const float throttle_in    = _motors.get_throttle();
         const float throttle_out   = MAX(_motors.get_throttle_out(), throttle_in);
         float       mix_used;
-        // since throttle_out >= throttle_in at this point we don't need to check throttle_in < throttle_hover
+        // 由于 throttle_out >= throttle_in，在这一点上不需要检查 throttle_in < throttle_hover
         if (throttle_out < throttle_hover) {
             mix_used = (throttle_out - throttle_in) / (throttle_hover - throttle_in);
         } else {
@@ -393,16 +417,19 @@ void AC_AttitudeControl_Multi::update_throttle_rpy_mix()
 
 void AC_AttitudeControl_Multi::rate_controller_run()
 {
-    // boost angle_p/pd each cycle on high throttle slew
+    // 在高油门突变时，每个周期都会提高 angle_p/pd
     update_throttle_gain_boost();
 
-    // move throttle vs attitude mixing towards desired (called from here because this is conveniently called on every iteration)
+    // 将油门与姿态混合逐渐调整到所需值（从这里调用，因为这方便在每次迭代中调用）
     update_throttle_rpy_mix();
 
+    // 更新角速度（体轴）以考虑系统识别角速度
     _ang_vel_body += _sysid_ang_vel_body;
 
+    // 获取最新的陀螺仪数据
     Vector3f gyro_latest = _ahrs.get_gyro_latest();
 
+    // 使用角速度 PID 控制器计算横滚、俯仰和偏航的控制输出
     _motors.set_roll(get_rate_roll_pid().update_all(_ang_vel_body.x, gyro_latest.x, _dt, _motors.limit.roll, _pd_scale.x) + _actuator_sysid.x);
     _motors.set_roll_ff(get_rate_roll_pid().get_ff());
 
@@ -412,34 +439,39 @@ void AC_AttitudeControl_Multi::rate_controller_run()
     _motors.set_yaw(get_rate_yaw_pid().update_all(_ang_vel_body.z, gyro_latest.z, _dt, _motors.limit.yaw, _pd_scale.z) + _actuator_sysid.z);
     _motors.set_yaw_ff(get_rate_yaw_pid().get_ff() * _feedforward_scalar);
 
+    // 重置系统识别角速度和系统识别的控制输出
     _sysid_ang_vel_body.zero();
     _actuator_sysid.zero();
 
+    // 保存使用的 PD 比例因子并重置 PD 比例因子
     _pd_scale_used = _pd_scale;
     _pd_scale      = VECTORF_111;
 
+    // 更新控制监视器
     control_monitor_update();
 }
 
-// sanity check parameters.  should be called once before takeoff
+// 参数合法性检查。通常在起飞前调用一次。
 void AC_AttitudeControl_Multi::parameter_sanity_check()
 {
-    // sanity check throttle mix parameters
+    // 对油门混合参数进行合法性检查
     if (_thr_mix_man < 0.1f || _thr_mix_man > AC_ATTITUDE_CONTROL_MAN_LIMIT) {
-        // parameter description recommends thr-mix-man be no higher than 0.9 but we allow up to 4.0
-        // which can be useful for very high powered copters with very low hover throttle
+        // 参数描述建议 thr-mix-man 不要超过 0.9，但我们允许最多为 4.0，
+        // 这对于动力很大、悬停油门很低的直升机非常有用
         _thr_mix_man.set_and_save(constrain_float(_thr_mix_man, 0.1, AC_ATTITUDE_CONTROL_MAN_LIMIT));
     }
     if (_thr_mix_min < 0.1f || _thr_mix_min > AC_ATTITUDE_CONTROL_MIN_LIMIT) {
         _thr_mix_min.set_and_save(constrain_float(_thr_mix_min, 0.1, AC_ATTITUDE_CONTROL_MIN_LIMIT));
     }
     if (_thr_mix_max < 0.5f || _thr_mix_max > AC_ATTITUDE_CONTROL_MAX) {
-        // parameter description recommends thr-mix-max be no higher than 0.9 but we allow up to 5.0
-        // which can be useful for very high powered copters with very low hover throttle
+        // 参数描述建议 thr-mix-max 不要超过 0.9，但我们允许最多为 5.0，
+        // 这对于动力很大、悬停油门很低的直升机非常有用
         _thr_mix_max.set_and_save(constrain_float(_thr_mix_max, 0.5, AC_ATTITUDE_CONTROL_MAX));
     }
     if (_thr_mix_min > _thr_mix_max) {
+        // 如果最小值大于最大值，则恢复默认值
         _thr_mix_min.set_and_save(AC_ATTITUDE_CONTROL_MIN_DEFAULT);
         _thr_mix_max.set_and_save(AC_ATTITUDE_CONTROL_MAX_DEFAULT);
     }
 }
+

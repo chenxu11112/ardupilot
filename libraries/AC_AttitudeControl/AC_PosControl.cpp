@@ -1,73 +1,73 @@
-#include <AP_HAL/AP_HAL.h>
 #include "AC_PosControl.h"
-#include <AP_Math/AP_Math.h>
+#include <AP_HAL/AP_HAL.h>
 #include <AP_Logger/AP_Logger.h>
-#include <AP_Motors/AP_Motors.h>    // motors library
-#include <AP_Vehicle/AP_Vehicle_Type.h>
+#include <AP_Math/AP_Math.h>
+#include <AP_Motors/AP_Motors.h> // motors library
 #include <AP_Scheduler/AP_Scheduler.h>
+#include <AP_Vehicle/AP_Vehicle_Type.h>
 
 extern const AP_HAL::HAL& hal;
 
 #if APM_BUILD_TYPE(APM_BUILD_ArduPlane)
- // default gains for Plane
- # define POSCONTROL_POS_Z_P                    1.0f    // vertical position controller P gain default
- # define POSCONTROL_VEL_Z_P                    5.0f    // vertical velocity controller P gain default
- # define POSCONTROL_VEL_Z_IMAX                 1000.0f // vertical velocity controller IMAX gain default
- # define POSCONTROL_VEL_Z_FILT_HZ              5.0f    // vertical velocity controller input filter
- # define POSCONTROL_VEL_Z_FILT_D_HZ            5.0f    // vertical velocity controller input filter for D
- # define POSCONTROL_ACC_Z_P                    0.3f    // vertical acceleration controller P gain default
- # define POSCONTROL_ACC_Z_I                    1.0f    // vertical acceleration controller I gain default
- # define POSCONTROL_ACC_Z_D                    0.0f    // vertical acceleration controller D gain default
- # define POSCONTROL_ACC_Z_IMAX                 800     // vertical acceleration controller IMAX gain default
- # define POSCONTROL_ACC_Z_FILT_HZ              10.0f   // vertical acceleration controller input filter default
- # define POSCONTROL_ACC_Z_DT                   0.02f   // vertical acceleration controller dt default
- # define POSCONTROL_POS_XY_P                   0.5f    // horizontal position controller P gain default
- # define POSCONTROL_VEL_XY_P                   0.7f    // horizontal velocity controller P gain default
- # define POSCONTROL_VEL_XY_I                   0.35f    // horizontal velocity controller I gain default
- # define POSCONTROL_VEL_XY_D                   0.17f   // horizontal velocity controller D gain default
- # define POSCONTROL_VEL_XY_IMAX                1000.0f // horizontal velocity controller IMAX gain default
- # define POSCONTROL_VEL_XY_FILT_HZ             5.0f    // horizontal velocity controller input filter
- # define POSCONTROL_VEL_XY_FILT_D_HZ           5.0f    // horizontal velocity controller input filter for D
+// default gains for Plane
+# define POSCONTROL_POS_Z_P          1.0f    // vertical position controller P gain default
+# define POSCONTROL_VEL_Z_P          5.0f    // vertical velocity controller P gain default
+# define POSCONTROL_VEL_Z_IMAX       1000.0f // vertical velocity controller IMAX gain default
+# define POSCONTROL_VEL_Z_FILT_HZ    5.0f    // vertical velocity controller input filter
+# define POSCONTROL_VEL_Z_FILT_D_HZ  5.0f    // vertical velocity controller input filter for D
+# define POSCONTROL_ACC_Z_P          0.3f    // vertical acceleration controller P gain default
+# define POSCONTROL_ACC_Z_I          1.0f    // vertical acceleration controller I gain default
+# define POSCONTROL_ACC_Z_D          0.0f    // vertical acceleration controller D gain default
+# define POSCONTROL_ACC_Z_IMAX       800     // vertical acceleration controller IMAX gain default
+# define POSCONTROL_ACC_Z_FILT_HZ    10.0f   // vertical acceleration controller input filter default
+# define POSCONTROL_ACC_Z_DT         0.02f   // vertical acceleration controller dt default
+# define POSCONTROL_POS_XY_P         0.5f    // horizontal position controller P gain default
+# define POSCONTROL_VEL_XY_P         0.7f    // horizontal velocity controller P gain default
+# define POSCONTROL_VEL_XY_I         0.35f   // horizontal velocity controller I gain default
+# define POSCONTROL_VEL_XY_D         0.17f   // horizontal velocity controller D gain default
+# define POSCONTROL_VEL_XY_IMAX      1000.0f // horizontal velocity controller IMAX gain default
+# define POSCONTROL_VEL_XY_FILT_HZ   5.0f    // horizontal velocity controller input filter
+# define POSCONTROL_VEL_XY_FILT_D_HZ 5.0f    // horizontal velocity controller input filter for D
 #elif APM_BUILD_TYPE(APM_BUILD_ArduSub)
- // default gains for Sub
- # define POSCONTROL_POS_Z_P                    3.0f    // vertical position controller P gain default
- # define POSCONTROL_VEL_Z_P                    8.0f    // vertical velocity controller P gain default
- # define POSCONTROL_VEL_Z_IMAX                 1000.0f // vertical velocity controller IMAX gain default
- # define POSCONTROL_VEL_Z_FILT_HZ              5.0f    // vertical velocity controller input filter
- # define POSCONTROL_VEL_Z_FILT_D_HZ            5.0f    // vertical velocity controller input filter for D
- # define POSCONTROL_ACC_Z_P                    0.5f    // vertical acceleration controller P gain default
- # define POSCONTROL_ACC_Z_I                    0.1f    // vertical acceleration controller I gain default
- # define POSCONTROL_ACC_Z_D                    0.0f    // vertical acceleration controller D gain default
- # define POSCONTROL_ACC_Z_IMAX                 100     // vertical acceleration controller IMAX gain default
- # define POSCONTROL_ACC_Z_FILT_HZ              20.0f   // vertical acceleration controller input filter default
- # define POSCONTROL_ACC_Z_DT                   0.0025f // vertical acceleration controller dt default
- # define POSCONTROL_POS_XY_P                   1.0f    // horizontal position controller P gain default
- # define POSCONTROL_VEL_XY_P                   1.0f    // horizontal velocity controller P gain default
- # define POSCONTROL_VEL_XY_I                   0.5f    // horizontal velocity controller I gain default
- # define POSCONTROL_VEL_XY_D                   0.0f    // horizontal velocity controller D gain default
- # define POSCONTROL_VEL_XY_IMAX                1000.0f // horizontal velocity controller IMAX gain default
- # define POSCONTROL_VEL_XY_FILT_HZ             5.0f    // horizontal velocity controller input filter
- # define POSCONTROL_VEL_XY_FILT_D_HZ           5.0f    // horizontal velocity controller input filter for D
+// default gains for Sub
+# define POSCONTROL_POS_Z_P          3.0f    // vertical position controller P gain default
+# define POSCONTROL_VEL_Z_P          8.0f    // vertical velocity controller P gain default
+# define POSCONTROL_VEL_Z_IMAX       1000.0f // vertical velocity controller IMAX gain default
+# define POSCONTROL_VEL_Z_FILT_HZ    5.0f    // vertical velocity controller input filter
+# define POSCONTROL_VEL_Z_FILT_D_HZ  5.0f    // vertical velocity controller input filter for D
+# define POSCONTROL_ACC_Z_P          0.5f    // vertical acceleration controller P gain default
+# define POSCONTROL_ACC_Z_I          0.1f    // vertical acceleration controller I gain default
+# define POSCONTROL_ACC_Z_D          0.0f    // vertical acceleration controller D gain default
+# define POSCONTROL_ACC_Z_IMAX       100     // vertical acceleration controller IMAX gain default
+# define POSCONTROL_ACC_Z_FILT_HZ    20.0f   // vertical acceleration controller input filter default
+# define POSCONTROL_ACC_Z_DT         0.0025f // vertical acceleration controller dt default
+# define POSCONTROL_POS_XY_P         1.0f    // horizontal position controller P gain default
+# define POSCONTROL_VEL_XY_P         1.0f    // horizontal velocity controller P gain default
+# define POSCONTROL_VEL_XY_I         0.5f    // horizontal velocity controller I gain default
+# define POSCONTROL_VEL_XY_D         0.0f    // horizontal velocity controller D gain default
+# define POSCONTROL_VEL_XY_IMAX      1000.0f // horizontal velocity controller IMAX gain default
+# define POSCONTROL_VEL_XY_FILT_HZ   5.0f    // horizontal velocity controller input filter
+# define POSCONTROL_VEL_XY_FILT_D_HZ 5.0f    // horizontal velocity controller input filter for D
 #else
- // default gains for Copter / TradHeli
- # define POSCONTROL_POS_Z_P                    1.0f    // vertical position controller P gain default
- # define POSCONTROL_VEL_Z_P                    5.0f    // vertical velocity controller P gain default
- # define POSCONTROL_VEL_Z_IMAX                 1000.0f // vertical velocity controller IMAX gain default
- # define POSCONTROL_VEL_Z_FILT_HZ              5.0f    // vertical velocity controller input filter
- # define POSCONTROL_VEL_Z_FILT_D_HZ            5.0f    // vertical velocity controller input filter for D
- # define POSCONTROL_ACC_Z_P                    0.5f    // vertical acceleration controller P gain default
- # define POSCONTROL_ACC_Z_I                    1.0f    // vertical acceleration controller I gain default
- # define POSCONTROL_ACC_Z_D                    0.0f    // vertical acceleration controller D gain default
- # define POSCONTROL_ACC_Z_IMAX                 800     // vertical acceleration controller IMAX gain default
- # define POSCONTROL_ACC_Z_FILT_HZ              20.0f   // vertical acceleration controller input filter default
- # define POSCONTROL_ACC_Z_DT                   0.0025f // vertical acceleration controller dt default
- # define POSCONTROL_POS_XY_P                   1.0f    // horizontal position controller P gain default
- # define POSCONTROL_VEL_XY_P                   2.0f    // horizontal velocity controller P gain default
- # define POSCONTROL_VEL_XY_I                   1.0f    // horizontal velocity controller I gain default
- # define POSCONTROL_VEL_XY_D                   0.5f    // horizontal velocity controller D gain default
- # define POSCONTROL_VEL_XY_IMAX                1000.0f // horizontal velocity controller IMAX gain default
- # define POSCONTROL_VEL_XY_FILT_HZ             5.0f    // horizontal velocity controller input filter
- # define POSCONTROL_VEL_XY_FILT_D_HZ           5.0f    // horizontal velocity controller input filter for D
+// default gains for Copter / TradHeli
+# define POSCONTROL_POS_Z_P          1.0f    // vertical position controller P gain default
+# define POSCONTROL_VEL_Z_P          5.0f    // vertical velocity controller P gain default
+# define POSCONTROL_VEL_Z_IMAX       1000.0f // vertical velocity controller IMAX gain default
+# define POSCONTROL_VEL_Z_FILT_HZ    5.0f    // vertical velocity controller input filter
+# define POSCONTROL_VEL_Z_FILT_D_HZ  5.0f    // vertical velocity controller input filter for D
+# define POSCONTROL_ACC_Z_P          0.5f    // vertical acceleration controller P gain default
+# define POSCONTROL_ACC_Z_I          1.0f    // vertical acceleration controller I gain default
+# define POSCONTROL_ACC_Z_D          0.0f    // vertical acceleration controller D gain default
+# define POSCONTROL_ACC_Z_IMAX       800     // vertical acceleration controller IMAX gain default
+# define POSCONTROL_ACC_Z_FILT_HZ    20.0f   // vertical acceleration controller input filter default
+# define POSCONTROL_ACC_Z_DT         0.0025f // vertical acceleration controller dt default
+# define POSCONTROL_POS_XY_P         1.0f    // horizontal position controller P gain default
+# define POSCONTROL_VEL_XY_P         2.0f    // horizontal velocity controller P gain default
+# define POSCONTROL_VEL_XY_I         1.0f    // horizontal velocity controller I gain default
+# define POSCONTROL_VEL_XY_D         0.5f    // horizontal velocity controller D gain default
+# define POSCONTROL_VEL_XY_IMAX      1000.0f // horizontal velocity controller IMAX gain default
+# define POSCONTROL_VEL_XY_FILT_HZ   5.0f    // horizontal velocity controller input filter
+# define POSCONTROL_VEL_XY_FILT_D_HZ 5.0f    // horizontal velocity controller input filter for D
 #endif
 
 // vibration compensation gains
@@ -308,27 +308,26 @@ const AP_Param::GroupInfo AC_PosControl::var_info[] = {
 // their values.
 //
 AC_PosControl::AC_PosControl(AP_AHRS_View& ahrs, const AP_InertialNav& inav,
-                             const AP_Motors& motors, AC_AttitudeControl& attitude_control) :
-    _ahrs(ahrs),
-    _inav(inav),
-    _motors(motors),
-    _attitude_control(attitude_control),
-    _p_pos_z(POSCONTROL_POS_Z_P),
-    _pid_vel_z(POSCONTROL_VEL_Z_P, 0.0f, 0.0f, 0.0f, POSCONTROL_VEL_Z_IMAX, POSCONTROL_VEL_Z_FILT_HZ, POSCONTROL_VEL_Z_FILT_D_HZ),
-    _pid_accel_z(POSCONTROL_ACC_Z_P, POSCONTROL_ACC_Z_I, POSCONTROL_ACC_Z_D, 0.0f, POSCONTROL_ACC_Z_IMAX, 0.0f, POSCONTROL_ACC_Z_FILT_HZ, 0.0f),
-    _p_pos_xy(POSCONTROL_POS_XY_P),
-    _pid_vel_xy(POSCONTROL_VEL_XY_P, POSCONTROL_VEL_XY_I, POSCONTROL_VEL_XY_D, 0.0f, POSCONTROL_VEL_XY_IMAX, POSCONTROL_VEL_XY_FILT_HZ, POSCONTROL_VEL_XY_FILT_D_HZ),
-    _vel_max_down_cms(POSCONTROL_SPEED_DOWN),
-    _vel_max_up_cms(POSCONTROL_SPEED_UP),
-    _vel_max_xy_cms(POSCONTROL_SPEED),
-    _accel_max_z_cmss(POSCONTROL_ACCEL_Z),
-    _accel_max_xy_cmss(POSCONTROL_ACCEL_XY),
-    _jerk_max_xy_cmsss(POSCONTROL_JERK_XY * 100.0),
-    _jerk_max_z_cmsss(POSCONTROL_JERK_Z * 100.0)
+                             const AP_Motors& motors, AC_AttitudeControl& attitude_control)
+    : _ahrs(ahrs)
+    , _inav(inav)
+    , _motors(motors)
+    , _attitude_control(attitude_control)
+    , _p_pos_z(POSCONTROL_POS_Z_P)
+    , _pid_vel_z(POSCONTROL_VEL_Z_P, 0.0f, 0.0f, 0.0f, POSCONTROL_VEL_Z_IMAX, POSCONTROL_VEL_Z_FILT_HZ, POSCONTROL_VEL_Z_FILT_D_HZ)
+    , _pid_accel_z(POSCONTROL_ACC_Z_P, POSCONTROL_ACC_Z_I, POSCONTROL_ACC_Z_D, 0.0f, POSCONTROL_ACC_Z_IMAX, 0.0f, POSCONTROL_ACC_Z_FILT_HZ, 0.0f)
+    , _p_pos_xy(POSCONTROL_POS_XY_P)
+    , _pid_vel_xy(POSCONTROL_VEL_XY_P, POSCONTROL_VEL_XY_I, POSCONTROL_VEL_XY_D, 0.0f, POSCONTROL_VEL_XY_IMAX, POSCONTROL_VEL_XY_FILT_HZ, POSCONTROL_VEL_XY_FILT_D_HZ)
+    , _vel_max_down_cms(POSCONTROL_SPEED_DOWN)
+    , _vel_max_up_cms(POSCONTROL_SPEED_UP)
+    , _vel_max_xy_cms(POSCONTROL_SPEED)
+    , _accel_max_z_cmss(POSCONTROL_ACCEL_Z)
+    , _accel_max_xy_cmss(POSCONTROL_ACCEL_XY)
+    , _jerk_max_xy_cmsss(POSCONTROL_JERK_XY * 100.0)
+    , _jerk_max_z_cmsss(POSCONTROL_JERK_Z * 100.0)
 {
     AP_Param::setup_object_defaults(this, var_info);
 }
-
 
 ///
 /// 3D position shaper
@@ -351,7 +350,7 @@ void AC_PosControl::input_pos_xyz(const Vector3p& pos, float pos_offset_z, float
     _accel_desired.z -= _accel_offset_z;
 
     // calculated increased maximum acceleration and jerk if over speed
-    const float overspeed_gain = calculate_overspeed_gain();
+    const float overspeed_gain   = calculate_overspeed_gain();
     const float accel_max_z_cmss = _accel_max_z_cmss * overspeed_gain;
     const float jerk_max_z_cmsss = _jerk_max_z_cmsss * overspeed_gain;
 
@@ -361,16 +360,16 @@ void AC_PosControl::input_pos_xyz(const Vector3p& pos, float pos_offset_z, float
     update_pos_vel_accel(_pos_target.z, _vel_desired.z, _accel_desired.z, _dt, _limit_vector.z, _p_pos_z.get_error(), _pid_vel_z.get_error());
 
     // calculate the horizontal and vertical velocity limits to travel directly to the destination defined by pos
-    float vel_max_xy_cms = 0.0f;
-    float vel_max_z_cms = 0.0f;
-    Vector3f dest_vector = (pos - _pos_target).tofloat();
-    if (is_positive(dest_vector.length_squared()) ) {
+    float    vel_max_xy_cms = 0.0f;
+    float    vel_max_z_cms  = 0.0f;
+    Vector3f dest_vector    = (pos - _pos_target).tofloat();
+    if (is_positive(dest_vector.length_squared())) {
         dest_vector.normalize();
         float dest_vector_xy_length = dest_vector.xy().length();
 
         float vel_max_cms = kinematic_limit(dest_vector, _vel_max_xy_cms, _vel_max_up_cms, _vel_max_down_cms);
-        vel_max_xy_cms = vel_max_cms * dest_vector_xy_length;
-        vel_max_z_cms = fabsf(vel_max_cms * dest_vector.z);
+        vel_max_xy_cms    = vel_max_cms * dest_vector_xy_length;
+        vel_max_z_cms     = fabsf(vel_max_cms * dest_vector.z);
     }
 
     // reduce speed if we are reaching the edge of our vertical buffer
@@ -378,15 +377,10 @@ void AC_PosControl::input_pos_xyz(const Vector3p& pos, float pos_offset_z, float
 
     Vector2f vel;
     Vector2f accel;
-    shape_pos_vel_accel_xy(pos.xy(), vel, accel, _pos_target.xy(), _vel_desired.xy(), _accel_desired.xy(),
-                           vel_max_xy_cms, _accel_max_xy_cmss, _jerk_max_xy_cmsss, _dt, false);
+    shape_pos_vel_accel_xy(pos.xy(), vel, accel, _pos_target.xy(), _vel_desired.xy(), _accel_desired.xy(), vel_max_xy_cms, _accel_max_xy_cmss, _jerk_max_xy_cmsss, _dt, false);
 
     float posz = pos.z;
-    shape_pos_vel_accel(posz, 0, 0,
-                        _pos_target.z, _vel_desired.z, _accel_desired.z,
-                        -vel_max_z_cms, vel_max_z_cms,
-                        -constrain_float(accel_max_z_cmss, 0.0f, 750.0f), accel_max_z_cmss,
-                        jerk_max_z_cmsss, _dt, false);
+    shape_pos_vel_accel(posz, 0, 0, _pos_target.z, _vel_desired.z, _accel_desired.z, -vel_max_z_cms, vel_max_z_cms, -constrain_float(accel_max_z_cmss, 0.0f, 750.0f), accel_max_z_cmss, jerk_max_z_cmsss, _dt, false);
 
     // update the vertical position, velocity and acceleration offsets
     update_pos_offset_z(pos_offset_z);
@@ -396,7 +390,6 @@ void AC_PosControl::input_pos_xyz(const Vector3p& pos, float pos_offset_z, float
     _vel_desired.z += _vel_offset_z;
     _accel_desired.z += _accel_offset_z;
 }
-
 
 /// pos_offset_z_scaler - calculates a multiplier used to reduce the horizontal velocity to allow the z position controller to stay within the provided buffer range
 float AC_PosControl::pos_offset_z_scaler(float pos_offset_z, float pos_offset_z_buffer) const
@@ -418,11 +411,11 @@ float AC_PosControl::pos_offset_z_scaler(float pos_offset_z, float pos_offset_z_
 ///     by the kinematic shaping.
 void AC_PosControl::set_max_speed_accel_xy(float speed_cms, float accel_cmss)
 {
-    _vel_max_xy_cms = speed_cms;
+    _vel_max_xy_cms    = speed_cms;
     _accel_max_xy_cmss = accel_cmss;
 
     // ensure the horizontal jerk is less than the vehicle is capable of
-    const float jerk_max_cmsss = MIN(_attitude_control.get_ang_vel_roll_max_rads(), _attitude_control.get_ang_vel_pitch_max_rads()) * GRAVITY_MSS * 100.0;
+    const float jerk_max_cmsss  = MIN(_attitude_control.get_ang_vel_roll_max_rads(), _attitude_control.get_ang_vel_pitch_max_rads()) * GRAVITY_MSS * 100.0;
     const float snap_max_cmssss = MIN(_attitude_control.get_accel_roll_max_radss(), _attitude_control.get_accel_pitch_max_radss()) * GRAVITY_MSS * 100.0;
 
     // get specified jerk limit
@@ -490,18 +483,18 @@ void AC_PosControl::soften_for_landing_xy()
 void AC_PosControl::init_xy_controller()
 {
     // set roll, pitch lean angle targets to current attitude
-    const Vector3f &att_target_euler_cd = _attitude_control.get_att_target_euler_cd();
-    _roll_target = att_target_euler_cd.x;
-    _pitch_target = att_target_euler_cd.y;
-    _yaw_target = att_target_euler_cd.z; // todo: this should be thrust vector heading, not yaw.
-    _yaw_rate_target = 0.0f;
-    _angle_max_override_cd = 0.0;
+    const Vector3f& att_target_euler_cd = _attitude_control.get_att_target_euler_cd();
+    _roll_target                        = att_target_euler_cd.x;
+    _pitch_target                       = att_target_euler_cd.y;
+    _yaw_target                         = att_target_euler_cd.z; // todo: this should be thrust vector heading, not yaw.
+    _yaw_rate_target                    = 0.0f;
+    _angle_max_override_cd              = 0.0;
 
     _pos_target.xy() = _inav.get_position_xy_cm().topostype();
 
-    const Vector2f &curr_vel = _inav.get_velocity_xy_cms();
-    _vel_desired.xy() = curr_vel;
-    _vel_target.xy() = curr_vel;
+    const Vector2f& curr_vel = _inav.get_velocity_xy_cms();
+    _vel_desired.xy()        = curr_vel;
+    _vel_target.xy()         = curr_vel;
 
     // Set desired accel to zero because raw acceleration is prone to noise
     _accel_desired.xy().zero();
@@ -551,8 +544,7 @@ void AC_PosControl::input_vel_accel_xy(Vector2f& vel, const Vector2f& accel, boo
 {
     update_pos_vel_accel_xy(_pos_target.xy(), _vel_desired.xy(), _accel_desired.xy(), _dt, _limit_vector.xy(), _p_pos_xy.get_error(), _pid_vel_xy.get_error());
 
-    shape_vel_accel_xy(vel, accel, _vel_desired.xy(), _accel_desired.xy(),
-        _accel_max_xy_cmss, _jerk_max_xy_cmsss, _dt, limit_output);
+    shape_vel_accel_xy(vel, accel, _vel_desired.xy(), _accel_desired.xy(), _accel_max_xy_cmss, _jerk_max_xy_cmsss, _dt, limit_output);
 
     update_vel_accel_xy(vel, accel, _dt, Vector2f(), Vector2f());
 }
@@ -566,8 +558,7 @@ void AC_PosControl::input_pos_vel_accel_xy(Vector2p& pos, Vector2f& vel, const V
 {
     update_pos_vel_accel_xy(_pos_target.xy(), _vel_desired.xy(), _accel_desired.xy(), _dt, _limit_vector.xy(), _p_pos_xy.get_error(), _pid_vel_xy.get_error());
 
-    shape_pos_vel_accel_xy(pos, vel, accel, _pos_target.xy(), _vel_desired.xy(), _accel_desired.xy(),
-                           _vel_max_xy_cms, _accel_max_xy_cmss, _jerk_max_xy_cmsss, _dt, limit_output);
+    shape_pos_vel_accel_xy(pos, vel, accel, _pos_target.xy(), _vel_desired.xy(), _accel_desired.xy(), _vel_max_xy_cms, _accel_max_xy_cmss, _jerk_max_xy_cmsss, _dt, limit_output);
 
     update_pos_vel_accel_xy(pos, vel, accel, _dt, Vector2f(), Vector2f(), Vector2f());
 }
@@ -581,10 +572,10 @@ void AC_PosControl::stop_pos_xy_stabilisation()
 /// stop_vel_xy_stabilisation - sets the target to the current position and velocity to the current velocity to remove any position and velocity corrections from the system
 void AC_PosControl::stop_vel_xy_stabilisation()
 {
-    _pos_target.xy() =  _inav.get_position_xy_cm().topostype();
+    _pos_target.xy() = _inav.get_position_xy_cm().topostype();
 
-    const Vector2f &curr_vel = _inav.get_velocity_xy_cms();
-    _vel_desired.xy() = curr_vel;
+    const Vector2f& curr_vel = _inav.get_velocity_xy_cms();
+    _vel_desired.xy()        = curr_vel;
     // with zero position error _vel_target = _vel_desired
     _vel_target.xy() = curr_vel;
 
@@ -624,8 +615,8 @@ void AC_PosControl::update_xy_controller()
 
     // Position Controller
 
-    const Vector3f &curr_pos = _inav.get_position_neu_cm();
-    Vector2f vel_target = _p_pos_xy.update_all(_pos_target.x, _pos_target.y, curr_pos);
+    const Vector3f& curr_pos   = _inav.get_position_neu_cm();
+    Vector2f        vel_target = _p_pos_xy.update_all(_pos_target.x, _pos_target.y, curr_pos);
 
     // add velocity feed-forward scaled to compensate for optical flow measurement induced EKF noise
     vel_target *= ahrsControlScaleXY;
@@ -634,9 +625,9 @@ void AC_PosControl::update_xy_controller()
 
     // Velocity Controller
 
-    const Vector2f &curr_vel = _inav.get_velocity_xy_cms();
-    Vector2f accel_target = _pid_vel_xy.update_all(_vel_target.xy(), curr_vel, _dt, _limit_vector.xy());
-    
+    const Vector2f& curr_vel     = _inav.get_velocity_xy_cms();
+    Vector2f        accel_target = _pid_vel_xy.update_all(_vel_target.xy(), curr_vel, _dt, _limit_vector.xy());
+
     // acceleration to correct for velocity error and scale PID output to compensate for optical flow measurement induced EKF noise
     accel_target *= ahrsControlScaleXY;
 
@@ -651,18 +642,18 @@ void AC_PosControl::update_xy_controller()
     // limit acceleration using maximum lean angles
     float angle_max = MIN(_attitude_control.get_althold_lean_angle_max_cd(), get_lean_angle_max_cd());
     float accel_max = angle_to_accel(angle_max * 0.01) * 100;
-    // Define the limit vector before we constrain _accel_target 
+    // Define the limit vector before we constrain _accel_target
     _limit_vector.xy() = _accel_target.xy();
     if (!limit_accel_xy(_vel_desired.xy(), _accel_target.xy(), accel_max)) {
         // _accel_target was not limited so we can zero the xy limit vector
         _limit_vector.xy().zero();
     } else {
         // Check for pitch limiting in the forward direction
-        const float accel_fwd_unlimited = _limit_vector.x * _ahrs.cos_yaw() + _limit_vector.y * _ahrs.sin_yaw();
-        const float pitch_target_unlimited = accel_to_angle(- MIN(accel_fwd_unlimited, accel_max) * 0.01f) * 100;
-        const float accel_fwd_limited = _accel_target.x * _ahrs.cos_yaw() + _accel_target.y * _ahrs.sin_yaw();
-        const float pitch_target_limited = accel_to_angle(- accel_fwd_limited * 0.01f) * 100;
-        _fwd_pitch_is_limited = is_negative(pitch_target_unlimited) && pitch_target_unlimited < pitch_target_limited;
+        const float accel_fwd_unlimited    = _limit_vector.x * _ahrs.cos_yaw() + _limit_vector.y * _ahrs.sin_yaw();
+        const float pitch_target_unlimited = accel_to_angle(-MIN(accel_fwd_unlimited, accel_max) * 0.01f) * 100;
+        const float accel_fwd_limited      = _accel_target.x * _ahrs.cos_yaw() + _accel_target.y * _ahrs.sin_yaw();
+        const float pitch_target_limited   = accel_to_angle(-accel_fwd_limited * 0.01f) * 100;
+        _fwd_pitch_is_limited              = is_negative(pitch_target_unlimited) && pitch_target_unlimited < pitch_target_limited;
     }
 
     // update angle targets that will be passed to stabilize controller
@@ -670,22 +661,20 @@ void AC_PosControl::update_xy_controller()
     calculate_yaw_and_rate_yaw();
 }
 
-
 ///
 /// Vertical position controller
 ///
 
-/// set_max_speed_accel_z - set the maximum vertical speed in cm/s and acceleration in cm/s/s
-///     speed_down can be positive or negative but will always be interpreted as a descent speed.
-///     This function only needs to be called if using the kinematic shaping.
-///     This can be done at any time as changes in these parameters are handled smoothly
-///     by the kinematic shaping.
+/// set_max_speed_accel_z - 设置垂直速度的最大值（以cm/s为单位）和加速度（以cm/s²为单位）
+///     speed_down可以是正数或负数，但将始终解释为下降速度。
+///     仅在使用运动学形状控制时需要调用此函数。
+///     可以在任何时候调用此函数，因为这些参数的更改会平滑地处理。
 void AC_PosControl::set_max_speed_accel_z(float speed_down, float speed_up, float accel_cmss)
 {
-    // ensure speed_down is always negative
+    // 确保speed_down始终为负数
     speed_down = -fabsf(speed_down);
 
-    // sanity check and update
+    // 检查合法性并更新参数
     if (is_negative(speed_down)) {
         _vel_max_down_cms = speed_down;
     }
@@ -696,7 +685,7 @@ void AC_PosControl::set_max_speed_accel_z(float speed_down, float speed_up, floa
         _accel_max_z_cmss = accel_cmss;
     }
 
-    // ensure the vertical Jerk is not limited by the filters in the Z accel PID object
+    // 确保垂直Jerk不受Z加速度PID对象中的滤波器限制
     _jerk_max_z_cmsss = _shaping_jerk_z * 100.0;
     if (is_positive(_pid_accel_z.filt_T_hz())) {
         _jerk_max_z_cmsss = MIN(_jerk_max_z_cmsss, MIN(GRAVITY_MSS * 100.0, _accel_max_z_cmss) * (M_2PI * _pid_accel_z.filt_T_hz()) / 5.0);
@@ -706,14 +695,15 @@ void AC_PosControl::set_max_speed_accel_z(float speed_down, float speed_up, floa
     }
 }
 
-/// set_correction_speed_accel_z - set the position controller correction velocity and acceleration limit
-///     speed_down can be positive or negative but will always be interpreted as a descent speed.
-///     This should be done only during initialisation to avoid discontinuities
+/// set_correction_speed_accel_z - 设置位置控制器的纠正速度和加速度限制
+///     speed_down可以是正数或负数，但将始终解释为下降速度。
+///     这应该仅在初始化期间执行，以避免不连续性。
 void AC_PosControl::set_correction_speed_accel_z(float speed_down, float speed_up, float accel_cmss)
 {
-    // define maximum position error and maximum first and second differential limits
+    // 定义最大位置误差和最大一阶和二阶微分限制
     _p_pos_z.set_limits(-fabsf(speed_down), speed_up, accel_cmss, 0.0f);
 }
+
 
 /// init_z_controller - initialise the position controller to the current position, velocity, acceleration and attitude.
 ///     This function is the default initialisation for any position control that provides position, velocity and acceleration.
@@ -724,10 +714,10 @@ void AC_PosControl::init_z_controller_no_descent()
     init_z_controller();
 
     // remove all descent if present
-    _vel_desired.z = MAX(0.0, _vel_desired.z);
-    _vel_target.z = MAX(0.0, _vel_target.z);
+    _vel_desired.z   = MAX(0.0, _vel_desired.z);
+    _vel_target.z    = MAX(0.0, _vel_target.z);
     _accel_desired.z = MAX(0.0, _accel_desired.z);
-    _accel_target.z = MAX(0.0, _accel_target.z);
+    _accel_target.z  = MAX(0.0, _accel_target.z);
 }
 
 /// init_z_controller_stopping_point - initialise the position controller to the stopping point with zero velocity and acceleration.
@@ -739,7 +729,7 @@ void AC_PosControl::init_z_controller_stopping_point()
     init_z_controller();
 
     get_stopping_point_z_cm(_pos_target.z);
-    _vel_desired.z = 0.0f;
+    _vel_desired.z   = 0.0f;
     _accel_desired.z = 0.0f;
 }
 
@@ -763,7 +753,7 @@ void AC_PosControl::init_z_controller()
     _pos_target.z = _inav.get_position_z_up_cm();
 
     const float curr_vel_z = _inav.get_velocity_z_up_cms();
-    _vel_desired.z = curr_vel_z;
+    _vel_desired.z         = curr_vel_z;
     // with zero position error _vel_target = _vel_desired
     _vel_target.z = curr_vel_z;
 
@@ -778,16 +768,16 @@ void AC_PosControl::init_z_controller()
 
     // initialise vertical offsets
     _pos_offset_target_z = 0.0;
-    _pos_offset_z = 0.0;
-    _vel_offset_z = 0.0;
-    _accel_offset_z = 0.0;
+    _pos_offset_z        = 0.0;
+    _vel_offset_z        = 0.0;
+    _accel_offset_z      = 0.0;
 
     // Set accel PID I term based on the current throttle
     // Remove the expected P term due to _accel_desired.z being constrained to _accel_max_z_cmss
     // Remove the expected FF term due to non-zero _accel_target.z
     _pid_accel_z.set_integrator((_attitude_control.get_throttle_in() - _motors.get_throttle_hover()) * 1000.0f
-        - _pid_accel_z.kP() * (_accel_target.z - get_z_accel_cmss())
-        - _pid_accel_z.ff() * _accel_target.z);
+                                - _pid_accel_z.kP() * (_accel_target.z - get_z_accel_cmss())
+                                - _pid_accel_z.ff() * _accel_target.z);
 
     // initialise ekf z reset handler
     init_ekf_z_reset();
@@ -813,20 +803,17 @@ void AC_PosControl::input_accel_z(float accel)
 ///     The function takes the current position, velocity, and acceleration and calculates the required jerk limited adjustment to the acceleration for the next time dt.
 ///     The kinematic path is constrained by the maximum acceleration and jerk set using the function set_max_speed_accel_z.
 ///     The parameter limit_output specifies if the velocity and acceleration limits are applied to the sum of commanded and correction values or just correction.
-void AC_PosControl::input_vel_accel_z(float &vel, float accel, bool limit_output)
+void AC_PosControl::input_vel_accel_z(float& vel, float accel, bool limit_output)
 {
     // calculated increased maximum acceleration and jerk if over speed
-    const float overspeed_gain = calculate_overspeed_gain();
+    const float overspeed_gain   = calculate_overspeed_gain();
     const float accel_max_z_cmss = _accel_max_z_cmss * overspeed_gain;
     const float jerk_max_z_cmsss = _jerk_max_z_cmsss * overspeed_gain;
 
     // adjust desired alt if motors have not hit their limits
     update_pos_vel_accel(_pos_target.z, _vel_desired.z, _accel_desired.z, _dt, _limit_vector.z, _p_pos_z.get_error(), _pid_vel_z.get_error());
 
-    shape_vel_accel(vel, accel,
-                    _vel_desired.z, _accel_desired.z,
-                    -constrain_float(accel_max_z_cmss, 0.0f, 750.0f), accel_max_z_cmss,
-                    jerk_max_z_cmsss, _dt, limit_output);
+    shape_vel_accel(vel, accel, _vel_desired.z, _accel_desired.z, -constrain_float(accel_max_z_cmss, 0.0f, 750.0f), accel_max_z_cmss, jerk_max_z_cmsss, _dt, limit_output);
 
     update_vel_accel(vel, accel, _dt, 0.0, 0.0);
 }
@@ -873,21 +860,17 @@ void AC_PosControl::land_at_climb_rate_cm(float vel, bool ignore_descent_limit)
 ///     The function takes the current position, velocity, and acceleration and calculates the required jerk limited adjustment to the acceleration for the next time dt.
 ///     The function alters the pos and vel to be the kinematic path based on accel
 ///     The parameter limit_output specifies if the velocity and acceleration limits are applied to the sum of commanded and correction values or just correction.
-void AC_PosControl::input_pos_vel_accel_z(float &pos, float &vel, float accel, bool limit_output)
+void AC_PosControl::input_pos_vel_accel_z(float& pos, float& vel, float accel, bool limit_output)
 {
     // calculated increased maximum acceleration and jerk if over speed
-    const float overspeed_gain = calculate_overspeed_gain();
+    const float overspeed_gain   = calculate_overspeed_gain();
     const float accel_max_z_cmss = _accel_max_z_cmss * overspeed_gain;
     const float jerk_max_z_cmsss = _jerk_max_z_cmsss * overspeed_gain;
 
     // adjust desired altitude if motors have not hit their limits
     update_pos_vel_accel(_pos_target.z, _vel_desired.z, _accel_desired.z, _dt, _limit_vector.z, _p_pos_z.get_error(), _pid_vel_z.get_error());
 
-    shape_pos_vel_accel(pos, vel, accel,
-                        _pos_target.z, _vel_desired.z, _accel_desired.z,
-                        _vel_max_down_cms, _vel_max_up_cms,
-                        -constrain_float(accel_max_z_cmss, 0.0f, 750.0f), accel_max_z_cmss,
-                        jerk_max_z_cmsss, _dt, limit_output);
+    shape_pos_vel_accel(pos, vel, accel, _pos_target.z, _vel_desired.z, _accel_desired.z, _vel_max_down_cms, _vel_max_up_cms, -constrain_float(accel_max_z_cmss, 0.0f, 750.0f), accel_max_z_cmss, jerk_max_z_cmsss, _dt, limit_output);
 
     postype_t posp = pos;
     update_pos_vel_accel(posp, vel, accel, _dt, 0.0, 0.0, 0.0);
@@ -910,11 +893,7 @@ void AC_PosControl::update_pos_offset_z(float pos_offset_z)
     _pos_offset_z = p_offset_z;
 
     // input shape the terrain offset
-    shape_pos_vel_accel(pos_offset_z, 0.0f, 0.0f,
-        _pos_offset_z, _vel_offset_z, _accel_offset_z,
-        get_max_speed_down_cms(), get_max_speed_up_cms(),
-        -get_max_accel_z_cmss(), get_max_accel_z_cmss(),
-        _jerk_max_z_cmsss, _dt, false);
+    shape_pos_vel_accel(pos_offset_z, 0.0f, 0.0f, _pos_offset_z, _vel_offset_z, _accel_offset_z, get_max_speed_down_cms(), get_max_speed_up_cms(), -get_max_accel_z_cmss(), get_max_accel_z_cmss(), _jerk_max_z_cmsss, _dt, false);
 }
 
 // is_active_z - returns true if the z position controller has been run in the previous 5 loop times
@@ -957,7 +936,7 @@ void AC_PosControl::update_z_controller()
     // Velocity Controller
 
     const float curr_vel_z = _inav.get_velocity_z_up_cms();
-    _accel_target.z = _pid_vel_z.update_all(_vel_target.z, curr_vel_z, _dt, _motors.limit.throttle_lower, _motors.limit.throttle_upper);
+    _accel_target.z        = _pid_vel_z.update_all(_vel_target.z, curr_vel_z, _dt, _motors.limit.throttle_lower, _motors.limit.throttle_upper);
     _accel_target.z *= AP::ahrs().getControlScaleZ();
 
     // add feed forward component
@@ -1003,7 +982,6 @@ void AC_PosControl::update_z_controller()
     }
 }
 
-
 ///
 /// Accessors
 ///
@@ -1023,16 +1001,16 @@ float AC_PosControl::get_lean_angle_max_cd() const
 /// set position, velocity and acceleration targets
 void AC_PosControl::set_pos_vel_accel(const Vector3p& pos, const Vector3f& vel, const Vector3f& accel)
 {
-    _pos_target = pos;
-    _vel_desired = vel;
+    _pos_target    = pos;
+    _vel_desired   = vel;
     _accel_desired = accel;
 }
 
 /// set position, velocity and acceleration targets
 void AC_PosControl::set_pos_vel_accel_xy(const Vector2p& pos, const Vector2f& vel, const Vector2f& accel)
 {
-    _pos_target.xy() = pos;
-    _vel_desired.xy() = vel;
+    _pos_target.xy()    = pos;
+    _vel_desired.xy()   = vel;
     _accel_desired.xy() = accel;
 }
 
@@ -1040,14 +1018,14 @@ void AC_PosControl::set_pos_vel_accel_xy(const Vector2p& pos, const Vector2f& ve
 Vector3f AC_PosControl::lean_angles_to_accel(const Vector3f& att_target_euler) const
 {
     // rotate our roll, pitch angles into lat/lon frame
-    const float sin_roll = sinf(att_target_euler.x);
-    const float cos_roll = cosf(att_target_euler.x);
+    const float sin_roll  = sinf(att_target_euler.x);
+    const float cos_roll  = cosf(att_target_euler.x);
     const float sin_pitch = sinf(att_target_euler.y);
     const float cos_pitch = cosf(att_target_euler.y);
-    const float sin_yaw = sinf(att_target_euler.z);
-    const float cos_yaw = cosf(att_target_euler.z);
+    const float sin_yaw   = sinf(att_target_euler.z);
+    const float cos_yaw   = cosf(att_target_euler.z);
 
-    return Vector3f{
+    return Vector3f {
         (GRAVITY_MSS * 100.0f) * (-cos_yaw * sin_pitch * cos_roll - sin_yaw * sin_roll) / MAX(cos_roll * cos_pitch, 0.1f),
         (GRAVITY_MSS * 100.0f) * (-sin_yaw * sin_pitch * cos_roll + cos_yaw * sin_roll) / MAX(cos_roll * cos_pitch, 0.1f),
         (GRAVITY_MSS * 100.0f)
@@ -1058,16 +1036,16 @@ Vector3f AC_PosControl::lean_angles_to_accel(const Vector3f& att_target_euler) c
 Vector3f AC_PosControl::get_thrust_vector() const
 {
     Vector3f accel_target = get_accel_target_cmss();
-    accel_target.z = -GRAVITY_MSS * 100.0f;
+    accel_target.z        = -GRAVITY_MSS * 100.0f;
     return accel_target;
 }
 
 /// get_stopping_point_xy_cm - calculates stopping point in NEU cm based on current position, velocity, vehicle acceleration
 ///    function does not change the z axis
-void AC_PosControl::get_stopping_point_xy_cm(Vector2p &stopping_point) const
+void AC_PosControl::get_stopping_point_xy_cm(Vector2p& stopping_point) const
 {
     stopping_point = _inav.get_position_xy_cm().topostype();
-    float kP = _p_pos_xy.kP();
+    float kP       = _p_pos_xy.kP();
 
     Vector2f curr_vel = _inav.get_velocity_xy_cms();
 
@@ -1089,7 +1067,7 @@ void AC_PosControl::get_stopping_point_xy_cm(Vector2p &stopping_point) const
 }
 
 /// get_stopping_point_z_cm - calculates stopping point in NEU cm based on current position, velocity, vehicle acceleration
-void AC_PosControl::get_stopping_point_z_cm(postype_t &stopping_point) const
+void AC_PosControl::get_stopping_point_z_cm(postype_t& stopping_point) const
 {
     const float curr_pos_z = _inav.get_position_z_up_cm();
 
@@ -1099,7 +1077,7 @@ void AC_PosControl::get_stopping_point_z_cm(postype_t &stopping_point) const
         return;
     }
 
-    stopping_point = curr_pos_z + constrain_float(stopping_distance(_inav.get_velocity_z_up_cms(), _p_pos_z.kP(), _accel_max_z_cmss), - POSCONTROL_STOPPING_DIST_DOWN_MAX, POSCONTROL_STOPPING_DIST_UP_MAX);
+    stopping_point = curr_pos_z + constrain_float(stopping_distance(_inav.get_velocity_z_up_cms(), _p_pos_z.kP(), _accel_max_z_cmss), -POSCONTROL_STOPPING_DIST_DOWN_MAX, POSCONTROL_STOPPING_DIST_UP_MAX);
 }
 
 /// get_bearing_to_target_cd - get bearing to target position in centi-degrees
@@ -1107,7 +1085,6 @@ int32_t AC_PosControl::get_bearing_to_target_cd() const
 {
     return get_bearing_cd(_inav.get_position_xy_cm(), _pos_target.tofloat().xy());
 }
-
 
 ///
 /// System methods
@@ -1150,18 +1127,12 @@ void AC_PosControl::write_log()
     if (is_active_xy()) {
         float accel_x, accel_y;
         lean_angles_to_accel_xy(accel_x, accel_y);
-        AP::logger().Write_PSCN(get_pos_target_cm().x, _inav.get_position_neu_cm().x,
-                                get_vel_desired_cms().x, get_vel_target_cms().x, _inav.get_velocity_neu_cms().x,
-                                _accel_desired.x, get_accel_target_cmss().x, accel_x);
-        AP::logger().Write_PSCE(get_pos_target_cm().y, _inav.get_position_neu_cm().y,
-                                get_vel_desired_cms().y, get_vel_target_cms().y, _inav.get_velocity_neu_cms().y,
-                                _accel_desired.y, get_accel_target_cmss().y, accel_y);
+        AP::logger().Write_PSCN(get_pos_target_cm().x, _inav.get_position_neu_cm().x, get_vel_desired_cms().x, get_vel_target_cms().x, _inav.get_velocity_neu_cms().x, _accel_desired.x, get_accel_target_cmss().x, accel_x);
+        AP::logger().Write_PSCE(get_pos_target_cm().y, _inav.get_position_neu_cm().y, get_vel_desired_cms().y, get_vel_target_cms().y, _inav.get_velocity_neu_cms().y, _accel_desired.y, get_accel_target_cmss().y, accel_y);
     }
 
     if (is_active_z()) {
-        AP::logger().Write_PSCD(-get_pos_target_cm().z, -_inav.get_position_z_up_cm(),
-                                -get_vel_desired_cms().z, -get_vel_target_cms().z, -_inav.get_velocity_z_up_cms(),
-                                -_accel_desired.z, -get_accel_target_cmss().z, -get_z_accel_cmss());
+        AP::logger().Write_PSCD(-get_pos_target_cm().z, -_inav.get_position_z_up_cm(), -get_vel_desired_cms().z, -get_vel_target_cms().z, -_inav.get_velocity_z_up_cms(), -_accel_desired.z, -get_accel_target_cmss().z, -get_z_accel_cmss());
     }
 }
 
@@ -1174,8 +1145,8 @@ float AC_PosControl::crosstrack_error() const
         return pos_error.length();
     } else {
         // crosstrack is the horizontal distance to the closest point to the current track
-        const Vector2f vel_unit = _vel_desired.xy().normalized();
-        const float dot_error = pos_error * vel_unit;
+        const Vector2f vel_unit  = _vel_desired.xy().normalized();
+        const float    dot_error = pos_error * vel_unit;
 
         // todo: remove MAX of zero when safe_sqrt fixed
         return safe_sqrt(MAX(pos_error.length_squared() - sq(dot_error), 0.0));
@@ -1191,12 +1162,12 @@ void AC_PosControl::accel_to_lean_angles(float accel_x_cmss, float accel_y_cmss,
 {
     // rotate accelerations into body forward-right frame
     const float accel_forward = accel_x_cmss * _ahrs.cos_yaw() + accel_y_cmss * _ahrs.sin_yaw();
-    const float accel_right = -accel_x_cmss * _ahrs.sin_yaw() + accel_y_cmss * _ahrs.cos_yaw();
+    const float accel_right   = -accel_x_cmss * _ahrs.sin_yaw() + accel_y_cmss * _ahrs.cos_yaw();
 
     // update angle targets that will be passed to stabilize controller
-    pitch_target = accel_to_angle(-accel_forward * 0.01) * 100;
+    pitch_target           = accel_to_angle(-accel_forward * 0.01) * 100;
     float cos_pitch_target = cosf(pitch_target * M_PI / 18000.0f);
-    roll_target = accel_to_angle((accel_right * cos_pitch_target)*0.01) * 100;
+    roll_target            = accel_to_angle((accel_right * cos_pitch_target) * 0.01) * 100;
 }
 
 // lean_angles_to_accel_xy - convert roll, pitch lean target angles to NE frame accelerations in cm/s/s
@@ -1205,8 +1176,8 @@ void AC_PosControl::lean_angles_to_accel_xy(float& accel_x_cmss, float& accel_y_
 {
     // rotate our roll, pitch angles into lat/lon frame
     Vector3f att_target_euler = _attitude_control.get_att_target_euler_rad();
-    att_target_euler.z = _ahrs.yaw;
-    Vector3f accel_cmss = lean_angles_to_accel(att_target_euler);
+    att_target_euler.z        = _ahrs.yaw;
+    Vector3f accel_cmss       = lean_angles_to_accel(att_target_euler);
 
     accel_x_cmss = accel_cmss.x;
     accel_y_cmss = accel_cmss.y;
@@ -1216,13 +1187,13 @@ void AC_PosControl::lean_angles_to_accel_xy(float& accel_x_cmss, float& accel_y_
 bool AC_PosControl::calculate_yaw_and_rate_yaw()
 {
     // Calculate the turn rate
-    float turn_rate = 0.0f;
+    float       turn_rate          = 0.0f;
     const float vel_desired_xy_len = _vel_desired.xy().length();
     if (is_positive(vel_desired_xy_len)) {
-        const float accel_forward = (_accel_desired.x * _vel_desired.x + _accel_desired.y * _vel_desired.y) / vel_desired_xy_len;
-        const Vector2f accel_turn = _accel_desired.xy() - _vel_desired.xy() * accel_forward / vel_desired_xy_len;
-        const float accel_turn_xy_len = accel_turn.length();
-        turn_rate = accel_turn_xy_len / vel_desired_xy_len;
+        const float    accel_forward     = (_accel_desired.x * _vel_desired.x + _accel_desired.y * _vel_desired.y) / vel_desired_xy_len;
+        const Vector2f accel_turn        = _accel_desired.xy() - _vel_desired.xy() * accel_forward / vel_desired_xy_len;
+        const float    accel_turn_xy_len = accel_turn.length();
+        turn_rate                        = accel_turn_xy_len / vel_desired_xy_len;
         if ((accel_turn.y * _vel_desired.x - accel_turn.x * _vel_desired.y) < 0.0) {
             turn_rate = -turn_rate;
         }
@@ -1230,7 +1201,7 @@ bool AC_PosControl::calculate_yaw_and_rate_yaw()
 
     // update the target yaw if velocity is greater than 5% _vel_max_xy_cms
     if (vel_desired_xy_len > _vel_max_xy_cms * 0.05f) {
-        _yaw_target = degrees(_vel_desired.xy().angle()) * 100.0f;
+        _yaw_target      = degrees(_vel_desired.xy().angle()) * 100.0f;
         _yaw_rate_target = turn_rate * degrees(100.0f);
         return true;
     }
@@ -1282,7 +1253,7 @@ void AC_PosControl::init_ekf_z_reset()
 void AC_PosControl::handle_ekf_z_reset()
 {
     // check for position shift
-    float alt_shift;
+    float    alt_shift;
     uint32_t reset_ms = _ahrs.getLastPosDownReset(alt_shift);
     if (reset_ms != 0 && reset_ms != _ekf_z_reset_ms) {
 
@@ -1293,8 +1264,8 @@ void AC_PosControl::handle_ekf_z_reset()
     }
 }
 
-bool AC_PosControl::pre_arm_checks(const char *param_prefix,
-                                   char *failure_msg,
+bool AC_PosControl::pre_arm_checks(const char*   param_prefix,
+                                   char*         failure_msg,
                                    const uint8_t failure_msg_len)
 {
     if (!is_positive(get_pos_xy_p().kP())) {
@@ -1325,7 +1296,7 @@ bool AC_PosControl::pre_arm_checks(const char *param_prefix,
 bool AC_PosControl::has_good_timing(void) const
 {
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-    auto *sitl = AP::sitl();
+    auto* sitl = AP::sitl();
     if (sitl) {
         return sitl->state.is_lock_step_scheduled;
     }
