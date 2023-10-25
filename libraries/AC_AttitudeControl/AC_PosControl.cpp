@@ -831,23 +831,25 @@ void AC_PosControl::input_vel_accel_z(float &vel, float accel, bool limit_output
     update_vel_accel(vel, accel, _dt, 0.0, 0.0);
 }
 
-/// set_pos_target_z_from_climb_rate_cm - adjusts target up or down using a commanded climb rate in cm/s
-///     using the default position control kinematic path.
-///     The zero target altitude is varied to follow pos_offset_z
+/// set_pos_target_z_from_climb_rate_cm - 使用指定的爬升速率（以厘米/秒为单位）调整垂直位置目标
+/// 使用默认的位置控制运动路径。
+/// 目标高度为零的高度会根据 pos_offset_z 被调整
 void AC_PosControl::set_pos_target_z_from_climb_rate_cm(float vel)
 {
-    // remove terrain offsets for flat earth assumption
+    // 移除地形偏移，假设地球是平的
     _pos_target.z -= _pos_offset_z;
     _vel_desired.z -= _vel_offset_z;
     _accel_desired.z -= _accel_offset_z;
 
+    // 将传入的爬升速率存储在临时变量中
     float vel_temp = vel;
+    // 调用 input_vel_accel_z 来根据爬升速率更新期望速度和期望加速度
     input_vel_accel_z(vel_temp, 0.0);
 
-    // update the vertical position, velocity and acceleration offsets
+    // 更新垂直位置、速度和加速度的偏移值
     update_pos_offset_z(_pos_offset_target_z);
 
-    // add terrain offsets
+    // 添加地形偏移，以恢复实际飞行高度
     _pos_target.z += _pos_offset_z;
     _vel_desired.z += _vel_offset_z;
     _accel_desired.z += _accel_offset_z;

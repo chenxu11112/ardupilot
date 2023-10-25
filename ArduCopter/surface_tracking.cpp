@@ -1,41 +1,35 @@
 #include "Copter.h"
 
-// update_surface_offset - manages the vertical offset of the position controller to follow the measured ground or ceiling
-//   level measured using the range finder.
+// 这段代码的目的是根据飞行器上的测距传感器（通常是超声波或激光测距传感器）测量的高度来调整位置控制器的偏移，以实现垂直跟踪地面或天花板。
+// update_surface_offset - 管理位置控制器的垂直偏移，以跟随测量的地面或天花板高度
 void Copter::SurfaceTracking::update_surface_offset()
 {
 #if RANGEFINDER_ENABLED == ENABLED
-    // check for timeout
-    const uint32_t now_ms = millis();
-    const bool timeout = (now_ms - last_update_ms) > SURFACE_TRACKING_TIMEOUT_MS;
+    // 检查是否超时
+    const uint32_t now_ms  = millis();
+    const bool     timeout = (now_ms - last_update_ms) > SURFACE_TRACKING_TIMEOUT_MS;
 
-    // check tracking state and that range finders are healthy
-    if (((surface == Surface::GROUND) && copter.rangefinder_alt_ok() && (copter.rangefinder_state.glitch_count == 0)) ||
-        ((surface == Surface::CEILING) && copter.rangefinder_up_ok() && (copter.rangefinder_up_state.glitch_count == 0))) {
+    // 检查跟踪状态和测距传感器是否正常
+    if (((surface == Surface::GROUND) && copter.rangefinder_alt_ok() && (copter.rangefinder_state.glitch_count == 0)) || ((surface == Surface::CEILING) && copter.rangefinder_up_ok() && (copter.rangefinder_up_state.glitch_count == 0))) {
 
-        // calculate surfaces height above the EKF origin
-        // e.g. if vehicle is 10m above the EKF origin and rangefinder reports alt of 3m.  curr_surface_alt_above_origin_cm is 7m (or 700cm)
-        RangeFinderState &rf_state = (surface == Surface::GROUND) ? copter.rangefinder_state : copter.rangefinder_up_state;
+        // 计算表面相对于EKF原点的高度
+        // 例如，如果飞行器距离EKF原点10米，而测距传感器报告高度为3米，curr_surface_alt_above_origin_cm将是7米（或700厘米）
+        RangeFinderState& rf_state = (surface == Surface::GROUND) ? copter.rangefinder_state : copter.rangefinder_up_state;
 
-        // update position controller target offset to the surface's alt above the EKF origin
+        // 更新位置控制器的目标高度偏移，以使其与表面的高度相匹配
         copter.pos_control->set_pos_offset_target_z_cm(rf_state.terrain_offset_cm);
-        last_update_ms = now_ms;
+        last_update_ms    = now_ms;
         valid_for_logging = true;
 
-        // reset target altitude if this controller has just been engaged
-        // target has been changed between upwards vs downwards
-        // or glitch has cleared
-        if (timeout ||
-            reset_target ||
-            (last_glitch_cleared_ms != rf_state.glitch_cleared_ms)) {
+        // 如果此控制器刚刚启用，或者目标在向上和向下之间发生了更改，或者故障已经消除，将重置目标高度
+        if (timeout || reset_target || (last_glitch_cleared_ms != rf_state.glitch_cleared_ms)) {
             copter.pos_control->set_pos_offset_z_cm(rf_state.terrain_offset_cm);
-            reset_target = false;
+            reset_target           = false;
             last_glitch_cleared_ms = rf_state.glitch_cleared_ms;
         }
 
     } else {
-        // reset position controller offsets if surface tracking is inactive
-        // flag target should be reset when/if it next becomes active
+        // 如果表面跟踪不活跃，将重置位置控制器的偏移值，并在下次活跃时重置目标偏移
         if (timeout) {
             copter.pos_control->set_pos_offset_z_cm(0);
             copter.pos_control->set_pos_offset_target_z_cm(0);
@@ -43,11 +37,11 @@ void Copter::SurfaceTracking::update_surface_offset()
         }
     }
 #else
+    // 如果未启用测距传感器功能，将重置位置控制器的偏移值
     copter.pos_control->set_pos_offset_z_cm(0);
     copter.pos_control->set_pos_offset_target_z_cm(0);
 #endif
 }
-
 
 // get target altitude (in cm) above ground
 // returns true if there is a valid target

@@ -936,12 +936,17 @@ float Mode::get_pilot_desired_throttle() const
     return throttle_out;
 }
 
+// get_avoidance_adjusted_climbrate - 获取考虑避障的调整后的爬升速率
 float Mode::get_avoidance_adjusted_climbrate(float target_rate)
 {
 #if AC_AVOID_ENABLED == ENABLED
+    // 如果启用了避障功能
+    // 调用避障系统的方法来调整高度控制参数，这包括高度比例增益、最大垂直加速度和目标速率
     AP::ac_avoid()->adjust_velocity_z(pos_control->get_pos_z_p().kP(), pos_control->get_max_accel_z_cmss(), target_rate, G_Dt);
+    // 返回调整后的目标速率
     return target_rate;
 #else
+    // 如果未启用避障功能，直接返回原始目标速率
     return target_rate;
 #endif
 }
