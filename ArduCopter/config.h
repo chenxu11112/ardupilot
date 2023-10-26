@@ -218,6 +218,12 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Position Hold - enable holding of global position
+#ifndef MODE_POSLOITER_ENABLED
+# define MODE_POSLOITER_ENABLED ENABLED
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 // RTL - Return To Launch
 #ifndef MODE_RTL_ENABLED
 # define MODE_RTL_ENABLED ENABLED

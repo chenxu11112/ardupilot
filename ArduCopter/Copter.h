@@ -236,6 +236,7 @@ public:
     friend class ModeZigZag;
     friend class ModeAutorotate;
     friend class ModeTurtle;
+    friend class ModePosLoiter;
 
     friend class _AutoTakeoff;
 
@@ -1010,6 +1011,9 @@ private:
 #endif
 #if MODE_POSHOLD_ENABLED == ENABLED
     ModePosHold mode_poshold;
+#endif
+#if MODE_POSLOITER_ENABLED == ENABLED
+    ModePosLoiter mode_posloiter;
 #endif
 #if MODE_RTL_ENABLED == ENABLED
     ModeRTL mode_rtl;
