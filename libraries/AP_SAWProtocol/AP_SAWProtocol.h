@@ -4,107 +4,13 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 
-#define PROTOCOL_EQUIPMENT_ID           0x02
-#define PROTOCOL_HEADER                 0xAAAF
-
-#define DEFAULT_PRTOCOL_HEARTBEAT_TICK  50
-#define DEFAULT_PRTOCOL_NODESTATUS_TICK 20
-#define DEFAULT_PRTOCOL_POWER_TICK      10
-
-enum Protocol_ID {
-    HEARTBEAT_ID = 1,
-    SAWSTATUS_ID,
-    POWERSTATUS_ID,
-    SWITCHSTATUS_ID,
-    THROTTLE_ID,
-};
-
-enum Protocol_Parse_STEP {
-    Protocol_Header_1 = 0,
-    Protocol_Header_2,
-    Protocol_Equipment,
-    Protocol_ID,
-    Protocol_LENGTH,
-    Protocol_Payload,
-    Protocol_CRCSUM,
-};
-
-struct Protocol_Send_Tick_Struct {
-    uint8_t heartbeat;
-    uint8_t node_status;
-    uint8_t power_status;
-};
-
-union PROTOCOL_HEARTBEAT_Union {
-    struct PACKED HEARTBEAT_Structure {
-        uint16_t header;
-        uint8_t  equipment;
-        uint8_t  id;
-        uint8_t  length;
-        uint32_t timestamp;
-        uint16_t crcsum;
-    } data;
-
-    uint8_t bits[sizeof(HEARTBEAT_Structure)];
-};
-
-union PROTOCOL_SAWSTATUS_Union {
-    struct PACKED SAWSTATUS_Structure {
-        uint16_t header;
-        uint8_t  equipment;
-        uint8_t  id;
-        uint8_t  length;
-        uint8_t  fly_status;
-        uint16_t crcsum;
-    } data;
-    uint8_t bits[sizeof(SAWSTATUS_Structure)];
-};
-
-union PROTOCOL_POWERSTATUS_Union {
-    struct PACKED POWERSTATUS_Structure {
-        uint16_t header;
-        uint8_t  equipment;
-        uint8_t  id;
-        uint8_t  length;
-        float    voltage;
-        float    current[4];
-        uint16_t crcsum;
-    } data;
-    uint8_t bits[sizeof(POWERSTATUS_Structure)];
-};
-
-union PROTOCOL_SWITCH_STATUS_Union {
-    struct PACKED SWITCH_STATUS_Structure {
-        uint16_t header;
-        uint8_t  equipment;
-        uint8_t  id;
-        uint8_t  length;
-        uint8_t  hang_open;
-        uint8_t  saw_open;
-        uint16_t crcsum;
-    } data;
-    uint8_t bits[sizeof(SWITCH_STATUS_Structure)];
-};
-
-union PROTOCOL_THROTTLE_Union {
-    struct PACKED THROTTLE_Structure {
-        uint16_t header;
-        uint8_t  equipment;
-        uint8_t  id;
-        uint8_t  length;
-        uint16_t throttle_pwm;
-        uint16_t current_limit;
-        uint16_t crcsum;
-    } data;
-    uint8_t bits[sizeof(THROTTLE_Structure)];
-};
 
 class AP_SAWProtocol {
 public:
     AP_SAWProtocol();
 
     /* Do not allow copies */
-    AP_SAWProtocol(const AP_SAWProtocol& other)      = delete;
+    AP_SAWProtocol(const AP_SAWProtocol& other) = delete;
     AP_SAWProtocol& operator=(const AP_SAWProtocol&) = delete;
 
     // init - perform require initialisation including detecting which protocol
@@ -118,30 +24,52 @@ public:
 
     void Send(void);
 
-    void send_heartbeat(void);
-    void send_switchstatus(void);
-    void send_throttle(void);
+    struct PACKED FCU_to_SAW_struct {
+        uint8_t MSG_OP;
+        uint8_t OP_IS_START;
+        uint8_t MSG_DP;
+        uint8_t MSG_DP_IS_ON;
+        uint8_t THROTTLE_CMD;
+        uint8_t THROTTLE_Value;
+        uint8_t MSG_SC_DATA;
+        uint8_t LIMIT_CMD;
+        uint8_t CURRENT_LIMI;
 
-    void parse_char(uint8_t data);
+        uint8_t zeros[11];
+    };
 
-    void recv_decode(uint8_t* data, uint16_t length);
+    union FCU_to_SAW_Union {
+        struct FCU_to_SAW_struct fcu_to_saw_struct;
+        uint8_t bits[sizeof(struct FCU_to_SAW_struct)];
+    };
 
-    void checkConnected();
+    struct PACKED SAW_to_FCU_struct {
+        uint8_t MSG_OP;
+        uint8_t OP_IS_START;
+        uint8_t MSG_DP;
+        uint8_t MSG_DP_IS_ON;
+        uint8_t THROTTLE_CMD;
+        uint8_t THROTTLE_Value;
+        uint8_t MSG_SC_DATA;
+        uint8_t LIMIT_CMD;
+        uint8_t CURRENT_LIMI;
+
+        uint16_t   Voltage;
+        uint16_t   SC_Current[4];        //刀具电流
+        uint16_t   ADC_VOL[2];           //电流传感器ADC采样        
+    };
+    union SAW_to_FCU_Union {
+        struct SAW_to_FCU_struct saw_to_fcu_struct;
+        uint8_t bits[sizeof(struct SAW_to_FCU_struct)];
+    };
 
 private:
     AP_HAL::UARTDriver* _port; // UART used to send data to receiver
 
-    union PROTOCOL_HEARTBEAT_Union     send_HeartBeat;
-    union PROTOCOL_SWITCH_STATUS_Union send_SwitchStatus;
-    union PROTOCOL_THROTTLE_Union      send_Throttle;
+    FCU_to_SAW_Union fcu_to_saw_union;
+    SAW_to_FCU_Union saw_to_fcu_union;
 
-    union PROTOCOL_HEARTBEAT_Union   recv_HeartBeat;
-    union PROTOCOL_SAWSTATUS_Union   recv_SawStatus;
-    union PROTOCOL_POWERSTATUS_Union recv_Powerstatus;
+    uint8_t _rx_step;
 
-    bool recv_heartbeat;
-
-    uint32_t last_get_tick;
-
-    uint8_t recv_buffer[50];
+    uint8_t receive_buff[50];
 };

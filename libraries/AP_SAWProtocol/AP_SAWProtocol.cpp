@@ -1,29 +1,40 @@
-
+#define AP_SERIALMANAGER_SAW_BAUD 115200
+#define AP_SERIALMANAGER_SAW_BUFSIZE_RX 64
+#define AP_SERIALMANAGER_SAW_BUFSIZE_TX 64
 
 #include "AP_SAWProtocol.h"
 #include "stdio.h"
 #include <GCS_MAVLink/GCS.h>
-#include <GCS_MAVLink/GCS_Dummy.h>
 #include <GCS_MAVLink/GCS_MAVLink.h>
+#include <GCS_MAVLink/GCS_Dummy.h>
 
-#define AP_SERIALMANAGER_SAW_BAUD       115200
-#define AP_SERIALMANAGER_SAW_BUFSIZE_RX 64
-#define AP_SERIALMANAGER_SAW_BUFSIZE_TX 64
+#define DEF_OP_START 0xCC // 启动
+#define DEF_OP_STOP 0X00  // 停止
 
-extern const AP_HAL::HAL& hal;
+#define DEF_DP_ON 0xdd  // 脱钩
+#define DEF_DP_OFF 0x11 // 不脱钩
+
+#define DEF_SC_DATA 0x42
+#define DEF_LIMIT_CMD 0xee
+#define DEF_CURRENT_LIMIT 60
+
+extern const AP_HAL::HAL &hal;
 
 // constructor
 AP_SAWProtocol::AP_SAWProtocol(void)
 {
     _port = NULL;
+    _rx_step = 0;
 }
 
 // init - perform require initialisation including detecting which protocol to
 // use
-void AP_SAWProtocol::init(const AP_SerialManager& serial_manager)
+void AP_SAWProtocol::init(const AP_SerialManager &serial_manager)
 {
     // check for DEVO_DPort
-    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_SAW, 0))) {
+    if ((_port = serial_manager.find_serial(
+             AP_SerialManager::SerialProtocol_SAW, 0)))
+    {
         _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
         // initialise uart
         _port->begin(AP_SERIALMANAGER_SAW_BAUD,
@@ -31,12 +42,18 @@ void AP_SAWProtocol::init(const AP_SerialManager& serial_manager)
                      AP_SERIALMANAGER_SAW_BUFSIZE_TX);
     }
 
-    memset(&send_HeartBeat, 0, sizeof(send_HeartBeat));
-    memset(&send_SwitchStatus, 0, sizeof(send_SwitchStatus));
+    memset(fcu_to_saw_union.bits, 0, sizeof(struct FCU_to_SAW_struct));
+    memset(saw_to_fcu_union.bits, 0, sizeof(struct SAW_to_FCU_struct));
 
-    memset(&recv_HeartBeat, 0, sizeof(recv_HeartBeat));
-    memset(&recv_SawStatus, 0, sizeof(recv_SawStatus));
-    memset(&recv_Powerstatus, 0, sizeof(recv_Powerstatus));
+    fcu_to_saw_union.fcu_to_saw_struct.MSG_OP = 0x03;
+    fcu_to_saw_union.fcu_to_saw_struct.OP_IS_START = DEF_OP_STOP;
+    fcu_to_saw_union.fcu_to_saw_struct.MSG_DP = 0x04;
+    fcu_to_saw_union.fcu_to_saw_struct.MSG_DP_IS_ON = DEF_DP_OFF;
+    fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_CMD = 0x0B;
+    fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_Value = 0;
+    fcu_to_saw_union.fcu_to_saw_struct.MSG_SC_DATA = DEF_SC_DATA;
+    fcu_to_saw_union.fcu_to_saw_struct.LIMIT_CMD = DEF_LIMIT_CMD;
+    fcu_to_saw_union.fcu_to_saw_struct.CURRENT_LIMI = DEF_CURRENT_LIMIT;
 }
 
 void AP_SAWProtocol::update()
@@ -45,7 +62,7 @@ void AP_SAWProtocol::update()
         return;
 
     Send();
-    Receive();
+    // Receive();
 }
 
 void AP_SAWProtocol::Receive(void)
@@ -53,85 +70,79 @@ void AP_SAWProtocol::Receive(void)
     if (_port == NULL)
         return;
 
-    uint8_t numc = _port->available();
-    uint8_t data;
-    for (uint8_t i = 0; i < numc; i++) {
-        data = _port->read();
-        parse_char(data);
-    }
-}
+    // uint8_t numc = _port->available();
+    // uint8_t data = 0;
+    // uint8_t count = 0;
 
-void AP_SAWProtocol::parse_char(uint8_t data)
-{
-    static uint8_t _rx_step     = 0;
-    static uint8_t _rx_count    = 0;
-    static uint8_t _rx_data_len = 0;
+    // for (uint8_t i = 0; i < numc; i++)
+    // {
+    //     data = _port->read();
 
-    recv_buffer[_rx_count++] = data;
+    //     switch (_rx_step)
+    //     {
+    //     case 0:
+    //         if (data == 0xAA)
+    //         {
+    //             receive_buff[count++] = data;
+    //             _rx_step = 1;
+    //             count = 0;
+    //         }
+    //         break;
 
-    switch (_rx_step) {
-    case Protocol_Header_1:
-        if (data == LOWBYTE(PROTOCOL_HEADER)) {
-            _rx_step = Protocol_Header_2;
-        } else {
-            _rx_count = _rx_step = 0;
-        }
-        break;
+    //     case 1:
+    //         if (data == 0xAC)
+    //         {
+    //             receive_buff[count++] = data;
+    //             _rx_step = 2;
+    //         }
+    //         else
+    //         {
+    //             _rx_step = 0;
+    //             count = 0;
+    //         }
+    //         break;
 
-    case Protocol_Header_2:
-        if (data == HIGHBYTE(PROTOCOL_HEADER)) {
-            _rx_step = Protocol_Equipment;
-        } else {
-            _rx_count = _rx_step = 0;
-        }
-        break;
+    //     case 2:
+    //         if (data == sizeof(struct SAW_to_FCU_struct))
+    //         {
+    //             receive_buff[count++] = data;
+    //             _rx_step = 3;
+    //         }
+    //         else
+    //         {
+    //             _rx_step = 0;
+    //             count = 0;
+    //         }
+    //         break;
 
-    case Protocol_Equipment:
-        _rx_step = Protocol_ID;
-        break;
+    //     case 3:
+    //         receive_buff[count++] = data;
+    //         if (count >= (sizeof(struct SAW_to_FCU_struct) - 1))
+    //         {
+    //             _rx_step = 4;
+    //             count = 0;
+    //         }
+    //         break;
 
-    case Protocol_ID:
-        _rx_step = Protocol_LENGTH;
-        break;
+    //     case 4:
+    //         if (data == SAW_to_FCU_struct_TAIL)
+    //         {
+    //             receive_buff[count++] = data;
+    //             memcpy(saw_to_fcu_union.bits, receive_buff, sizeof(struct SAW_to_FCU_struct));
 
-    case Protocol_LENGTH:
-        if (data <= 0) {
-            _rx_count = _rx_step = 0;
-        } else {
-            _rx_data_len = recv_buffer[4] - 5;
-            _rx_step     = Protocol_Payload;
-        }
-        break;
+    //             gcs().send_text(MAV_SEVERITY_INFO, "saw_state=%d\n", saw_to_fcu_union.saw_to_fcu_struct.saw_state);
+    //         }
+    //         _rx_step = 0;
+    //         count = 0;
 
-    case Protocol_Payload:
-        _rx_data_len--;
-        if (_rx_data_len == 0) {
-            recv_decode(recv_buffer, _rx_count);
-            _rx_count = _rx_step = 0;
-        }
-        break;
+    //         break;
 
-    default:
-        _rx_count = _rx_step = 0;
-    }
-}
-
-void AP_SAWProtocol::recv_decode(uint8_t* data, uint16_t len)
-{
-    if (crc_fletcher16(recv_buffer, len - 2) != UINT16_VALUE(data[len - 1], data[len - 2])) {
-        return;
-    }
-
-    if (data[3] == HEARTBEAT_ID) {
-        recv_heartbeat = true;
-        memcpy(recv_HeartBeat.bits, data, sizeof(recv_HeartBeat));
-
-    } else if (data[3] == SAWSTATUS_ID) {
-        memcpy(recv_SawStatus.bits, data, sizeof(recv_SawStatus));
-
-    } else if (data[3] == POWERSTATUS_ID) {
-        memcpy(recv_Powerstatus.bits, data, sizeof(recv_Powerstatus));
-    }
+    //     default:
+    //         _rx_step = 0;
+    //         count = 0;
+    //         break;
+    //     }
+    // }
 }
 
 void AP_SAWProtocol::Send(void)
@@ -139,86 +150,25 @@ void AP_SAWProtocol::Send(void)
     if (_port == NULL)
         return;
 
-    static uint16_t count_tick = 0;
-
-    const uint8_t checkConnect_tick      = 20;
-    const uint8_t send_heartbeat_tick    = 8;
-    const uint8_t send_switchstatus_tick = 3;
-    const uint8_t send_throttle_tick     = 2;
-
-    count_tick++;
-    if (count_tick % send_heartbeat_tick == (send_heartbeat_tick - 1)) {
-        send_heartbeat();
+    if (hal.rcin->read(CH_7) > 1700)
+    {
+        fcu_to_saw_union.fcu_to_saw_struct.MSG_DP_IS_ON = DEF_DP_ON;
+    }
+    else
+    {
+        fcu_to_saw_union.fcu_to_saw_struct.MSG_DP_IS_ON = DEF_DP_OFF;
     }
 
-    if (count_tick % checkConnect_tick == (checkConnect_tick - 1)) {
-        checkConnected();
+    if (hal.rcin->read(CH_9) > 1700)
+    {
+        fcu_to_saw_union.fcu_to_saw_struct.OP_IS_START = DEF_OP_START;
     }
-
-    if (recv_heartbeat == false) {
-        return;
+    else
+    {
+        fcu_to_saw_union.fcu_to_saw_struct.OP_IS_START = DEF_OP_STOP;
     }
+    
+    fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_Value = 6;
 
-    if (count_tick % send_switchstatus_tick == (send_switchstatus_tick - 1)) {
-        send_switchstatus();
-    }
-
-    if (count_tick % send_throttle_tick == (send_throttle_tick - 1)) {
-        send_throttle();
-    }
-}
-
-void AP_SAWProtocol::send_heartbeat(void)
-{
-    send_HeartBeat.data.header    = PROTOCOL_HEADER;
-    send_HeartBeat.data.equipment = PROTOCOL_EQUIPMENT_ID;
-    send_HeartBeat.data.id        = HEARTBEAT_ID;
-    send_HeartBeat.data.length    = sizeof(send_HeartBeat);
-    send_HeartBeat.data.timestamp = AP_HAL::millis();
-
-    send_HeartBeat.data.crcsum = crc_fletcher16(send_HeartBeat.bits, sizeof(send_HeartBeat) - 2);
-
-    _port->write(send_HeartBeat.bits, sizeof(send_HeartBeat));
-}
-
-void AP_SAWProtocol::send_switchstatus(void)
-{
-    send_SwitchStatus.data.header    = PROTOCOL_HEADER;
-    send_SwitchStatus.data.equipment = PROTOCOL_EQUIPMENT_ID;
-    send_SwitchStatus.data.id        = SWITCHSTATUS_ID;
-    send_SwitchStatus.data.length    = sizeof(send_SwitchStatus);
-    send_SwitchStatus.data.hang_open = (hal.rcin->read(CH_7) > 1700) ? true : false;
-    send_SwitchStatus.data.saw_open  = (hal.rcin->read(CH_8) > 1700) ? true : false;
-
-    send_SwitchStatus.data.crcsum = crc_fletcher16(send_SwitchStatus.bits, sizeof(send_SwitchStatus) - 2);
-
-    _port->write(send_SwitchStatus.bits, sizeof(send_SwitchStatus));
-}
-
-void AP_SAWProtocol::send_throttle(void)
-{
-    send_Throttle.data.header        = PROTOCOL_HEADER;
-    send_Throttle.data.equipment     = PROTOCOL_EQUIPMENT_ID;
-    send_Throttle.data.id            = THROTTLE_ID;
-    send_Throttle.data.length        = sizeof(send_Throttle);
-    send_Throttle.data.throttle_pwm  = 60;
-    send_Throttle.data.current_limit = 50;
-
-    send_Throttle.data.crcsum = crc_fletcher16(send_Throttle.bits, sizeof(send_Throttle) - 2);
-
-    _port->write(send_Throttle.bits, sizeof(send_Throttle));
-}
-
-void AP_SAWProtocol::checkConnected()
-{
-    if (last_get_tick != recv_HeartBeat.data.timestamp) {
-        if ((recv_HeartBeat.data.timestamp - last_get_tick) < 10000) {
-            recv_heartbeat = true;
-        } else {
-            recv_heartbeat = false;
-        }
-    } else {
-        recv_heartbeat = false;
-    }
-    last_get_tick = recv_HeartBeat.data.timestamp;
+    _port->write(fcu_to_saw_union.bits, sizeof(struct FCU_to_SAW_struct));
 }
