@@ -32,10 +32,11 @@ void Copter::arm_motors_check()
         return;
     }
 
-    int16_t yaw_in = channel_yaw->get_control_in(); // 获取方向舵输入值
+    int16_t yaw_in  = channel_yaw->get_control_in();  // 获取方向舵输入值
+    int16_t roll_in = channel_roll->get_control_in(); // 获取方向舵输入值
 
     // 向最右
-    if (yaw_in > 4000) {
+    if (yaw_in > 4000 && roll_in > 4000) {
 
         // 增加激活计数，最多比自动校准计数器多1
         if (arming_counter <= AUTO_TRIM_DELAY) {
@@ -60,7 +61,7 @@ void Copter::arm_motors_check()
         }
 
         // 向最左，且启用了方向舵激活/解除激活
-    } else if ((yaw_in < -4000) && (arming_rudder == AP_Arming::RudderArming::ARMDISARM)) {
+    } else if ((yaw_in < -4000 && roll_in < -4000) && (arming_rudder == AP_Arming::RudderArming::ARMDISARM)) {
         if (!flightmode->has_manual_throttle() && !ap.land_complete) {
             arming_counter = 0;
             return;

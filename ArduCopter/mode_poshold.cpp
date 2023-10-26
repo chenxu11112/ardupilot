@@ -25,42 +25,50 @@
 # define POSHOLD_WIND_COMP_ESTIMATE_SPEED_MAX  10      // 风补偿估算将仅在速度在或低于此速度时运行（单位：cm/s）
 # define POSHOLD_WIND_COMP_LEAN_PCT_MAX        0.6666f // 风补偿不超过2/3的最大角度，以确保飞行员始终可以覆盖
 
-// poshold_init - 初始化PosHold飞行模式控制器
+// 定义ModePosHold类的init方法，此方法旨在初始化PosHold（位置保持）模式。
+// 如果ignore_checks为true，某些检查可能会被忽略。
 bool ModePosHold::init(bool ignore_checks)
 {
-    // 设置垂直速度和加速度限制
+    // 设置垂直方向上的最大速度和加速度，这些参数通常基于飞行员的配置。
     pos_control->set_max_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
     pos_control->set_correction_speed_accel_z(-get_pilot_speed_dn(), g.pilot_speed_up, g.pilot_accel_z);
 
-    // 初始化垂直位置控制器
+    // 如果垂直位置控制器当前未激活，初始化垂直位置控制器。
     if (!pos_control->is_active_z()) {
         pos_control->init_z_controller();
     }
 
-    // 初始化飞行器的倾斜角度为当前姿态
+    // 初始化飞行员的滚转和俯仰角，这里是设为0，可能是重置飞行控制的起始参考点。
     pilot_roll  = 0.0f;
     pilot_pitch = 0.0f;
 
-    // 计算刹车增益（brake_gain）
+    // 计算刹车增益，这影响了无人机在PosHold模式下减速的敏捷性。
+    // 这是基于poshold_brake_rate的配置，并通过一些计算来设置。
     brake.gain = (15.0f * (float)g.poshold_brake_rate + 95.0f) * 0.01f;
 
+    // 检查无人机是否已着陆
     if (copter.ap.land_complete) {
-        // 如果已着陆，则初始状态为定点飞行模式
+        // 如果已着陆，则滚转和俯仰控制模式设置为“悬停”（LOITER），
+        // 无人机将在当前位置保持稳定。
         roll_mode  = RPMode::LOITER;
         pitch_mode = RPMode::LOITER;
     } else {
-        // 如果未着陆，则初始状态为飞行员手动控制以避免急剧变向
+        // 如果未着陆，设置控制模式为“飞行员覆盖”（PILOT_OVERRIDE），
+        // 允许飞行员的输入有更直接的影响，防止自动控制造成突然的动作。
         roll_mode  = RPMode::PILOT_OVERRIDE;
         pitch_mode = RPMode::PILOT_OVERRIDE;
     }
 
-    // 初始化定点飞行模式
+    // 重置飞行员的期望加速度输入，并初始化悬停导航的目标点，
+    // 以准备无人机在悬停模式下保持位置。
     loiter_nav->clear_pilot_desired_acceleration();
     loiter_nav->init_target();
 
-    // 每次切换到PosHold模式时初始化风补偿
+    // 初始化风补偿估计，这是每次进入PosHold模式时都需要做的，
+    // 以考虑风的影响。
     init_wind_comp_estimate();
 
+    // 返回true表示初始化成功完成。
     return true;
 }
 
