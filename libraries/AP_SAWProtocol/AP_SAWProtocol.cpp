@@ -16,7 +16,7 @@
 
 #define DEF_SC_DATA       0x42
 #define DEF_LIMIT_CMD     0xee
-#define DEF_CURRENT_LIMIT 60
+#define DEF_CURRENT_LIMIT 40
 
 extern const AP_HAL::HAL& hal;
 
@@ -161,7 +161,7 @@ void AP_SAWProtocol::Send(void)
         fcu_to_saw_union.fcu_to_saw_struct.OP_IS_START = DEF_OP_STOP;
     }
 
-    fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_Value = 6;
+    fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_Value = 8;
 
     _port->write(fcu_to_saw_union.bits, sizeof(struct FCU_to_SAW_struct));
 }
