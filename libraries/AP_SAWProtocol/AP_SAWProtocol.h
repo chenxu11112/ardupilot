@@ -4,13 +4,12 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 
-
 class AP_SAWProtocol {
 public:
     AP_SAWProtocol();
 
     /* Do not allow copies */
-    AP_SAWProtocol(const AP_SAWProtocol& other) = delete;
+    AP_SAWProtocol(const AP_SAWProtocol& other)      = delete;
     AP_SAWProtocol& operator=(const AP_SAWProtocol&) = delete;
 
     // init - perform require initialisation including detecting which protocol
@@ -40,7 +39,7 @@ public:
 
     union FCU_to_SAW_Union {
         struct FCU_to_SAW_struct fcu_to_saw_struct;
-        uint8_t bits[sizeof(struct FCU_to_SAW_struct)];
+        uint8_t                  bits[sizeof(struct FCU_to_SAW_struct)];
     };
 
     struct PACKED SAW_to_FCU_struct {
@@ -54,13 +53,13 @@ public:
         uint8_t LIMIT_CMD;
         uint8_t CURRENT_LIMI;
 
-        uint16_t   Voltage;
-        uint16_t   SC_Current[4];        //刀具电流
-        uint16_t   ADC_VOL[2];           //电流传感器ADC采样        
+        uint16_t Voltage;
+        uint16_t SC_Current[4]; // 刀具电流
+        uint16_t ADC_VOL[2];    // 电流传感器ADC采样
     };
     union SAW_to_FCU_Union {
         struct SAW_to_FCU_struct saw_to_fcu_struct;
-        uint8_t bits[sizeof(struct SAW_to_FCU_struct)];
+        uint8_t                  bits[sizeof(struct SAW_to_FCU_struct)];
     };
 
 private:

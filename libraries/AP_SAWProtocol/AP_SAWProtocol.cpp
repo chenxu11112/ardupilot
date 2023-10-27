@@ -1,40 +1,39 @@
-#define AP_SERIALMANAGER_SAW_BAUD 115200
+#define AP_SERIALMANAGER_SAW_BAUD       115200
 #define AP_SERIALMANAGER_SAW_BUFSIZE_RX 64
 #define AP_SERIALMANAGER_SAW_BUFSIZE_TX 64
 
 #include "AP_SAWProtocol.h"
 #include "stdio.h"
 #include <GCS_MAVLink/GCS.h>
-#include <GCS_MAVLink/GCS_MAVLink.h>
 #include <GCS_MAVLink/GCS_Dummy.h>
+#include <GCS_MAVLink/GCS_MAVLink.h>
 
-#define DEF_OP_START 0xCC // 启动
-#define DEF_OP_STOP 0X00  // 停止
+#define DEF_OP_START      0xCC // 启动
+#define DEF_OP_STOP       0X00 // 停止
 
-#define DEF_DP_ON 0xdd  // 脱钩
-#define DEF_DP_OFF 0x11 // 不脱钩
+#define DEF_DP_ON         0xdd // 脱钩
+#define DEF_DP_OFF        0x11 // 不脱钩
 
-#define DEF_SC_DATA 0x42
-#define DEF_LIMIT_CMD 0xee
+#define DEF_SC_DATA       0x42
+#define DEF_LIMIT_CMD     0xee
 #define DEF_CURRENT_LIMIT 60
 
-extern const AP_HAL::HAL &hal;
+extern const AP_HAL::HAL& hal;
 
 // constructor
 AP_SAWProtocol::AP_SAWProtocol(void)
 {
-    _port = NULL;
+    _port    = NULL;
     _rx_step = 0;
 }
 
 // init - perform require initialisation including detecting which protocol to
 // use
-void AP_SAWProtocol::init(const AP_SerialManager &serial_manager)
+void AP_SAWProtocol::init(const AP_SerialManager& serial_manager)
 {
     // check for DEVO_DPort
     if ((_port = serial_manager.find_serial(
-             AP_SerialManager::SerialProtocol_SAW, 0)))
-    {
+             AP_SerialManager::SerialProtocol_SAW, 0))) {
         _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
         // initialise uart
         _port->begin(AP_SERIALMANAGER_SAW_BAUD,
@@ -45,15 +44,15 @@ void AP_SAWProtocol::init(const AP_SerialManager &serial_manager)
     memset(fcu_to_saw_union.bits, 0, sizeof(struct FCU_to_SAW_struct));
     memset(saw_to_fcu_union.bits, 0, sizeof(struct SAW_to_FCU_struct));
 
-    fcu_to_saw_union.fcu_to_saw_struct.MSG_OP = 0x03;
-    fcu_to_saw_union.fcu_to_saw_struct.OP_IS_START = DEF_OP_STOP;
-    fcu_to_saw_union.fcu_to_saw_struct.MSG_DP = 0x04;
-    fcu_to_saw_union.fcu_to_saw_struct.MSG_DP_IS_ON = DEF_DP_OFF;
-    fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_CMD = 0x0B;
+    fcu_to_saw_union.fcu_to_saw_struct.MSG_OP         = 0x03;
+    fcu_to_saw_union.fcu_to_saw_struct.OP_IS_START    = DEF_OP_STOP;
+    fcu_to_saw_union.fcu_to_saw_struct.MSG_DP         = 0x04;
+    fcu_to_saw_union.fcu_to_saw_struct.MSG_DP_IS_ON   = DEF_DP_OFF;
+    fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_CMD   = 0x0B;
     fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_Value = 0;
-    fcu_to_saw_union.fcu_to_saw_struct.MSG_SC_DATA = DEF_SC_DATA;
-    fcu_to_saw_union.fcu_to_saw_struct.LIMIT_CMD = DEF_LIMIT_CMD;
-    fcu_to_saw_union.fcu_to_saw_struct.CURRENT_LIMI = DEF_CURRENT_LIMIT;
+    fcu_to_saw_union.fcu_to_saw_struct.MSG_SC_DATA    = DEF_SC_DATA;
+    fcu_to_saw_union.fcu_to_saw_struct.LIMIT_CMD      = DEF_LIMIT_CMD;
+    fcu_to_saw_union.fcu_to_saw_struct.CURRENT_LIMI   = DEF_CURRENT_LIMIT;
 }
 
 void AP_SAWProtocol::update()
@@ -150,24 +149,18 @@ void AP_SAWProtocol::Send(void)
     if (_port == NULL)
         return;
 
-    if (hal.rcin->read(CH_7) > 1700)
-    {
+    if (hal.rcin->read(CH_7) > 1700) {
         fcu_to_saw_union.fcu_to_saw_struct.MSG_DP_IS_ON = DEF_DP_ON;
-    }
-    else
-    {
+    } else {
         fcu_to_saw_union.fcu_to_saw_struct.MSG_DP_IS_ON = DEF_DP_OFF;
     }
 
-    if (hal.rcin->read(CH_9) > 1700)
-    {
+    if (hal.rcin->read(CH_9) > 1700) {
         fcu_to_saw_union.fcu_to_saw_struct.OP_IS_START = DEF_OP_START;
-    }
-    else
-    {
+    } else {
         fcu_to_saw_union.fcu_to_saw_struct.OP_IS_START = DEF_OP_STOP;
     }
-    
+
     fcu_to_saw_union.fcu_to_saw_struct.THROTTLE_Value = 6;
 
     _port->write(fcu_to_saw_union.bits, sizeof(struct FCU_to_SAW_struct));
