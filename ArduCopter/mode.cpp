@@ -175,6 +175,12 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
             break;
 #endif
 
+#if MODE_POSLOITER_ENABLED == ENABLED
+        case Mode::Number::POSLOITER:
+            ret = &mode_posloiter;
+            break;
+#endif
+
         default:
             break;
     }
