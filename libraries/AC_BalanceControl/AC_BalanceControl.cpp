@@ -156,6 +156,15 @@ void AC_BalanceControl::balance_all_control(void)
     wheel_left_f  = (float)_robocan.getSpeed(1) / max_scale_value;
     wheel_right_f = -(float)_robocan.getSpeed(2) / max_scale_value;
 
+    // 调试用
+    static uint16_t cnt = 0;
+    cnt++;
+    if (cnt > 50) {
+        cnt = 0;
+        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", _robocan.getSpeed(1));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", _robocan.getSpeed(2));
+    }
+
     // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
     control_balance = Balance(angle_y, gyro_y);
 
