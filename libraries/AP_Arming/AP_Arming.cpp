@@ -1709,6 +1709,14 @@ bool AP_Arming::disarm(const AP_Arming::Method method, bool do_disarm_checks)
     return true;
 }
 
+void AP_Arming::send_arm_disarm_statustext(const char *str) const
+{
+    if (option_enabled(AP_Arming::Option::DISABLE_STATUSTEXT_ON_STATE_CHANGE)) {
+        return;
+    }
+    gcs().send_text(MAV_SEVERITY_INFO, "%s", str);
+}
+
 AP_Arming::Required AP_Arming::arming_required() const
 {
 #if AP_OPENDRONEID_ENABLED
