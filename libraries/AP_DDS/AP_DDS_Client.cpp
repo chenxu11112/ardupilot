@@ -512,13 +512,8 @@ void AP_DDS_Client::on_request(uxrSession* uxr_session, uxrObjectId object_id, u
             break;
         }
 
-        if (arm_motors_request.arm) {
-            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for arming received", msg_prefix);
-            arm_motors_response.result = AP::arming().arm(AP_Arming::Method::DDS);
-        } else {
-            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for disarming received", msg_prefix);
-            arm_motors_response.result = AP::arming().disarm(AP_Arming::Method::DDS);
-        }
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for %sing received", msg_prefix, arm_motors_request.arm ? "arm" : "disarm");
+        arm_motors_response.result = arm_motors_request.arm ? AP::arming().arm(AP_Arming::Method::DDS) : AP::arming().disarm(AP_Arming::Method::DDS);
 
         const uxrObjectId replier_id = {
             .id = services[to_underlying(ServiceIndex::ARMING_MOTORS)].rep_id,
@@ -535,11 +530,7 @@ void AP_DDS_Client::on_request(uxrSession* uxr_session, uxrObjectId object_id, u
         }
 
         uxr_buffer_reply(uxr_session, reliable_out, replier_id, sample_id, reply_buffer, ucdr_buffer_length(&reply_ub));
-        if (arm_motors_response.result) {
-            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for Arming/Disarming : SUCCESS", msg_prefix);
-        } else {
-            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for Arming/Disarming : FAIL", msg_prefix);
-        }
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for Arming/Disarming : %s", msg_prefix, arm_motors_response.result ? "SUCCESS" : "FAIL");
         break;
     }
     case services[to_underlying(ServiceIndex::MODE_SWITCH)].rep_id: {
@@ -567,11 +558,7 @@ void AP_DDS_Client::on_request(uxrSession* uxr_session, uxrObjectId object_id, u
         }
 
         uxr_buffer_reply(uxr_session, reliable_out, replier_id, sample_id, reply_buffer, ucdr_buffer_length(&reply_ub));
-        if (mode_switch_response.status) {
-            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for Mode Switch : SUCCESS", msg_prefix);
-        } else {
-            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for Mode Switch : FAIL", msg_prefix);
-        }
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Request for Mode Switch : %s", msg_prefix, mode_switch_response.status ? "SUCCESS" : "FAIL");
         break;
     }
     }
@@ -628,12 +615,8 @@ bool AP_DDS_Client::init()
 
     // setup reliable stream buffers
     input_reliable_stream = new uint8_t[DDS_BUFFER_SIZE];
-    if (input_reliable_stream == nullptr) {
-        GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "%s Allocation failed", msg_prefix);
-        return false;
-    }
     output_reliable_stream = new uint8_t[DDS_BUFFER_SIZE];
-    if (output_reliable_stream == nullptr) {
+    if (input_reliable_stream == nullptr || output_reliable_stream == nullptr) {
         GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "%s Allocation failed", msg_prefix);
         return false;
     }
@@ -787,7 +770,7 @@ void AP_DDS_Client::write_time_topic()
     if (connected) {
         ucdrBuffer ub {};
         const uint32_t topic_size = builtin_interfaces_msg_Time_size_of_topic(&time_topic, 0);
-        uxr_prepare_output_stream(&session,reliable_out,topics[0].dw_id,&ub,topic_size);
+        uxr_prepare_output_stream(&session, reliable_out, topics[to_underlying(TopicIndex::TIME_PUB)].dw_id, &ub, topic_size);
         const bool success = builtin_interfaces_msg_Time_serialize_topic(&ub, &time_topic);
         if (!success) {
             // TODO sometimes serialization fails on bootup. Determine why.
@@ -802,7 +785,7 @@ void AP_DDS_Client::write_nav_sat_fix_topic()
     if (connected) {
         ucdrBuffer ub {};
         const uint32_t topic_size = sensor_msgs_msg_NavSatFix_size_of_topic(&nav_sat_fix_topic, 0);
-        uxr_prepare_output_stream(&session,reliable_out,topics[1].dw_id,&ub,topic_size);
+        uxr_prepare_output_stream(&session, reliable_out, topics[to_underlying(TopicIndex::NAV_SAT_FIX_PUB)].dw_id, &ub, topic_size);
         const bool success = sensor_msgs_msg_NavSatFix_serialize_topic(&ub, &nav_sat_fix_topic);
         if (!success) {
             // TODO sometimes serialization fails on bootup. Determine why.
@@ -817,7 +800,7 @@ void AP_DDS_Client::write_static_transforms()
     if (connected) {
         ucdrBuffer ub {};
         const uint32_t topic_size = tf2_msgs_msg_TFMessage_size_of_topic(&tx_static_transforms_topic, 0);
-        uxr_prepare_output_stream(&session,reliable_out,topics[2].dw_id,&ub,topic_size);
+        uxr_prepare_output_stream(&session, reliable_out, topics[to_underlying(TopicIndex::STATIC_TRANSFORMS_PUB)].dw_id, &ub, topic_size);
         const bool success = tf2_msgs_msg_TFMessage_serialize_topic(&ub, &tx_static_transforms_topic);
         if (!success) {
             // TODO sometimes serialization fails on bootup. Determine why.
@@ -832,7 +815,7 @@ void AP_DDS_Client::write_battery_state_topic()
     if (connected) {
         ucdrBuffer ub {};
         const uint32_t topic_size = sensor_msgs_msg_BatteryState_size_of_topic(&battery_state_topic, 0);
-        uxr_prepare_output_stream(&session,reliable_out,topics[3].dw_id,&ub,topic_size);
+        uxr_prepare_output_stream(&session, reliable_out, topics[to_underlying(TopicIndex::BATTERY_STATE_PUB)].dw_id, &ub, topic_size);
         const bool success = sensor_msgs_msg_BatteryState_serialize_topic(&ub, &battery_state_topic);
         if (!success) {
             // TODO sometimes serialization fails on bootup. Determine why.
@@ -847,7 +830,7 @@ void AP_DDS_Client::write_local_pose_topic()
     if (connected) {
         ucdrBuffer ub {};
         const uint32_t topic_size = geometry_msgs_msg_PoseStamped_size_of_topic(&local_pose_topic, 0);
-        uxr_prepare_output_stream(&session,reliable_out,topics[4].dw_id,&ub,topic_size);
+        uxr_prepare_output_stream(&session, reliable_out, topics[to_underlying(TopicIndex::LOCAL_POSE_PUB)].dw_id, &ub, topic_size);
         const bool success = geometry_msgs_msg_PoseStamped_serialize_topic(&ub, &local_pose_topic);
         if (!success) {
             // TODO sometimes serialization fails on bootup. Determine why.
@@ -862,7 +845,7 @@ void AP_DDS_Client::write_tx_local_velocity_topic()
     if (connected) {
         ucdrBuffer ub {};
         const uint32_t topic_size = geometry_msgs_msg_TwistStamped_size_of_topic(&tx_local_velocity_topic, 0);
-        uxr_prepare_output_stream(&session,reliable_out,topics[5].dw_id,&ub,topic_size);
+        uxr_prepare_output_stream(&session, reliable_out, topics[to_underlying(TopicIndex::LOCAL_VELOCITY_PUB)].dw_id, &ub, topic_size);
         const bool success = geometry_msgs_msg_TwistStamped_serialize_topic(&ub, &tx_local_velocity_topic);
         if (!success) {
             // TODO sometimes serialization fails on bootup. Determine why.
@@ -877,7 +860,7 @@ void AP_DDS_Client::write_geo_pose_topic()
     if (connected) {
         ucdrBuffer ub {};
         const uint32_t topic_size = geographic_msgs_msg_GeoPoseStamped_size_of_topic(&geo_pose_topic, 0);
-        uxr_prepare_output_stream(&session,reliable_out,topics[6].dw_id,&ub,topic_size);
+        uxr_prepare_output_stream(&session, reliable_out, topics[to_underlying(TopicIndex::GEOPOSE_PUB)].dw_id, &ub, topic_size);
         const bool success = geographic_msgs_msg_GeoPoseStamped_serialize_topic(&ub, &geo_pose_topic);
         if (!success) {
             // TODO sometimes serialization fails on bootup. Determine why.
@@ -892,7 +875,7 @@ void AP_DDS_Client::write_clock_topic()
     if (connected) {
         ucdrBuffer ub {};
         const uint32_t topic_size = rosgraph_msgs_msg_Clock_size_of_topic(&clock_topic, 0);
-        uxr_prepare_output_stream(&session,reliable_out,topics[7].dw_id,&ub,topic_size);
+        uxr_prepare_output_stream(&session, reliable_out, topics[to_underlying(TopicIndex::CLOCK_PUB)].dw_id, &ub, topic_size);
         const bool success = rosgraph_msgs_msg_Clock_serialize_topic(&ub, &clock_topic);
         if (!success) {
             // TODO sometimes serialization fails on bootup. Determine why.
@@ -971,5 +954,3 @@ int clock_gettime(clockid_t clockid, struct timespec *ts)
 #endif // CONFIG_HAL_BOARD != HAL_BOARD_SITL
 
 #endif // AP_DDS_ENABLED
-
-
