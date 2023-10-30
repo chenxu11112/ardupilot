@@ -19,13 +19,15 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
 
     AP_SUBGROUPINFO(_pid_turn, "TRN_", 3, AC_BalanceControl, AC_PID),
 
-    AP_GROUPINFO("ZERO", 4, AC_BalanceControl, _zero_angle, AC_BALANCE_ZERO_ANGLE),
+    AP_SUBGROUPINFO(_pid_roll, "ROL_", 4, AC_BalanceControl, AC_PID),
 
-    AP_GROUPINFO("MAX_SPEED", 5, AC_BalanceControl, _max_speed, AC_BALANCE_MAX_SPEED),
+    AP_GROUPINFO("ZERO", 5, AC_BalanceControl, _zero_angle, AC_BALANCE_ZERO_ANGLE),
 
-    AP_GROUPINFO("TAR_SPEED_X", 6, AC_BalanceControl, Target_Velocity_X, AC_BALANCE_TARGET_X_SPEED),
+    AP_GROUPINFO("MAX_SPEED", 6, AC_BalanceControl, _max_speed, AC_BALANCE_MAX_SPEED),
 
-    AP_GROUPINFO("TAR_SPEED_Z", 7, AC_BalanceControl, Target_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
+    AP_GROUPINFO("TAR_SPEED_X", 7, AC_BalanceControl, Target_Velocity_X, AC_BALANCE_TARGET_X_SPEED),
+
+    AP_GROUPINFO("TAR_SPEED_Z", 8, AC_BalanceControl, Target_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
 
     AP_GROUPEND
 };
@@ -189,7 +191,7 @@ void AC_BalanceControl::balance_all_control(void)
     // MotorSpeed(motor_target_left_int, motor_target_right_int);
 
     // 腿部舵机控制
-    // RollControl(_ahrs.roll);
+     RollControl(_ahrs.roll);
 
     // /////////////////////////////////////////////////////////////////
     // Vector3f acc { 0, 0, 0 };
