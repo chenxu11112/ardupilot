@@ -572,41 +572,4 @@ void AP_Logger::Write_PSCD(float pos_target, float pos, float vel_desired, float
     Write_PSCx(LOG_PSCD_MSG, pos_target, pos, vel_desired, vel_target, vel, accel_desired, accel_target, accel);
 }
 
-void AP_Logger::Write_PIDParam_RPY(float _GR, float _GP, float _GY, float _RP, float _RI, float _RD, float _PP, float _PI, float _PD, float _YP, float _YI, float _YD)
-{
-    const struct log_pid_rpy_param pkt{
-        LOG_PACKET_HEADER_INIT(LOG_PIDParam_RPY),
-            time_us : AP_HAL::micros64(),
-            _GR  : _GR,
-            _GP  : _GP,
-            _GY  : _GY,
-            _RP  : _RP,
-            _RI  : _RI,
-            _RD  : _RD,
-            _PP  : _PP,
-            _PI  : _PI,
-            _PD  : _PD,
-            _YP  : _YP,
-            _YI  : _YI,
-            _YD  : _YD,
-    };
-    WriteBlock(&pkt, sizeof(pkt));
-}
- 
-void AP_Logger::Write_PIDParam_POSZ(float _ZP, float VZP, float VZI, float VZD, float AZP, float AZI, float AZD)
-{
-    const struct log_pid_posz_param pkt{
-        LOG_PACKET_HEADER_INIT(LOG_PIDParam_POSZ),
-            time_us : AP_HAL::micros64(),
-            _ZP  : _ZP,
-            VZP  : VZP,
-            VZI  : VZI,
-            VZD  : VZD,
-            AZP  : AZP,
-            AZI  : AZI,
-            AZD  : AZD,
-    };
-    WriteBlock(&pkt, sizeof(pkt));
-}
-
 #endif  // HAL_LOGGING_ENABLED
