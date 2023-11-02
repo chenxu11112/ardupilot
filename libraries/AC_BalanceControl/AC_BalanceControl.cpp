@@ -9,23 +9,25 @@ extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
 const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
-    AP_SUBGROUPINFO(_pid_motor_left, "MTL_", 1, AC_BalanceControl, AC_PID),
+    // AP_SUBGROUPINFO(_pid_motor_left, "MTL_", 1, AC_BalanceControl, AC_PID),
 
-    AP_SUBGROUPINFO(_pid_motor_right, "MTR_", 2, AC_BalanceControl, AC_PID),
+    // AP_SUBGROUPINFO(_pid_motor_right, "MTR_", 2, AC_BalanceControl, AC_PID),
 
-    AP_SUBGROUPINFO(_pid_angle, "ANG_", 3, AC_BalanceControl, AC_PID),
+    AP_SUBGROUPINFO(_pid_angle, "ANG_", 1, AC_BalanceControl, AC_PID),
 
-    AP_SUBGROUPINFO(_pid_speed, "SPD_", 4, AC_BalanceControl, AC_PID),
+    AP_SUBGROUPINFO(_pid_speed, "SPD_", 2, AC_BalanceControl, AC_PID),
 
-    AP_SUBGROUPINFO(_pid_turn, "TRN_", 5, AC_BalanceControl, AC_PID),
+    AP_SUBGROUPINFO(_pid_turn, "TRN_", 3, AC_BalanceControl, AC_PID),
 
-    AP_GROUPINFO("ZERO", 6, AC_BalanceControl, _zero_angle, AC_BALANCE_ZERO_ANGLE),
+    AP_SUBGROUPINFO(_pid_roll, "ROL_", 4, AC_BalanceControl, AC_PID),
 
-    AP_GROUPINFO("MAX_SPEED", 7, AC_BalanceControl, _max_speed, AC_BALANCE_MAX_SPEED),
+    AP_GROUPINFO("ZERO", 5, AC_BalanceControl, _zero_angle, AC_BALANCE_ZERO_ANGLE),
 
-    AP_GROUPINFO("TAR_SPEED_X", 8, AC_BalanceControl, Target_Velocity_X, AC_BALANCE_TARGET_X_SPEED),
+    AP_GROUPINFO("MAX_SPEED", 6, AC_BalanceControl, _max_speed, AC_BALANCE_MAX_SPEED),
 
-    AP_GROUPINFO("TAR_SPEED_Z", 9, AC_BalanceControl, Target_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
+    AP_GROUPINFO("TAR_SPEED_X", 7, AC_BalanceControl, Target_Velocity_X, AC_BALANCE_TARGET_X_SPEED),
+
+    AP_GROUPINFO("TAR_SPEED_Z", 8, AC_BalanceControl, Target_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
 
     AP_GROUPEND
 };
@@ -161,6 +163,15 @@ void AC_BalanceControl::balance_all_control(void)
     wheel_left_f  = (float)_robocan.getSpeed(1) / max_scale_value;
     wheel_right_f = -(float)_robocan.getSpeed(2) / max_scale_value;
 
+    // 调试用
+    static uint16_t cnt = 0;
+    cnt++;
+    if (cnt > 50) {
+        cnt = 0;
+        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", _robocan.getSpeed(1));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", _robocan.getSpeed(2));
+    }
+
     // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
     control_balance = Balance(angle_y, gyro_y);
 
@@ -175,7 +186,7 @@ void AC_BalanceControl::balance_all_control(void)
     motor_target_right_f = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
 
     int16_t motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
-    int16_t motor_target_right_int = (int16_t)(motor_target_right_f * max_scale_value);
+    int16_t motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
 
     // 最终的电机输入量
     _robocan.setCurrent(1, (int16_t)motor_target_left_int);
@@ -185,7 +196,7 @@ void AC_BalanceControl::balance_all_control(void)
     // MotorSpeed(motor_target_left_int, motor_target_right_int);
 
     // 腿部舵机控制
-    // RollControl(_ahrs.roll);
+     RollControl(_ahrs.roll);
 
     // /////////////////////////////////////////////////////////////////
     // Vector3f acc { 0, 0, 0 };

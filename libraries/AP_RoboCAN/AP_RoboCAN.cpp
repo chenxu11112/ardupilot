@@ -91,9 +91,8 @@ void AP_RoboCAN::loop()
             continue;
         }
 
-        for (uint8_t i = 0; i < 4; i++) {
-            send_current(i + 1, target_current[i]);
-        }
+        send_current(target_current[0], target_current[1], target_current[2], target_current[3]);
+
 
         hal.scheduler->delay_microseconds(2500);
 
@@ -159,25 +158,18 @@ void AP_RoboCAN::handle_moto_measure(AP_HAL::CANFrame& frame, uint8_t id)
     real_speed[id] = (frame.data[2] << 8 | frame.data[3]);
 }
 
-bool AP_RoboCAN::send_current(const uint8_t id, const int16_t data)
+bool AP_RoboCAN::send_current(const int16_t d1, const int16_t d2, const int16_t d3, const int16_t d4)
 {
     AP_HAL::CANFrame frame = AP_HAL::CANFrame(0x200, send_current_buffer, 8, false);
 
-    if (id == 1) {
-        frame.data[0] = HIGHBYTE(data);
-        frame.data[1] = LOWBYTE(data);
-    } else if (id == 2) {
-        frame.data[2] = HIGHBYTE(data);
-        frame.data[3] = LOWBYTE(data);
-    } else if (id == 3) {
-        frame.data[4] = HIGHBYTE(data);
-        frame.data[5] = LOWBYTE(data);
-    } else if (id == 4) {
-        frame.data[6] = HIGHBYTE(data);
-        frame.data[7] = LOWBYTE(data);
-    } else {
-        return false;
-    }
+    frame.data[0] = HIGHBYTE(d1);
+    frame.data[1] = LOWBYTE(d1);
+    frame.data[2] = HIGHBYTE(d2);
+    frame.data[3] = LOWBYTE(d2);
+    frame.data[4] = HIGHBYTE(d3);
+    frame.data[5] = LOWBYTE(d3);
+    frame.data[6] = HIGHBYTE(d4);
+    frame.data[7] = LOWBYTE(d4);
 
     uint64_t timeout_us = 10000UL;
 

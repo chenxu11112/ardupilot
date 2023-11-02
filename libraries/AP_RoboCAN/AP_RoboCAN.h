@@ -58,7 +58,7 @@ private:
     char              _thread_name[16];
 
     void handle_moto_measure(AP_HAL::CANFrame& frame, uint8_t id);
-    bool send_current(const uint8_t id, const int16_t data);
+    bool send_current(const int16_t d1, const int16_t d2, const int16_t d3, const int16_t d4);
 
     int16_t target_current[4];
     int16_t real_speed[4];
