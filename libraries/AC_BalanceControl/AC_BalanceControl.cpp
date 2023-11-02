@@ -155,6 +155,7 @@ void AC_BalanceControl::balance_all_control(void)
     static float motor_target_left_f, motor_target_right_f;
     const float  max_scale_value = 10000.0f;
 
+    //
     angle_y = _ahrs.pitch;
     gyro_y  = _ahrs.get_gyro_latest()[1];
     gyro_z  = _ahrs.get_gyro_latest()[2];
