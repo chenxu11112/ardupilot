@@ -127,9 +127,14 @@ Output  : Turn control PWM
 入口参数：Z轴陀螺仪
 返回  值：转向控制PWM
 **************************************************************************/
-float AC_BalanceControl::Turn(float gyro)
+float AC_BalanceControl::Turn(float yaw, float gyro)
 {
-    return 0;
+    //===================转向PD控制器=================//
+    float Turn_Target = 0;
+
+    float turn = (Turn_Target)*_pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
+
+    return turn;
 }
 
 void AC_BalanceControl::RollControl(float roll)
@@ -163,7 +168,7 @@ void AC_BalanceControl::balance_all_control(void)
     control_velocity = Velocity(wheel_left_f, wheel_right_f);
 
     // 转向环PID控制
-    control_turn = Turn(gyro_z);
+    control_turn = Turn(_ahrs.yaw, gyro_z);
 
     // motor值正数使小车前进，负数使小车后退, 范围【-1，1】
     motor_target_left_f  = control_balance + control_velocity + control_turn; // 计算左轮电机最终PWM

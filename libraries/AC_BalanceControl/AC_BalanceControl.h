@@ -64,7 +64,7 @@ public:
     void  MotorSpeed(float left_speed, float right_speed);
     float Balance(float Angle, float Gyro);
     float Velocity(float encoder_left, float encoder_right);
-    float Turn(float gyro);
+    float Turn(float yaw, float gyro);
 
     void RollControl(float roll);
 
