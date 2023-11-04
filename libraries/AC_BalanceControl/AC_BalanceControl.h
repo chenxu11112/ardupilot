@@ -56,7 +56,7 @@
 
 class AC_BalanceControl {
 public:
-    AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_RoboCAN& robocan);
+    AC_BalanceControl(AP_Motors* motors, AP_AHRS_View* ahrs, AP_RoboCAN* robocan);
 
     // empty destructor to suppress compiler warning
     virtual ~AC_BalanceControl() { }
@@ -75,9 +75,9 @@ public:
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
 
-    AP_Motors&          _motors;
-    const AP_AHRS_View& _ahrs;
-    AP_RoboCAN&         _robocan;
+    AP_Motors*          _motors;
+    const AP_AHRS_View* _ahrs;
+    AP_RoboCAN*         _robocan;
 
     enum moveFlag {
         none      = 0,

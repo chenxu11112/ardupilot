@@ -538,7 +538,7 @@ void Copter::allocate_motors(void)
         can_driver = nullptr;
     }
 
-    balanceControl = new AC_BalanceControl(*motors, *ahrs_view, *can_driver);
+    balanceControl = new AC_BalanceControl(motors, ahrs_view, can_driver);
     AP_Param::load_object_from_eeprom(balanceControl, balanceControl->var_info);
 
     // param count could have changed

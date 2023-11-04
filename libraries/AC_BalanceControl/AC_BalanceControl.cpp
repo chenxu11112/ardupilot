@@ -30,7 +30,7 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
     AP_GROUPEND
 };
 
-AC_BalanceControl::AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_RoboCAN& robocan)
+AC_BalanceControl::AC_BalanceControl(AP_Motors* motors, AP_AHRS_View* ahrs, AP_RoboCAN* robocan)
     : _motors(motors)
     , _ahrs(ahrs)
     , _robocan(robocan)
@@ -53,8 +53,8 @@ Function: MotorSpeed
 **************************************************************************/
 void AC_BalanceControl::MotorSpeed(float left_speed, float right_speed)
 {
-    float left_real_speed  = (float)_robocan.getSpeed(1);
-    float right_real_speed = (float)_robocan.getSpeed(2);
+    float left_real_speed  = (float)_robocan->getSpeed(1);
+    float right_real_speed = (float)_robocan->getSpeed(2);
 
     float left_out  = _pid_motor_left.update_all(left_speed, left_real_speed, _dt);
     float right_out = _pid_motor_right.update_all(right_speed, right_real_speed, _dt);
@@ -67,8 +67,8 @@ void AC_BalanceControl::MotorSpeed(float left_speed, float right_speed)
         gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%.3f, right_out=%.3f", left_real_speed, right_out);
     }
 
-    _robocan.setCurrent(1, (int16_t)10000);
-    _robocan.setCurrent(2, (int16_t)right_out);
+    _robocan->setCurrent(1, (int16_t)10000);
+    _robocan->setCurrent(2, (int16_t)right_out);
 }
 
 /**************************************************************************
@@ -134,35 +134,52 @@ float AC_BalanceControl::Turn(float gyro)
 
 void AC_BalanceControl::RollControl(float roll)
 {
+    if (_motors == nullptr)
+        return;
+
     float roll_out;
 
     roll_out = _pid_roll.update_all(0.0f, roll, _dt);
 
-    _motors.set_roll_out(roll_out); // -1 ~ 1
+    _motors->set_roll_out(roll_out); // -1 ~ 1
 }
 
 void AC_BalanceControl::balance_all_control(void)
 {
+    if (_motors == nullptr) {
+        gcs().send_text(MAV_SEVERITY_WARNING, "_motors = nullptr");
+        return;
+    }
+
+    if (_robocan == nullptr) {
+        gcs().send_text(MAV_SEVERITY_WARNING, "_robocan = nullptr");
+        return;
+    }
+    if (_ahrs == nullptr) {
+        gcs().send_text(MAV_SEVERITY_WARNING, "_ahrs = nullptr");
+        return;
+    }
+
     static float angle_y, gyro_y, gyro_z;
     static float wheel_left_f, wheel_right_f;
     static float motor_target_left_f, motor_target_right_f;
     const float  max_scale_value = 10000.0f;
 
-    angle_y = _ahrs.pitch;
-    gyro_y  = _ahrs.get_gyro_latest()[1];
-    gyro_z  = _ahrs.get_gyro_latest()[2];
+    angle_y = _ahrs->pitch;
+    gyro_y  = _ahrs->get_gyro_latest()[1];
+    gyro_z  = _ahrs->get_gyro_latest()[2];
 
     // 转速缩小1000倍
-    wheel_left_f  = (float)_robocan.getSpeed(1) / max_scale_value;
-    wheel_right_f = -(float)_robocan.getSpeed(2) / max_scale_value;
+    wheel_left_f  = (float)_robocan->getSpeed(1) / max_scale_value;
+    wheel_right_f = -(float)_robocan->getSpeed(2) / max_scale_value;
 
     // 调试用
     static uint16_t cnt = 0;
     cnt++;
     if (cnt > 50) {
         cnt = 0;
-        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", _robocan.getSpeed(1));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", _robocan.getSpeed(2));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", _robocan->getSpeed(1));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", _robocan->getSpeed(2));
     }
 
     // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
@@ -182,8 +199,8 @@ void AC_BalanceControl::balance_all_control(void)
     int16_t motor_target_right_int = (int16_t)(motor_target_right_f * max_scale_value);
 
     // 最终的电机输入量
-    _robocan.setCurrent(1, (int16_t)motor_target_left_int);
-    _robocan.setCurrent(2, (int16_t)motor_target_right_int);
+    _robocan->setCurrent(1, (int16_t)motor_target_left_int);
+    _robocan->setCurrent(2, (int16_t)motor_target_right_int);
 
     // 最终的电机速度环
     // MotorSpeed(motor_target_left_int, motor_target_right_int);
