@@ -132,8 +132,6 @@ Output  : Turn control PWM
 float AC_BalanceControl::Turn(float yaw, float gyro)
 {
     //===================转向PD控制器=================//
-    float Turn_Target = 0;
-
     float turn = (Turn_Target)*_pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
 
     return turn;
@@ -183,7 +181,7 @@ void AC_BalanceControl::balance_all_control(void)
     // 调试用
     static uint16_t cnt = 0;
     cnt++;
-    if (cnt > 50) {
+    if (cnt > 200) {
         cnt = 0;
         gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", _robocan->getSpeed(1));
         gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", _robocan->getSpeed(2));
