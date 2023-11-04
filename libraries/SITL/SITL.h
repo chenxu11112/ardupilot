@@ -27,6 +27,7 @@
 #include "SIM_Ship.h"
 #include "SIM_GPS.h"
 #include "SIM_DroneCANDevice.h"
+#include "SIM_ADSB_Sagetech_MXS.h"
 
 namespace SITL {
 
@@ -177,6 +178,7 @@ public:
     AP_Vector3f mag_offdiag[HAL_COMPASS_MAX_SENSORS];  // off-diagonal corrections
     AP_Int8 mag_orient[HAL_COMPASS_MAX_SENSORS];   // external compass orientation
     AP_Int8 mag_fail[HAL_COMPASS_MAX_SENSORS];   // fail magnetometer, 1 for no data, 2 for freeze
+    AP_Int8 mag_save_ids;
     AP_Float servo_speed; // servo speed in seconds
 
     AP_Float sonar_glitch;// probability between 0-1 that any given sonar sample will read as max distance
@@ -319,6 +321,11 @@ public:
     AP_Int16  mag_delay; // magnetometer data delay in ms
 
     // ADSB related run-time options
+    enum class ADSBType {
+        Shortcut = 0,
+        SageTechMXS = 3,
+    };
+    AP_Enum<ADSBType> adsb_types;  // bitmask of active ADSB types
     AP_Int16 adsb_plane_count;
     AP_Float adsb_radius_m;
     AP_Float adsb_altitude_m;

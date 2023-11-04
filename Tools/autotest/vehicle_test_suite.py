@@ -1482,7 +1482,7 @@ class Result(object):
         return ret
 
 
-class AutoTest(ABC):
+class TestSuite(ABC):
     """Base abstract class.
     It implements the common function for all vehicle types.
     """
@@ -1898,15 +1898,14 @@ class AutoTest(ABC):
             p1=1,  # reboot autopilot
         )
 
-    def run_cmd_run_prearms(self):
-        self.run_cmd(mavutil.mavlink.MAV_CMD_RUN_PREARM_CHECKS)
-
-    def run_cmd_enable_high_latency(self, new_state):
+    def run_cmd_enable_high_latency(self, new_state, run_cmd=None):
+        if run_cmd is None:
+            run_cmd = self.run_cmd
         p1 = 0
         if new_state:
             p1 = 1
 
-        self.run_cmd(
+        run_cmd(
             mavutil.mavlink.MAV_CMD_CONTROL_HIGH_LATENCY,
             p1=p1, # enable/disable
         )
@@ -3384,16 +3383,17 @@ class AutoTest(ABC):
                 self.assert_not_receive_message('HIGH_LATENCY2', mav=mav, timeout=10)
 
             self.start_subsubtest("Get HIGH_LATENCY2 upon link enabled only on HL link")
-            self.run_cmd_enable_high_latency(True)
-            self.assert_receive_message("HIGH_LATENCY2", mav=mav2, timeout=10)
-            self.assert_not_receive_message("HIGH_LATENCY2", mav=self.mav, timeout=10)
+            for run_cmd in self.run_cmd, self.run_cmd_int:
+                self.run_cmd_enable_high_latency(True, run_cmd=run_cmd)
+                self.assert_receive_message("HIGH_LATENCY2", mav=mav2, timeout=10)
+                self.assert_not_receive_message("HIGH_LATENCY2", mav=self.mav, timeout=10)
 
-            self.start_subsubtest("Not get HIGH_LATENCY2 upon HL disable")
-            self.run_cmd_enable_high_latency(False)
-            self.delay_sim_time(10)
-            self.assert_not_receive_message('HIGH_LATENCY2', mav=self.mav, timeout=10)
-            self.drain_mav(mav2)
-            self.assert_not_receive_message('HIGH_LATENCY2', mav=mav2, timeout=10)
+                self.start_subsubtest("Not get HIGH_LATENCY2 upon HL disable")
+                self.run_cmd_enable_high_latency(False, run_cmd=run_cmd)
+                self.delay_sim_time(10)
+                self.assert_not_receive_message('HIGH_LATENCY2', mav=self.mav, timeout=10)
+                self.drain_mav(mav2)
+                self.assert_not_receive_message('HIGH_LATENCY2', mav=mav2, timeout=10)
 
             self.start_subsubtest("Stream rate adjustments")
             self.run_cmd_enable_high_latency(True)
@@ -3892,10 +3892,25 @@ class AutoTest(ABC):
         self.assert_message_field_values(m, fieldvalues, verbose=verbose, epsilon=epsilon)
         return m
 
-    def assert_received_message_field_values(self, message, fieldvalues, verbose=True, very_verbose=False, epsilon=None, poll=False):  # noqa
+    def assert_received_message_field_values(self,
+                                             message,
+                                             fieldvalues,
+                                             verbose=True,
+                                             very_verbose=False,
+                                             epsilon=None,
+                                             poll=False,
+                                             timeout=None,
+                                             check_context=False,
+                                             ):
         if poll:
             self.poll_message(message)
-        m = self.assert_receive_message(message, verbose=verbose, very_verbose=very_verbose)
+        m = self.assert_receive_message(
+            message,
+            verbose=verbose,
+            very_verbose=very_verbose,
+            timeout=timeout,
+            check_context=check_context
+        )
         self.assert_message_field_values(m, fieldvalues, verbose=verbose, epsilon=epsilon)
         return m
 
@@ -4295,7 +4310,7 @@ class AutoTest(ABC):
 
     def assert_receive_message(self,
                                type,
-                               timeout=1,
+                               timeout=None,
                                verbose=False,
                                very_verbose=False,
                                mav=None,
@@ -4303,6 +4318,8 @@ class AutoTest(ABC):
                                delay_fn=None,
                                instance=None,
                                check_context=False):
+        if timeout is None:
+            timeout = 1
         if mav is None:
             mav = self.mav
 
@@ -5666,7 +5683,7 @@ class AutoTest(ABC):
             y=0,
             z=0,
             frame=mavutil.mavlink.MAV_FRAME_GLOBAL,
-            autocontinue=1,
+            autocontinue=0,
             current=0,
             target_system=1,
             target_component=1,
@@ -5679,12 +5696,12 @@ class AutoTest(ABC):
                 seq, # seq
                 frame,
                 t,
-                0, # current
-                0, # autocontinue
+                current, # current
+                autocontinue, # autocontinue
                 p1, # p1
-                0, # p2
-                0, # p3
-                0, # p4
+                p2, # p2
+                p3, # p3
+                p4, # p4
                 x, # latitude
                 y, # longitude
                 z, # altitude
@@ -5934,14 +5951,14 @@ class AutoTest(ABC):
     @staticmethod
     def get_distance(loc1, loc2):
         """Get ground distance between two locations."""
-        return AutoTest.get_distance_accurate(loc1, loc2)
+        return TestSuite.get_distance_accurate(loc1, loc2)
         # dlat = loc2.lat - loc1.lat
         # try:
         #     dlong = loc2.lng - loc1.lng
         # except AttributeError:
         #     dlong = loc2.lon - loc1.lon
 
-        # return math.sqrt((dlat*dlat) + (dlong*dlong)*AutoTest.longitude_scale(loc2.lat)) * 1.113195e5
+        # return math.sqrt((dlat*dlat) + (dlong*dlong)*TestSuite.longitude_scale(loc2.lat)) * 1.113195e5
 
     @staticmethod
     def get_distance_accurate(loc1, loc2):
@@ -5954,6 +5971,14 @@ class AutoTest(ABC):
             lon2 = loc2.lon
 
         return mp_util.gps_distance(loc1.lat, lon1, loc2.lat, lon2)
+
+    def assert_distance(self, loc1, loc2, min_distance, max_distance):
+        dist = self.get_distance_accurate(loc1, loc2)
+        if dist < min_distance or dist > max_distance:
+            raise NotAchievedException("Expected distance %f to be between %f and %f" %
+                                       (dist, min_distance, max_distance))
+        self.progress("Distance %f is between %f and %f" %
+                      (dist, min_distance, max_distance))
 
     @staticmethod
     def get_latlon_attr(loc, attrs):
@@ -5970,23 +5995,23 @@ class AutoTest(ABC):
     @staticmethod
     def get_lat_attr(loc):
         '''return any found latitude attribute from loc'''
-        return AutoTest.get_latlon_attr(loc, ["lat", "latitude"])
+        return TestSuite.get_latlon_attr(loc, ["lat", "latitude"])
 
     @staticmethod
     def get_lon_attr(loc):
         '''return any found latitude attribute from loc'''
-        return AutoTest.get_latlon_attr(loc, ["lng", "lon", "longitude"])
+        return TestSuite.get_latlon_attr(loc, ["lng", "lon", "longitude"])
 
     @staticmethod
     def get_distance_int(loc1, loc2):
         """Get ground distance between two locations in the normal "int" form
         - lat/lon multiplied by 1e7"""
-        loc1_lat = AutoTest.get_lat_attr(loc1)
-        loc2_lat = AutoTest.get_lat_attr(loc2)
-        loc1_lon = AutoTest.get_lon_attr(loc1)
-        loc2_lon = AutoTest.get_lon_attr(loc2)
+        loc1_lat = TestSuite.get_lat_attr(loc1)
+        loc2_lat = TestSuite.get_lat_attr(loc2)
+        loc1_lon = TestSuite.get_lon_attr(loc1)
+        loc2_lon = TestSuite.get_lon_attr(loc2)
 
-        return AutoTest.get_distance_accurate(
+        return TestSuite.get_distance_accurate(
             mavutil.location(loc1_lat*1e-7, loc1_lon*1e-7),
             mavutil.location(loc2_lat*1e-7, loc2_lon*1e-7))
 
@@ -8613,19 +8638,16 @@ Also, ignores heartbeats not from our target system'''
     def zero_mag_offset_parameters(self, compass_count=3):
         self.progress("Zeroing Mag OFS parameters")
         self.get_sim_time()
-        self.run_cmd(
-            mavutil.mavlink.MAV_CMD_PREFLIGHT_SET_SENSOR_OFFSETS,
-            p1=2, # param1 (compass0)
-        )
-        self.run_cmd(
-            mavutil.mavlink.MAV_CMD_PREFLIGHT_SET_SENSOR_OFFSETS,
-            p1=5, # param1 (compass1)
-        )
-        self.run_cmd(
-            mavutil.mavlink.MAV_CMD_PREFLIGHT_SET_SENSOR_OFFSETS,
-            p1=6, # param1 (compass2)
-        )
+        zero_offset_parameters_hash = {}
+        for num in "", "2", "3":
+            for axis in "X", "Y", "Z":
+                name = "COMPASS_OFS%s_%s" % (num, axis)
+                zero_offset_parameters_hash[name] = 0
+        self.set_parameters(zero_offset_parameters_hash)
+        # force-save the calibration values:
+        self.run_cmd_int(mavutil.mavlink.MAV_CMD_PREFLIGHT_CALIBRATION, p2=76)
         self.progress("zeroed mag parameters")
+
         params = [
             [("SIM_MAG1_OFS1_X", "COMPASS_OFS_X", 0),
              ("SIM_MAG1_OFS1_Y", "COMPASS_OFS_Y", 0),

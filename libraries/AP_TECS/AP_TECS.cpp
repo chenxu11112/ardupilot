@@ -390,7 +390,7 @@ void AP_TECS::_update_speed(float DT)
         _vel_dot_lpf = _vel_dot_lpf * (1.0f - alpha) + _vel_dot * alpha;
     }
 
-    bool use_airspeed = _use_synthetic_airspeed_once || _use_synthetic_airspeed.get() || _ahrs.airspeed_sensor_enabled();
+    bool use_airspeed = _use_synthetic_airspeed_once || _use_synthetic_airspeed.get() || _ahrs.using_airspeed_sensor();
 
     // Convert equivalent airspeeds to true airspeeds and harmonise limits
 
@@ -923,7 +923,7 @@ void AP_TECS::_update_pitch(void)
     // A SKE_weighting of 2 provides 100% priority to speed control. This is used when an underspeed condition is detected. In this instance, if airspeed
     // rises above the demanded value, the pitch angle will be increased by the TECS controller.
     _SKE_weighting = constrain_float(_spdWeight, 0.0f, 2.0f);
-    if (!(_ahrs.airspeed_sensor_enabled() || _use_synthetic_airspeed)) {
+    if (!(_ahrs.using_airspeed_sensor() || _use_synthetic_airspeed)) {
         _SKE_weighting = 0.0f;
     } else if (_flight_stage == AP_FixedWing::FlightStage::VTOL) {
         // if we are in VTOL mode then control pitch without regard to
@@ -1050,10 +1050,30 @@ void AP_TECS::_update_pitch(void)
     _last_pitch_dem = _pitch_dem;
 
     if (AP::logger().should_log(_log_bitmask)){
-        AP::logger().WriteStreaming("TEC2","TimeUS,PEW,EBD,EBE,EBDD,EBDE,EBDDT,Imin,Imax,I,KI,pmin,pmax",
-                                    "Qffffffffffff",
+        // log to AP_Logger
+        // @LoggerMessage: TEC2
+        // @Vehicles: Plane
+        // @Description: Additional information about the Total Energy Control System
+        // @URL: http://ardupilot.org/plane/docs/tecs-total-energy-control-system-for-speed-height-tuning-guide.html
+        // @Field: TimeUS: Time since system startup
+        // @Field: PEW: Potential energy weighting
+        // @Field: KEW: Kinetic energy weighting
+        // @Field: EBD: Energy balance demand
+        // @Field: EBE: Energy balance error
+        // @Field: EBDD: Energy balance rate demand
+        // @Field: EBDE: Energy balance rate error
+        // @Field: EBDDT: Energy balance rate demand + Energy balance rate error*pitch_damping
+        // @Field: Imin: Minimum integrator value
+        // @Field: Imax: Maximum integrator value
+        // @Field: I: Energy balance error integral
+        // @Field: KI: Pitch demand kinetic energy integral
+        // @Field: pmin: Pitch min
+        // @Field: pmax: Pitch max
+        AP::logger().WriteStreaming("TEC2","TimeUS,PEW,KEW,EBD,EBE,EBDD,EBDE,EBDDT,Imin,Imax,I,KI,pmin,pmax",
+                                    "Qfffffffffffff",
                                     AP_HAL::micros64(),
                                     (double)SPE_weighting,
+                                    (double)_SKE_weighting,
                                     (double)SEB_dem,
                                     (double)SEB_est,
                                     (double)SEBdot_dem,
@@ -1326,7 +1346,7 @@ void AP_TECS::update_pitch_throttle(int32_t hgt_dem_cm,
     // Note that caller can demand the use of
     // synthetic airspeed for one loop if needed. This is required
     // during QuadPlane transition when pitch is constrained
-    if (_ahrs.airspeed_sensor_enabled() || _use_synthetic_airspeed || _use_synthetic_airspeed_once) {
+    if (_ahrs.using_airspeed_sensor() || _use_synthetic_airspeed || _use_synthetic_airspeed_once) {
         _update_throttle_with_airspeed();
         _use_synthetic_airspeed_once = false;
         _using_airspeed_for_throttle = true;

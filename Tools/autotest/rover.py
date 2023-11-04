@@ -14,12 +14,13 @@ import os
 import sys
 import time
 
-from common import AutoTest
+import vehicle_test_suite
+
 from pysim import util
 
-from common import AutoTestTimeoutException
-from common import NotAchievedException
-from common import PreconditionFailedException
+from vehicle_test_suite import AutoTestTimeoutException
+from vehicle_test_suite import NotAchievedException
+from vehicle_test_suite import PreconditionFailedException
 
 from pymavlink import mavextra
 from pymavlink import mavutil
@@ -33,7 +34,7 @@ SITL_START_LOCATION = mavutil.location(40.071374969556928,
                                        246)
 
 
-class AutoTestRover(AutoTest):
+class AutoTestRover(vehicle_test_suite.TestSuite):
     @staticmethod
     def get_not_armable_mode_list():
         return ["RTL", "SMART_RTL"]
@@ -5618,7 +5619,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             0,
             0,
             0)
+
         self.progress("Sending control message")
+        self.context_push()
+        self.context_collect('COMMAND_LONG')
         self.mav.mav.digicam_control_send(
             1, # target_system
             1, # target_component
@@ -5633,21 +5637,56 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         )
         self.mav.mav.srcSystem = old_srcSystem
 
-        self.progress("Expecting a command long")
-        tstart = self.get_sim_time_cached()
-        while True:
-            now = self.get_sim_time_cached()
-            if now - tstart > 2:
-                raise NotAchievedException("Did not receive digicam_control message")
-            m = self.mav.recv_match(type='COMMAND_LONG', blocking=True, timeout=0.1)
-            self.progress("Message: %s" % str(m))
-            if m is None:
-                continue
-            if m.command != mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONTROL:
-                raise NotAchievedException("Did not get correct command")
-            if m.param6 != 17:
-                raise NotAchievedException("Did not get correct command_id")
-            break
+        self.assert_received_message_field_values('COMMAND_LONG', {
+            'command': mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONTROL,
+            'param6': 17,
+        }, timeout=2, check_context=True)
+        self.context_pop()
+
+        # test sending via commands:
+        for run_cmd in self.run_cmd, self.run_cmd_int:
+            self.progress("Sending control command")
+            self.context_push()
+            self.context_collect('COMMAND_LONG')
+            run_cmd(mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONTROL,
+                    p1=1, # start or keep it up
+                    p2=1, # zoom_pos
+                    p3=0, # zoom_step
+                    p4=0, # focus_lock
+                    p5=0, # 1 shot or start filming
+                    p6=37, # command id (de-dupe field)
+                    )
+
+            self.assert_received_message_field_values('COMMAND_LONG', {
+                'command': mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONTROL,
+                'param6': 37,
+            }, timeout=2, check_context=True)
+
+            self.context_pop()
+
+        # test sending via commands:
+        for run_cmd in self.run_cmd, self.run_cmd_int:
+            self.progress("Sending configure command")
+            self.context_push()
+            self.context_collect('COMMAND_LONG')
+            run_cmd(mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONFIGURE,
+                    p1=1,
+                    p2=1,
+                    p3=0,
+                    p4=0,
+                    p5=12,
+                    p6=37
+                    )
+
+            self.assert_received_message_field_values('COMMAND_LONG', {
+                'command': mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONFIGURE,
+                'param5': 12,
+                'param6': 37,
+            }, timeout=2, check_context=True)
+
+            self.context_pop()
+
+        self.mav.mav.srcSystem = old_srcSystem
 
     def SkidSteer(self):
         '''Check skid-steering'''
@@ -6546,6 +6585,35 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self._MAV_CMD_GET_HOME_POSITION(self.run_cmd)
         self._MAV_CMD_GET_HOME_POSITION(self.run_cmd_int)
 
+    def MAV_CMD_DO_FENCE_ENABLE(self):
+        '''ensure MAV_CMD_DO_FENCE_ENABLE mavlink command works'''
+        here = self.mav.location()
+
+        self.upload_fences_from_locations(
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_EXCLUSION,
+            [
+                [ # east
+                    self.offset_location_ne(here, -50, 20), # bl
+                    self.offset_location_ne(here, 50, 20), # br
+                    self.offset_location_ne(here, 50, 40), # tr
+                    self.offset_location_ne(here, -50, 40), # tl,
+                ], [ # over the top of the vehicle
+                    self.offset_location_ne(here, -50, -50), # bl
+                    self.offset_location_ne(here, -50, 50), # br
+                    self.offset_location_ne(here, 50, 50), # tr
+                    self.offset_location_ne(here, 50, -50), # tl,
+                ]
+            ]
+        )
+
+        # enable:
+        self.run_cmd(mavutil.mavlink.MAV_CMD_DO_FENCE_ENABLE, p1=1)
+        self.assert_fence_enabled()
+
+        # disable
+        self.run_cmd_int(mavutil.mavlink.MAV_CMD_DO_FENCE_ENABLE, p1=0)
+        self.assert_fence_disabled()
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestRover, self).tests()
@@ -6628,6 +6696,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             self.CompassPrearms,
             self.MAV_CMD_DO_SET_REVERSE,
             self.MAV_CMD_GET_HOME_POSITION,
+            self.MAV_CMD_DO_FENCE_ENABLE,
         ])
         return ret
 
