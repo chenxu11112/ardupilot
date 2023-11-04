@@ -9,23 +9,25 @@ extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
 const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
-    AP_SUBGROUPINFO(_pid_motor_left, "MTL_", 1, AC_BalanceControl, AC_PID),
+    // AP_SUBGROUPINFO(_pid_motor_left, "MTL_", 1, AC_BalanceControl, AC_PID),
 
-    AP_SUBGROUPINFO(_pid_motor_right, "MTR_", 2, AC_BalanceControl, AC_PID),
+    // AP_SUBGROUPINFO(_pid_motor_right, "MTR_", 2, AC_BalanceControl, AC_PID),
 
-    AP_SUBGROUPINFO(_pid_angle, "ANG_", 3, AC_BalanceControl, AC_PID),
+    AP_SUBGROUPINFO(_pid_angle, "ANG_", 1, AC_BalanceControl, AC_PID),
 
-    AP_SUBGROUPINFO(_pid_speed, "SPD_", 4, AC_BalanceControl, AC_PID),
+    AP_SUBGROUPINFO(_pid_speed, "SPD_", 2, AC_BalanceControl, AC_PID),
 
-    AP_SUBGROUPINFO(_pid_turn, "TRN_", 5, AC_BalanceControl, AC_PID),
+    AP_SUBGROUPINFO(_pid_turn, "TRN_", 3, AC_BalanceControl, AC_PID),
 
-    AP_GROUPINFO("ZERO", 6, AC_BalanceControl, _zero_angle, AC_BALANCE_ZERO_ANGLE),
+    AP_SUBGROUPINFO(_pid_roll, "ROL_", 4, AC_BalanceControl, AC_PID),
 
-    AP_GROUPINFO("MAX_SPEED", 7, AC_BalanceControl, _max_speed, AC_BALANCE_MAX_SPEED),
+    AP_GROUPINFO("ZERO", 5, AC_BalanceControl, _zero_angle, AC_BALANCE_ZERO_ANGLE),
 
-    AP_GROUPINFO("TAR_SPEED_X", 8, AC_BalanceControl, Target_Velocity_X, AC_BALANCE_TARGET_X_SPEED),
+    AP_GROUPINFO("MAX_SPEED", 6, AC_BalanceControl, _max_speed, AC_BALANCE_MAX_SPEED),
 
-    AP_GROUPINFO("TAR_SPEED_Z", 9, AC_BalanceControl, Target_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
+    AP_GROUPINFO("TAR_SPEED_X", 7, AC_BalanceControl, Target_Velocity_X, AC_BALANCE_TARGET_X_SPEED),
+
+    AP_GROUPINFO("TAR_SPEED_Z", 8, AC_BalanceControl, Target_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
 
     AP_GROUPEND
 };
@@ -127,9 +129,14 @@ Output  : Turn control PWM
 入口参数：Z轴陀螺仪
 返回  值：转向控制PWM
 **************************************************************************/
-float AC_BalanceControl::Turn(float gyro)
+float AC_BalanceControl::Turn(float yaw, float gyro)
 {
-    return 0;
+    //===================转向PD控制器=================//
+    float Turn_Target = 0;
+
+    float turn = (Turn_Target)*_pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
+
+    return turn;
 }
 
 void AC_BalanceControl::RollControl(float roll)
@@ -189,14 +196,14 @@ void AC_BalanceControl::balance_all_control(void)
     control_velocity = Velocity(wheel_left_f, wheel_right_f);
 
     // 转向环PID控制
-    control_turn = Turn(gyro_z);
+    control_turn = Turn(_ahrs->yaw, gyro_z);
 
     // motor值正数使小车前进，负数使小车后退, 范围【-1，1】
     motor_target_left_f  = control_balance + control_velocity + control_turn; // 计算左轮电机最终PWM
     motor_target_right_f = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
 
     int16_t motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
-    int16_t motor_target_right_int = (int16_t)(motor_target_right_f * max_scale_value);
+    int16_t motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
 
     // 最终的电机输入量
     _robocan->setCurrent(1, (int16_t)motor_target_left_int);
@@ -206,7 +213,7 @@ void AC_BalanceControl::balance_all_control(void)
     // MotorSpeed(motor_target_left_int, motor_target_right_int);
 
     // 腿部舵机控制
-    // RollControl(_ahrs.roll);
+     RollControl(_ahrs->roll);
 
     // /////////////////////////////////////////////////////////////////
     // Vector3f acc { 0, 0, 0 };

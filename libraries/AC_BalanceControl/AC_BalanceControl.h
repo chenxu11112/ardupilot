@@ -19,15 +19,15 @@
 #define AC_BALANCE_MOTOR_TARGET_FILT_HZ 0.135f
 #define AC_BALANCE_MOTOR_ERROR_FILT_HZ  2.5f
 
-#define AC_BALANCE_ANGLE_P              0.5
+#define AC_BALANCE_ANGLE_P              0.75
 #define AC_BALANCE_ANGLE_I              0.0f
-#define AC_BALANCE_ANGLE_D              0.1f
+#define AC_BALANCE_ANGLE_D              0.15f
 #define AC_BALANCE_ANGLE_IMAX           1.0f
 #define AC_BALANCE_ANGLE_TARGET_FILT_HZ 0.135f
 #define AC_BALANCE_ANGLE_ERROR_FILT_HZ  2.5f
 
-#define AC_BALANCE_SPEED_P              0.5f
-#define AC_BALANCE_SPEED_I              0.05f
+#define AC_BALANCE_SPEED_P              -0.25f
+#define AC_BALANCE_SPEED_I              -0.03f
 #define AC_BALANCE_SPEED_D              0.0f
 #define AC_BALANCE_SPEED_IMAX           1.0f
 #define AC_BALANCE_SPEED_TARGET_FILT_HZ 0.135f
@@ -64,7 +64,7 @@ public:
     void  MotorSpeed(float left_speed, float right_speed);
     float Balance(float Angle, float Gyro);
     float Velocity(float encoder_left, float encoder_right);
-    float Turn(float gyro);
+    float Turn(float yaw, float gyro);
 
     void RollControl(float roll);
 
