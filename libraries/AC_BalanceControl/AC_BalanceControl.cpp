@@ -258,16 +258,16 @@ void AC_BalanceControl::balance_all_control(void)
 
     // // _rmuart.setWheelSpeed(motor_target_left_int, motor_target_right_int);
 
-    // uint16_t pwm_x = hal.rcin->read(CH_7);
+    uint16_t pwm_x = hal.rcin->read(CH_7);
     // uint16_t pwm_z = hal.rcin->read(CH_6);
 
-    // if (pwm_x < 1300) {
-    //     _moveflag_x = moveFlag::moveBack;
-    // } else if (pwm_x > 1700) {
-    //     _moveflag_x = moveFlag::moveFront;
-    // } else {
-    //     _moveflag_x = moveFlag::none;
-    // }
+    if (pwm_x < 1300) {
+        _moveflag_x = moveFlag::moveBack;
+    } else if (pwm_x > 1700) {
+        _moveflag_x = moveFlag::moveFront;
+    } else {
+        _moveflag_x = moveFlag::none;
+    }
 
     // if (pwm_z < 1300) {
     //     _moveflag_z = moveFlag::moveLeft;
