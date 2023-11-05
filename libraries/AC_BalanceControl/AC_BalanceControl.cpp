@@ -109,11 +109,22 @@ float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
 {
     float velocity;
     float Encoder_Now;
+    float Encoder_Movement = 0;
+
+    //================遥控前进后退部分====================//
+    if (_moveflag_x == moveFlag::moveFront) {
+        Encoder_Movement = Target_Velocity_X;  // 收到前进信号
+    } else if (_moveflag_x == moveFlag::moveBack) {
+        Encoder_Movement = -Target_Velocity_X; // 收到后退信号
+    } else {
+        Encoder_Movement = 0;
+    }
+        // Encoder_Movement = 0;
 
     //================速度PI控制器=====================//
 
     // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
-    Encoder_Now = (encoder_left + encoder_right);
+    Encoder_Now = (encoder_left + encoder_right) - Encoder_Movement;
 
     float Encoder_filter = speed_low_pass_filter.apply(Encoder_Now, _dt);
 
