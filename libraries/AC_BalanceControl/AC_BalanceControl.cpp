@@ -34,7 +34,7 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
 
 AC_BalanceControl::AC_BalanceControl(AP_Motors* motors, AP_AHRS_View* ahrs)
     : _pid_angle(AC_BALANCE_ANGLE_P, 0, AC_BALANCE_ANGLE_D, 0, 0, 0, 0, 0)
-    , _pid_speed(AC_BALANCE_SPEED_P, AC_BALANCE_SPEED_I, 0, AC_BALANCE_SPEED_IMAX, 0, 0, 0, 0)
+    , _pid_speed(AC_BALANCE_SPEED_P, AC_BALANCE_SPEED_I, 0, 0, AC_BALANCE_SPEED_IMAX, 0, 0, 0)
     , _pid_turn(AC_BALANCE_TURN_P, 0, AC_BALANCE_TURN_D, 0, 0, 0, 0, 0)
     , _pid_roll(AC_BALANCE_ROLL_P, AC_BALANCE_ROLL_I, AC_BALANCE_ROLL_D, 0, AC_BALANCE_ROLL_IMAX, 0, 0, 0)
     , _motors(motors)

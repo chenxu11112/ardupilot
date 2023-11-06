@@ -1188,11 +1188,6 @@ bool AP_Arming::can_checks(bool report)
 
                 case AP_CANManager::Driver_Type_BalanceCAN:
                 {
-                    AP_BalanceCAN *ap_balcncecan = AP_BalanceCAN::get_balancecan(i);
-                    if (ap_balcncecan != nullptr) {
-                            check_failed(ARMING_CHECK_SYSTEM, report, "BlanceCAN: %s", fail_msg);
-                            return false;
-                    }
                     break;
                 }
 
