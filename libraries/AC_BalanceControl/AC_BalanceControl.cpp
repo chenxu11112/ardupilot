@@ -136,7 +136,7 @@ void AC_BalanceControl::update(void)
         return;
     }
 
-    AP_BalanceCAN *balanceCAN = AP_BalanceCAN::get_singleton();
+    auto *balanceCAN = AP_BalanceCAN::get_singleton();
 
     if (balanceCAN == nullptr) {
         gcs().send_text(MAV_SEVERITY_WARNING, "balanceCAN = nullptr");
@@ -157,8 +157,8 @@ void AC_BalanceControl::update(void)
     gyro_z  = _ahrs->get_gyro_latest()[2];
 
     // 转速缩小1000倍
-    wheel_left_f  = (float)balanceCAN->getSpeed(1) / max_scale_value;
-    wheel_right_f = -(float)balanceCAN->getSpeed(2) / max_scale_value;
+    wheel_left_f  = (float)balanceCAN->getSpeed(0) / max_scale_value;
+    wheel_right_f = -(float)balanceCAN->getSpeed(1) / max_scale_value;
 
     // 调试用
     static uint16_t cnt = 0;
@@ -186,8 +186,8 @@ void AC_BalanceControl::update(void)
     int16_t motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
 
     // 最终的电机输入量
-    balanceCAN->setCurrent(1, (int16_t)motor_target_left_int);
-    balanceCAN->setCurrent(2, (int16_t)motor_target_right_int);
+    balanceCAN->setCurrent(0, (int16_t)motor_target_left_int);
+    balanceCAN->setCurrent(1, (int16_t)motor_target_right_int);
 
     // 最终的电机速度环
     // MotorSpeed(motor_target_left_int, motor_target_right_int);
