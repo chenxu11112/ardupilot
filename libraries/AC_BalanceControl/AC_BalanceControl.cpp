@@ -113,9 +113,9 @@ float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
 
     //================遥控前进后退部分====================//
     if (_moveflag_x == moveFlag::moveFront) {
-        Encoder_Movement = Target_Velocity_X;  // 收到前进信号
+        Encoder_Movement = -Target_Velocity_X;  // 收到前进信号
     } else if (_moveflag_x == moveFlag::moveBack) {
-        Encoder_Movement = -Target_Velocity_X; // 收到后退信号
+        Encoder_Movement = Target_Velocity_X; // 收到后退信号
     } else {
         Encoder_Movement = 0;
     }
@@ -142,6 +142,24 @@ Output  : Turn control PWM
 **************************************************************************/
 float AC_BalanceControl::Turn(float yaw, float gyro)
 {
+    
+    
+    // Turn_Kp = _pid_turn.kP();
+    //===================遥控左右旋转部分=================//
+    if (_moveflag_z == moveFlag::moveLeft)
+        Turn_Target = -Target_Velocity_Z;
+    else if (_moveflag_z == moveFlag::moveRight)
+        Turn_Target = Target_Velocity_Z;
+    else
+        Turn_Target = 0;
+
+    // if (_moveflag == moveFlag::moveFront || _moveflag == moveFlag::moveBack)
+    //     Kd = _balance_turn_d;
+    // else
+    //     Kd = 0; // 转向的时候取消陀螺仪的纠正 有点模糊PID的思想
+
+    // Turn_Kd = _pid_turn.kD();
+    
     //===================转向PD控制器=================//
     float turn = (Turn_Target)*_pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
 
@@ -270,7 +288,7 @@ void AC_BalanceControl::balance_all_control(void)
     // // _rmuart.setWheelSpeed(motor_target_left_int, motor_target_right_int);
 
     uint16_t pwm_x = hal.rcin->read(CH_7);
-    // uint16_t pwm_z = hal.rcin->read(CH_6);
+    uint16_t pwm_z = hal.rcin->read(CH_6);
 
     if (pwm_x < 1300) {
         _moveflag_x = moveFlag::moveBack;
@@ -280,11 +298,11 @@ void AC_BalanceControl::balance_all_control(void)
         _moveflag_x = moveFlag::none;
     }
 
-    // if (pwm_z < 1300) {
-    //     _moveflag_z = moveFlag::moveLeft;
-    // } else if (pwm_z > 1700) {
-    //     _moveflag_z = moveFlag::moveRight;
-    // } else {
-    //     _moveflag_z = moveFlag::none;
-    // }
+    if (pwm_z < 1300) {
+        _moveflag_z = moveFlag::moveLeft;
+    } else if (pwm_z > 1700) {
+        _moveflag_z = moveFlag::moveRight;
+    } else {
+        _moveflag_z = moveFlag::none;
+    }
 }
