@@ -102,6 +102,8 @@ public:
         landing_check          = 4,
     };
 
+    void check_rotation();
+
     void debug_info();
 
 protected:
@@ -163,4 +165,6 @@ protected:
 
     bool  alt_ok;
     float alt_cm;
+
+    bool is_max_rotation;
 };

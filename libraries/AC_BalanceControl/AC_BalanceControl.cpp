@@ -79,7 +79,7 @@ float AC_BalanceControl::angle_controller(float Angle, float Gyro)
     // 计算平衡控制的电机PWM  PD控制   kp是P系数 kd是D系数
     angle_out = _pid_angle.kP() * angle_bias + gyro_bias * _pid_angle.kD();
 
-    if (stop_balance_control) {
+    if (stop_balance_control || is_max_rotation) {
         angle_out  = 0;
         angle_bias = 0;
         gyro_bias  = 0;
@@ -117,7 +117,7 @@ float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_r
 
     velocity_out = _pid_speed.update_all(0.0f, encoder_error_filter, _dt);
 
-    if (stop_balance_control == true) {
+    if (stop_balance_control || is_max_rotation) {
         _pid_speed.reset_I();
         encoder_error        = 0;
         encoder_error_filter = 0;
@@ -149,7 +149,7 @@ float AC_BalanceControl::turn_controller(float yaw, float gyro)
     //===================转向PD控制器=================//
     turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
 
-    if (stop_balance_control) {
+    if (stop_balance_control || is_max_rotation) {
         turn_out    = 0;
         turn_target = 0;
     }
@@ -222,6 +222,9 @@ void AC_BalanceControl::update(void)
 
     // 设置模式
     set_control_mode();
+
+    // 检查是否失控
+    check_rotation();
 }
 
 void AC_BalanceControl::set_control_mode(void)
@@ -296,11 +299,26 @@ void AC_BalanceControl::debug_info()
     cnt++;
     if (cnt > 400) {
         cnt = 0;
-        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(1));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(2));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
+        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(0));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(1));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "left_target_current=%d", balanceCAN->getCurrent(0));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "right_target_current=%d", balanceCAN->getCurrent(1));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);
+        gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
+    }
+}
 
-        if (alt_ok) {
-            gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);
+void AC_BalanceControl::check_rotation()
+{
+    static uint16_t check_cnt = 0;
+
+    if (balanceCAN->getSpeed(0) + balanceCAN->getSpeed(1) > 5000) {
+        if (++check_cnt > 200 * 1.5) {
+            is_max_rotation = true;
         }
+    } else {
+        is_max_rotation = false;
+        check_cnt       = 0;
     }
 }
