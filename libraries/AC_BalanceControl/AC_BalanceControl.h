@@ -6,10 +6,10 @@
 #include <AC_PID/AC_PI.h>
 #include <AC_PID/AC_PID.h>
 #include <AP_AHRS/AP_AHRS_View.h>
+#include <AP_BalanceCAN/AP_BalanceCAN.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Motors/AP_Motors.h>
 #include <AP_Param/AP_Param.h>
-#include <AP_BalanceCAN/AP_BalanceCAN.h>
 
 // default rate controller PID gains
 #define AC_BALANCE_MOTOR_P              0.5
@@ -61,17 +61,22 @@ public:
     // empty destructor to suppress compiler warning
     virtual ~AC_BalanceControl() { }
 
-    float Balance(float Angle, float Gyro);
-    float Velocity(float encoder_left, float encoder_right);
-    float Turn(float yaw, float gyro);
+    void init();
 
-    void RollControl(float roll);
+    float angle_controller(float Angle, float Gyro);
+    float velocity_controller(float encoder_left, float encoder_right);
+    float turn_controller(float yaw, float gyro);
+    void  roll_controller(float roll);
+
+    void set_control_mode();
 
     void update(void);
 
-    void setAltOK(bool sta) {alt_ok = sta;}
+    void setAltOK(bool sta) { alt_ok = sta; }
 
-    void setAltData(float data) {alt_cm = data; }
+    void setAltData(float data) { alt_cm = data; }
+
+    void set_control_zeros(void);
 
     uint8_t get_Balance_Mode() { return balanceMode; }
 
@@ -91,13 +96,16 @@ public:
 
     enum BalanceMode {
         ground                 = 0,
-        flying_with_balance    = 1,
-        flying_without_balance = 2,
-        landing_check          = 3,
+        balance_car            = 1,
+        flying_with_balance    = 2,
+        flying_without_balance = 3,
+        landing_check          = 4,
     };
 
+    void debug_info();
 
 protected:
+    AP_BalanceCAN* balanceCAN;
 
     ///////////////////////////////////////////////////////
     // PID参数
@@ -119,18 +127,33 @@ protected:
     AP_Float Target_Velocity_Z;
 
     ///////////////////////////////////////////////////////
-    // 速度环参数
+    // 直立环参数
+    float angle_out;
+    float angle_bias;
+    float gyro_bias;
 
+    ///////////////////////////////////////////////////////
+    // 速度环参数
     LowPassFilterFloat speed_low_pass_filter; // 一阶低通滤波器
+
+    float velocity_out;
+    float encoder_error;
+    float encoder_error_filter;
+    float encoder_movement;
 
     ///////////////////////////////////////////////////////
     // 转向环参数
-    float Turn_Target;
-    float Turn_Kp;
-    float Turn_Kd;
+    float turn_target;
+    float turn_out;
 
+    ///////////////////////////////////////////////////////
     uint8_t _moveflag_x;
     uint8_t _moveflag_z;
+    uint8_t stop_balance_control;
+
+    ///////////////////////////////////////////////////////
+    int16_t motor_target_left_int;
+    int16_t motor_target_right_int;
 
     float control_balance, control_velocity, control_turn;
 
@@ -138,6 +161,6 @@ protected:
 
     enum BalanceMode balanceMode;
 
-    bool alt_ok;
+    bool  alt_ok;
     float alt_cm;
 };
