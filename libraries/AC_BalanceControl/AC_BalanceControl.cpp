@@ -62,24 +62,24 @@ void AC_BalanceControl::init()
 
 /**************************************************************************
 Function: Vertical PD control
-Input   : Angle:angleï¼›Gyroï¼šangular velocity
-Output  : balanceï¼šVertical control PWM
-å‡½æ•°åŠŸèƒ½ï¼šç›´ç«‹PDæ§åˆ¶
-å…¥å£å‚æ•°ï¼šAngle:è§’åº¦ï¼›Gyroï¼šè§’é€Ÿåº¦
-è¿”å›  å€¼ï¼šbalanceï¼šç›´ç«‹æ§åˆ¶PWM
+Input   : Angle:angle£»Gyro£ºangular velocity
+Output  : balance£ºVertical control PWM
+º¯Êı¹¦ÄÜ£ºÖ±Á¢PD¿ØÖÆ
+Èë¿Ú²ÎÊı£ºAngle:½Ç¶È£»Gyro£º½ÇËÙ¶È
+·µ»Ø  Öµ£ºbalance£ºÖ±Á¢¿ØÖÆPWM
 **************************************************************************/
 float AC_BalanceControl::angle_controller(float Angle, float Gyro)
 {
-    // æ±‚å‡ºå¹³è¡¡çš„è§’åº¦ä¸­å€¼ å’Œæœºæ¢°ç›¸å…³
+    // Çó³öÆ½ºâµÄ½Ç¶ÈÖĞÖµ ºÍ»úĞµÏà¹Ø
     angle_bias = _zero_angle - Angle;
 
-    // è®¡ç®—è§’é€Ÿåº¦è¯¯å·®
+    // ¼ÆËã½ÇËÙ¶ÈÎó²î
     gyro_bias = 0.0f - Gyro;
 
-    // è®¡ç®—å¹³è¡¡æ§åˆ¶çš„ç”µæœºPWM  PDæ§åˆ¶   kpæ˜¯Pç³»æ•° kdæ˜¯Dç³»æ•°
+    // ¼ÆËãÆ½ºâ¿ØÖÆµÄµç»úPWM  PD¿ØÖÆ   kpÊÇPÏµÊı kdÊÇDÏµÊı
     angle_out = _pid_angle.kP() * angle_bias + gyro_bias * _pid_angle.kD();
 
-    if (stop_balance_control || is_max_rotation) {
+    if (stop_balance_control || Flag_Stop) {
         angle_out  = 0;
         angle_bias = 0;
         gyro_bias  = 0;
@@ -90,34 +90,34 @@ float AC_BalanceControl::angle_controller(float Angle, float Gyro)
 
 /**************************************************************************
 Function: Speed PI control
-Input   : encoder_leftï¼šLeft wheel encoder readingï¼›encoder_rightï¼šRight wheel encoder reading
+Input   : encoder_left£ºLeft wheel encoder reading£»encoder_right£ºRight wheel encoder reading
 Output  : Speed control PWM
-å‡½æ•°åŠŸèƒ½ï¼šé€Ÿåº¦æ§åˆ¶PWM
-å…¥å£å‚æ•°ï¼šencoder_leftï¼šå·¦è½®ç¼–ç å™¨è¯»æ•°ï¼›encoder_rightï¼šå³è½®ç¼–ç å™¨è¯»æ•°
-è¿”å›  å€¼ï¼šé€Ÿåº¦æ§åˆ¶PWM
+º¯Êı¹¦ÄÜ£ºËÙ¶È¿ØÖÆPWM
+Èë¿Ú²ÎÊı£ºencoder_left£º×óÂÖ±àÂëÆ÷¶ÁÊı£»encoder_right£ºÓÒÂÖ±àÂëÆ÷¶ÁÊı
+·µ»Ø  Öµ£ºËÙ¶È¿ØÖÆPWM
 **************************************************************************/
 float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_right)
 {
 
-    //================é¥æ§å‰è¿›åé€€éƒ¨åˆ†====================//
+    //================Ò£¿ØÇ°½øºóÍË²¿·Ö====================//
     if (_moveflag_x == moveFlag::moveFront) {
-        encoder_movement = -Target_Velocity_X; // æ”¶åˆ°å‰è¿›ä¿¡å·
+        encoder_movement = -Target_Velocity_X; // ÊÕµ½Ç°½øĞÅºÅ
     } else if (_moveflag_x == moveFlag::moveBack) {
-        encoder_movement = Target_Velocity_X; // æ”¶åˆ°åé€€ä¿¡å·
+        encoder_movement = Target_Velocity_X; // ÊÕµ½ºóÍËĞÅºÅ
     } else {
         encoder_movement = 0;
     }
 
-    //================é€Ÿåº¦PIæ§åˆ¶å™¨=====================//
+    //================ËÙ¶ÈPI¿ØÖÆÆ÷=====================//
 
-    // è·å–æœ€æ–°é€Ÿåº¦åå·®=ç›®æ ‡é€Ÿåº¦ï¼ˆæ­¤å¤„ä¸ºé›¶ï¼‰-æµ‹é‡é€Ÿåº¦ï¼ˆå·¦å³ç¼–ç å™¨ä¹‹å’Œï¼‰
+    // »ñÈ¡×îĞÂËÙ¶ÈÆ«²î=Ä¿±êËÙ¶È£¨´Ë´¦ÎªÁã£©-²âÁ¿ËÙ¶È£¨×óÓÒ±àÂëÆ÷Ö®ºÍ£©
     encoder_error = (encoder_left + encoder_right) - encoder_movement;
 
     encoder_error_filter = speed_low_pass_filter.apply(encoder_error, _dt);
 
     velocity_out = _pid_speed.update_all(0.0f, encoder_error_filter, _dt);
 
-    if (stop_balance_control || is_max_rotation) {
+    if (stop_balance_control || Flag_Stop) {
         _pid_speed.reset_I();
         encoder_error        = 0;
         encoder_error_filter = 0;
@@ -131,13 +131,13 @@ float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_r
 Function: Turn control
 Input   : Z-axis angular velocity
 Output  : Turn control PWM
-å‡½æ•°åŠŸèƒ½ï¼šè½¬å‘æ§åˆ¶
-å…¥å£å‚æ•°ï¼šZè½´é™€èºä»ª
-è¿”å›  å€¼ï¼šè½¬å‘æ§åˆ¶PWM
+º¯Êı¹¦ÄÜ£º×ªÏò¿ØÖÆ
+Èë¿Ú²ÎÊı£ºZÖáÍÓÂİÒÇ
+·µ»Ø  Öµ£º×ªÏò¿ØÖÆPWM
 **************************************************************************/
 float AC_BalanceControl::turn_controller(float yaw, float gyro)
 {
-    //===================é¥æ§å·¦å³æ—‹è½¬éƒ¨åˆ†=================//
+    //===================Ò£¿Ø×óÓÒĞı×ª²¿·Ö=================//
     if (_moveflag_z == moveFlag::moveLeft) {
         turn_target = -Target_Velocity_Z;
     } else if (_moveflag_z == moveFlag::moveRight) {
@@ -146,10 +146,10 @@ float AC_BalanceControl::turn_controller(float yaw, float gyro)
         turn_target = 0;
     }
 
-    //===================è½¬å‘PDæ§åˆ¶å™¨=================//
-    turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // ç»“åˆZè½´é™€èºä»ªè¿›è¡ŒPDæ§åˆ¶
+    //===================×ªÏòPD¿ØÖÆÆ÷=================//
+    turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // ½áºÏZÖáÍÓÂİÒÇ½øĞĞPD¿ØÖÆ
 
-    if (stop_balance_control || is_max_rotation) {
+    if (stop_balance_control || Flag_Stop) {
         turn_out    = 0;
         turn_target = 0;
     }
@@ -193,38 +193,46 @@ void AC_BalanceControl::update(void)
     gyro_y  = _ahrs->get_gyro_latest()[1];
     gyro_z  = _ahrs->get_gyro_latest()[2];
 
-    // è½¬é€Ÿç¼©å°1000å€
+    // ×ªËÙËõĞ¡1000±¶
     wheel_left_f  = (float)balanceCAN->getSpeed(0) / max_scale_value;
     wheel_right_f = -(float)balanceCAN->getSpeed(1) / max_scale_value;
 
-    // å¹³è¡¡PIDæ§åˆ¶ Gyro_Balanceå¹³è¡¡è§’é€Ÿåº¦ææ€§ï¼šå‰å€¾ä¸ºæ­£ï¼Œåå€¾ä¸ºè´Ÿ
+    // Æ½ºâPID¿ØÖÆ Gyro_BalanceÆ½ºâ½ÇËÙ¶È¼«ĞÔ£ºÇ°ÇãÎªÕı£¬ºóÇãÎª¸º
     control_balance = angle_controller(angle_y, gyro_y);
 
-    // é€Ÿåº¦ç¯PIDæ§åˆ¶,è®°ä½ï¼Œé€Ÿåº¦åé¦ˆæ˜¯æ­£åé¦ˆï¼Œå°±æ˜¯å°è½¦å¿«çš„æ—¶å€™è¦æ…¢ä¸‹æ¥å°±éœ€è¦å†è·‘å¿«ä¸€ç‚¹
+    // ËÙ¶È»·PID¿ØÖÆ,¼Ç×¡£¬ËÙ¶È·´À¡ÊÇÕı·´À¡£¬¾ÍÊÇĞ¡³µ¿ìµÄÊ±ºòÒªÂıÏÂÀ´¾ÍĞèÒªÔÙÅÜ¿ìÒ»µã
     control_velocity = velocity_controller(wheel_left_f, wheel_right_f);
 
-    // è½¬å‘ç¯PIDæ§åˆ¶
+    // ×ªÏò»·PID¿ØÖÆ
     control_turn = turn_controller(_ahrs->yaw, gyro_z);
 
-    // motorå€¼æ­£æ•°ä½¿å°è½¦å‰è¿›ï¼Œè´Ÿæ•°ä½¿å°è½¦åé€€, èŒƒå›´ã€-1ï¼Œ1ã€‘
-    motor_target_left_f  = control_balance + control_velocity + control_turn; // è®¡ç®—å·¦è½®ç”µæœºæœ€ç»ˆPWM
-    motor_target_right_f = control_balance + control_velocity - control_turn; // è®¡ç®—å³è½®ç”µæœºæœ€ç»ˆPWM
+    // motorÖµÕıÊıÊ¹Ğ¡³µÇ°½ø£¬¸ºÊıÊ¹Ğ¡³µºóÍË, ·¶Î§¡¾-1£¬1¡¿
+    motor_target_left_f  = control_balance + control_velocity + control_turn; // ¼ÆËã×óÂÖµç»ú×îÖÕPWM
+    motor_target_right_f = control_balance + control_velocity - control_turn; // ¼ÆËãÓÒÂÖµç»ú×îÖÕPWM
 
     motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
     motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
 
-    // æœ€ç»ˆçš„ç”µæœºè¾“å…¥é‡
+    // ×îÖÕµÄµç»úÊäÈëÁ¿
     balanceCAN->setCurrent(0, (int16_t)motor_target_left_int);
     balanceCAN->setCurrent(1, (int16_t)motor_target_right_int);
 
-    // è…¿éƒ¨èˆµæœºæ§åˆ¶
+    // ÍÈ²¿¶æ»ú¿ØÖÆ
     roll_controller(_ahrs->roll);
 
-    // è®¾ç½®æ¨¡å¼
+    // ÉèÖÃÄ£Ê½
     set_control_mode();
 
-    // æ£€æŸ¥æ˜¯å¦å¤±æ§
-    check_rotation();
+    // ¼ì²éÊÇ·ñÊ§¿Ø
+    if (Pick_Up(_ahrs->get_accel_ef().z, angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
+        Flag_Stop = true;
+    }
+
+    if (Put_Down(angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
+        Flag_Stop = false;
+    }
+
+    debug_info();
 }
 
 void AC_BalanceControl::set_control_mode(void)
@@ -294,7 +302,7 @@ void AC_BalanceControl::set_control_mode(void)
 void AC_BalanceControl::debug_info()
 {
 
-    // è°ƒè¯•ç”¨
+    // µ÷ÊÔÓÃ
     static uint16_t cnt = 0;
     cnt++;
     if (cnt > 400) {
@@ -309,16 +317,71 @@ void AC_BalanceControl::debug_info()
     }
 }
 
-void AC_BalanceControl::check_rotation()
+/**************************************************************************
+Function: Check whether the car is picked up
+Input   : Acceleration£ºZ-axis acceleration£»Angle£ºThe angle of balance£»encoder_left£ºLeft encoder count£»encoder_right£ºRight encoder count
+Output  : 1£ºpicked up  0£ºNo action
+º¯Êı¹¦ÄÜ£º¼ì²âĞ¡³µÊÇ·ñ±»ÄÃÆğ
+Èë¿Ú²ÎÊı£ºAcceleration£ºzÖá¼ÓËÙ¶È£»Angle£ºÆ½ºâµÄ½Ç¶È£»encoder_left£º×ó±àÂëÆ÷¼ÆÊı£»encoder_right£ºÓÒ±àÂëÆ÷¼ÆÊı
+·µ»Ø  Öµ£º1:Ğ¡³µ±»ÄÃÆğ  0£ºĞ¡³µÎ´±»ÄÃÆğ
+**************************************************************************/
+bool AC_BalanceControl::Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right)
 {
-    static uint16_t check_cnt = 0;
-
-    if (balanceCAN->getSpeed(0) + balanceCAN->getSpeed(1) > 5000) {
-        if (++check_cnt > 200 * 1.5) {
-            is_max_rotation = true;
-        }
-    } else {
-        is_max_rotation = false;
-        check_cnt       = 0;
+    static uint16_t flag, count0, count1, count2;
+    if (flag == 0) // µÚÒ»²½
+    {
+        if ((abs(encoder_left) + abs(encoder_right)) < 100) // Ìõ¼ş1£¬Ğ¡³µ½Ó½ü¾²Ö¹
+            count0++;
+        else
+            count0 = 0;
+        if (count0 > 10) flag = 1, count0 = 0;
     }
+    if (flag == 1) // ½øÈëµÚ¶ş²½
+    {
+        if (++count1 > (2 * 200)) count1 = 0, flag = 0;         // ³¬Ê±²»ÔÙµÈ´ı2000ms£¬·µ»ØµÚÒ»²½
+        if ((Acceleration > 0.75) && ((fabsf(Angle) - 10) < 0)) // Ìõ¼ş2£¬Ğ¡³µÊÇÔÚ0¶È¸½½ü±»ÄÃÆğ
+            flag = 2;
+    }
+    if (flag == 2) // µÚÈı²½
+    {
+        if (++count2 > (1 * 200)) count2 = 0, flag = 0; // ³¬Ê±²»ÔÙµÈ´ı1000ms
+        if (abs(encoder_left + encoder_right) > 15000)  // Ìõ¼ş3£¬Ğ¡³µµÄÂÖÌ¥ÒòÎªÕı·´À¡´ïµ½×î´óµÄ×ªËÙ
+        {
+            flag = 0;
+            return true; // ¼ì²âµ½Ğ¡³µ±»ÄÃÆğ
+        }
+    }
+    return false;
+}
+
+/**************************************************************************
+Function: Check whether the car is lowered
+Input   : The angle of balance£»Left encoder count£»Right encoder count
+Output  : 1£ºput down  0£ºNo action
+º¯Êı¹¦ÄÜ£º¼ì²âĞ¡³µÊÇ·ñ±»·ÅÏÂ
+Èë¿Ú²ÎÊı£ºÆ½ºâ½Ç¶È£»×ó±àÂëÆ÷¶ÁÊı£»ÓÒ±àÂëÆ÷¶ÁÊı
+·µ»Ø  Öµ£º1£ºĞ¡³µ·ÅÏÂ   0£ºĞ¡³µÎ´·ÅÏÂ
+**************************************************************************/
+bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_right)
+{
+    static uint16_t flag, count;
+    if (Flag_Stop == false) // ·ÀÖ¹Îó¼ì
+        return 0;
+    if (flag == 0) {
+        if ((fabsf(Angle) - 10) < 0 && abs(encoder_left) < 20 && abs(encoder_right) < 20) // Ìõ¼ş1£¬Ğ¡³µÊÇÔÚ0¶È¸½½üµÄ
+            flag = 1;
+    }
+    if (flag == 1) {
+        if (++count > 50) // ³¬Ê±²»ÔÙµÈ´ı 500ms
+        {
+            count = 0;
+            flag  = 0;
+        }
+        if (abs(encoder_left) > 50 && abs(encoder_right) > 50) // Ìõ¼ş2£¬Ğ¡³µµÄÂÖÌ¥ÔÚÎ´ÉÏµçµÄÊ±ºò±»ÈËÎª×ª¶¯
+        {
+            flag = 0;
+            return true; // ¼ì²âµ½Ğ¡³µ±»·ÅÏÂ
+        }
+    }
+    return false;
 }

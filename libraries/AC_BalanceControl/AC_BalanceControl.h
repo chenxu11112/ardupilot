@@ -102,8 +102,8 @@ public:
         landing_check          = 4,
     };
 
-    void check_rotation();
-
+    bool Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right);
+    bool Put_Down(float Angle, int encoder_left, int encoder_right);
     void debug_info();
 
 protected:
@@ -166,5 +166,5 @@ protected:
     bool  alt_ok;
     float alt_cm;
 
-    bool is_max_rotation;
+    bool Flag_Stop;
 };
