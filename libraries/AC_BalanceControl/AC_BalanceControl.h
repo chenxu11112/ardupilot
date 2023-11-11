@@ -99,7 +99,8 @@ public:
         balance_car            = 1,
         flying_with_balance    = 2,
         flying_without_balance = 3,
-        landing_check          = 4,
+        landing_ground_idle    = 4,
+        landing_finish         = 5,
     };
 
     bool Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right);
@@ -167,4 +168,6 @@ protected:
     float alt_cm;
 
     bool Flag_Stop;
+
+    bool force_stop_balance_control;
 };
