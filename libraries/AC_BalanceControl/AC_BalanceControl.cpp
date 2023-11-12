@@ -53,6 +53,8 @@ AC_BalanceControl::AC_BalanceControl(AP_Motors* motors, AP_AHRS_View* ahrs)
     balanceMode = BalanceMode::ground;
 
     stop_balance_control = false;
+
+    force_stop_balance_control = false;
 }
 
 void AC_BalanceControl::init()
@@ -79,7 +81,7 @@ float AC_BalanceControl::angle_controller(float Angle, float Gyro)
     // 计算平衡控制的电机PWM  PD控制   kp是P系数 kd是D系数
     angle_out = _pid_angle.kP() * angle_bias + gyro_bias * _pid_angle.kD();
 
-    if (stop_balance_control || Flag_Stop) {
+    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
         angle_out  = 0;
         angle_bias = 0;
         gyro_bias  = 0;
@@ -117,7 +119,7 @@ float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_r
 
     velocity_out = _pid_speed.update_all(0.0f, encoder_error_filter, _dt);
 
-    if (stop_balance_control || Flag_Stop) {
+    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
         _pid_speed.reset_I();
         encoder_error        = 0;
         encoder_error_filter = 0;
@@ -149,7 +151,7 @@ float AC_BalanceControl::turn_controller(float yaw, float gyro)
     //===================转向PD控制器=================//
     turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
 
-    if (stop_balance_control || Flag_Stop) {
+    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
         turn_out    = 0;
         turn_target = 0;
     }
@@ -233,6 +235,12 @@ void AC_BalanceControl::update(void)
     }
 
     debug_info();
+
+    if (hal.rcin->read(CH_8) > 1700) {
+        force_stop_balance_control = true;
+    } else {
+        force_stop_balance_control = false;
+    }
 }
 
 void AC_BalanceControl::set_control_mode(void)
@@ -244,33 +252,43 @@ void AC_BalanceControl::set_control_mode(void)
                 gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
             }
             break;
-        case BalanceMode::balance_car:
-            if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1200) && (hal.rcin->read(CH_8)) > 1600) {
 
+        case BalanceMode::balance_car:
+            if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1200)) {
                 balanceMode = BalanceMode::flying_with_balance;
                 gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
             }
             break;
-        case BalanceMode::flying_with_balance:
-            if ((alt_cm >= 8) && (hal.rcin->read(CH_3) > 1200)) {
 
-                balanceMode = BalanceMode::flying_without_balance;
+        case BalanceMode::flying_with_balance:
+            if ((alt_cm >= 8) && (hal.rcin->read(CH_3) > 1200) && (hal.rcin->read(CH_8)) > 1600) {
+                stop_balance_control = true;
+                balanceMode          = BalanceMode::flying_without_balance;
                 gcs().send_text(MAV_SEVERITY_NOTICE, "flying_without_balance");
             }
             break;
+
         case BalanceMode::flying_without_balance:
             // set_control_zeros();
-            stop_balance_control = true;
-            if ((alt_cm < 10) && (hal.rcin->read(CH_8) < 1600) && (hal.rcin->read(CH_3) < 1200)) {
-
-                balanceMode = BalanceMode::landing_check;
-                gcs().send_text(MAV_SEVERITY_NOTICE, "landing_check");
+            // stop_balance_control = true;
+            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1200)) {
+                stop_balance_control = true;
+                balanceMode          = BalanceMode::landing_ground_idle;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "landing_ground_idle");
             }
             break;
-        case BalanceMode::landing_check:
-            if ((alt_cm < 8)) {
-                balanceMode          = BalanceMode::ground;
+
+        case BalanceMode::landing_ground_idle:
+            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1200) && (hal.rcin->read(CH_8)) < 1600) {
                 stop_balance_control = false;
+                balanceMode          = BalanceMode::landing_finish;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "landing_finish");
+            }
+            break;
+
+        case BalanceMode::landing_finish:
+            if ((alt_cm < 8)) {
+                balanceMode = BalanceMode::ground;
                 gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
             }
             break;
