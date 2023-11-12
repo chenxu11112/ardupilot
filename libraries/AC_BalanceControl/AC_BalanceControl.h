@@ -68,6 +68,7 @@ public:
     float turn_controller(float yaw, float gyro);
     void  roll_controller(float roll);
 
+    void pilot_control();
     void set_control_mode();
 
     void update(void);
@@ -126,8 +127,8 @@ protected:
 
     AP_Float _max_speed;
 
-    AP_Float Target_Velocity_X;
-    AP_Float Target_Velocity_Z;
+    AP_Float Target_MAX_Velocity_X;
+    AP_Float Target_MAX_Velocity_Z;
 
     ///////////////////////////////////////////////////////
     // 直立环参数
@@ -150,8 +151,8 @@ protected:
     float turn_out;
 
     ///////////////////////////////////////////////////////
-    uint8_t _moveflag_x;
-    uint8_t _moveflag_z;
+    int16_t _movement_x;
+    int16_t _movement_z;
     uint8_t stop_balance_control;
 
     ///////////////////////////////////////////////////////
