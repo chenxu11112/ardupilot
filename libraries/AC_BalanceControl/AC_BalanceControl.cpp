@@ -101,7 +101,7 @@ Output  : Speed control PWM
 float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_right)
 {
     //================遥控前进后退部分====================//
-    encoder_movement = _movement_x / 500 * Target_MAX_Velocity_X;
+    encoder_movement = (float)_movement_x / 500.0f * Target_MAX_Velocity_X;
 
     //================速度PI控制器=====================//
 
@@ -133,7 +133,7 @@ Output  : Turn control PWM
 float AC_BalanceControl::turn_controller(float yaw, float gyro)
 {
     //===================遥控左右旋转部分=================//
-    turn_target = _movement_z / 500 * Target_MAX_Velocity_Z;
+    turn_target = (float)_movement_z / 500.0f * Target_MAX_Velocity_Z;
 
     //===================转向PD控制器=================//
     turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
@@ -152,7 +152,9 @@ void AC_BalanceControl::roll_controller(float roll)
 
     float roll_out;
 
-    roll_out = _pid_roll.update_all(0.0f, roll, _dt);
+    float roll_target = (float)_movement_y / 500.0f * radians(45.0f);
+
+    roll_out = _pid_roll.update_all(roll_target, roll, _dt);
 
     _motors->set_roll_out(roll_out); // -1 ~ 1
 }
@@ -292,11 +294,12 @@ void AC_BalanceControl::pilot_control()
 {
     int16_t pwm_x = hal.rcin->read(CH_1) - 1500;
     int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
+    int16_t pwm_y = hal.rcin->read(CH_3) - 1500;
 
     if (pwm_x < 50 && pwm_x > -50) {
         _movement_x = 0;
-    } else if (abs(pwm_z) > 500) {
-        _movement_z = 0;
+    } else if (abs(pwm_x) > 500) {
+        _movement_x = 0;
     } else {
         _movement_x = pwm_x;
     }
@@ -307,6 +310,14 @@ void AC_BalanceControl::pilot_control()
         _movement_z = 0;
     } else {
         _movement_z = pwm_z;
+    }
+
+    if (pwm_y < 50 && pwm_y > -50) {
+        _movement_y = 0;
+    } else if (abs(pwm_y) > 500) {
+        _movement_y = 0;
+    } else {
+        _movement_y = pwm_y;
     }
 }
 
