@@ -119,8 +119,8 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
 
     // 平衡车 轮腿舵机
-    SRV_Channels::set_output_scaled(SRV_Channel::k_LeftJointMotor, -_roll_out * 9000);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_RightJointMotor, +_roll_out * 9000);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_LeftJointMotor, -_roll_out * 9000);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_RightJointMotor, +_roll_out * 9000);
 
 }
 

@@ -5,6 +5,8 @@
 
 #include "stdio.h"
 
+float global_wheel[2];
+
 extern const AP_HAL::HAL& hal;
 
 // table of user settable parameters
@@ -166,10 +168,11 @@ void AC_BalanceControl::update(void)
         return;
     }
 
-    if (balanceCAN == nullptr) {
-        gcs().send_text(MAV_SEVERITY_WARNING, "balanceCAN = nullptr");
-        return;
-    }
+    // if (balanceCAN == nullptr) {
+    //     gcs().send_text(MAV_SEVERITY_WARNING, "balanceCAN = nullptr");
+    //     return;
+    // }
+
     if (_ahrs == nullptr) {
         gcs().send_text(MAV_SEVERITY_WARNING, "_ahrs = nullptr");
         return;
@@ -185,8 +188,11 @@ void AC_BalanceControl::update(void)
     gyro_z  = _ahrs->get_gyro_latest()[2];
 
     // 转速缩小1000倍
-    wheel_left_f  = (float)balanceCAN->getSpeed(0) / max_scale_value;
-    wheel_right_f = -(float)balanceCAN->getSpeed(1) / max_scale_value;
+    // wheel_left_f  = (float)balanceCAN->getSpeed(0) / max_scale_value;
+    // wheel_right_f = -(float)balanceCAN->getSpeed(1) / max_scale_value;
+
+    wheel_left_f  = global_wheel[0];
+    wheel_right_f = global_wheel[1];
 
     // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
     control_balance = angle_controller(angle_y, gyro_y);
@@ -202,11 +208,13 @@ void AC_BalanceControl::update(void)
     motor_target_right_f = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
 
     motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
-    motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
+    motor_target_right_int = (int16_t)(motor_target_right_f * max_scale_value);
 
     // 最终的电机输入量
-    balanceCAN->setCurrent(0, (int16_t)motor_target_left_int);
-    balanceCAN->setCurrent(1, (int16_t)motor_target_right_int);
+    // balanceCAN->setCurrent(0, (int16_t)motor_target_left_int);
+    // balanceCAN->setCurrent(1, (int16_t)motor_target_right_int);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_LeftJointMotor, motor_target_left_int * 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_RightJointMotor, motor_target_right_int * 9000);
 
     // 腿部舵机控制
     roll_controller(_ahrs->roll);
@@ -218,21 +226,23 @@ void AC_BalanceControl::update(void)
     pilot_control();
 
     // 检查是否失控
-    if (Pick_Up(_ahrs->get_accel_ef().z, angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
-        Flag_Stop = true;
-    }
+    // if (Pick_Up(_ahrs->get_accel_ef().z, angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
+    //     Flag_Stop = true;
+    // }
 
-    if (Put_Down(angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
-        Flag_Stop = false;
-    }
+    // if (Put_Down(angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
+    //     Flag_Stop = false;
+    // }
 
     debug_info();
 
-    if (hal.rcin->read(CH_8) > 1700) {
-        force_stop_balance_control = true;
-    } else {
+    if (hal.rcin->read(CH_8) == 2000) {
         force_stop_balance_control = false;
+    } else {
+        force_stop_balance_control = true;
     }
+
+
 }
 
 void AC_BalanceControl::set_control_mode(void)
@@ -323,17 +333,16 @@ void AC_BalanceControl::pilot_control()
 
 void AC_BalanceControl::debug_info()
 {
-
     // 调试用
     static uint16_t cnt = 0;
     cnt++;
     if (cnt > 400) {
         cnt = 0;
         gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
-        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(0));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(1));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "left_target_current=%d", balanceCAN->getCurrent(0));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "right_target_current=%d", balanceCAN->getCurrent(1));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%f", global_wheel[0]);
+        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%f", global_wheel[1]);
+        // gcs().send_text(MAV_SEVERITY_NOTICE, "left_target_current=%d", balanceCAN->getCurrent(0));
+        // gcs().send_text(MAV_SEVERITY_NOTICE, "right_target_current=%d", balanceCAN->getCurrent(1));
         gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);
         gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
     }

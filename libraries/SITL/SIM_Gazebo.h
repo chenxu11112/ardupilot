@@ -68,6 +68,7 @@ private:
       double imu_orientation_quat[4];
       double velocity_xyz[3];
       double position_xyz[3];
+      double wheel_v[2];
     };
 
     void recv_fdm(const struct sitl_input &input);

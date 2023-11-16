@@ -20,6 +20,9 @@
 
 #if HAL_SIM_GAZEBO_ENABLED
 
+extern float global_wheel[2];
+
+
 #include <stdio.h>
 #include <errno.h>
 
@@ -70,6 +73,7 @@ void Gazebo::send_servos(const struct sitl_input &input)
     socket_sitl.sendto(&pkt, sizeof(pkt), _gazebo_address, _gazebo_port);
 }
 
+
 /*
   receive an update from the FDM
   This is a blocking function
@@ -119,6 +123,9 @@ void Gazebo::recv_fdm(const struct sitl_input &input)
                         pkt.position_xyz[1],
                         pkt.position_xyz[2]);
     position.xy() += origin.get_distance_NE_double(home);
+
+    global_wheel[0] = static_cast<float>(pkt.wheel_v[0]);
+    global_wheel[1] = static_cast<float>(pkt.wheel_v[1]);
 
     // auto-adjust to simulation frame rate
     time_now_us += static_cast<uint64_t>(deltat * 1.0e6);
