@@ -5619,7 +5619,10 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             0,
             0,
             0)
+
         self.progress("Sending control message")
+        self.context_push()
+        self.context_collect('COMMAND_LONG')
         self.mav.mav.digicam_control_send(
             1, # target_system
             1, # target_component
@@ -5634,21 +5637,56 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         )
         self.mav.mav.srcSystem = old_srcSystem
 
-        self.progress("Expecting a command long")
-        tstart = self.get_sim_time_cached()
-        while True:
-            now = self.get_sim_time_cached()
-            if now - tstart > 2:
-                raise NotAchievedException("Did not receive digicam_control message")
-            m = self.mav.recv_match(type='COMMAND_LONG', blocking=True, timeout=0.1)
-            self.progress("Message: %s" % str(m))
-            if m is None:
-                continue
-            if m.command != mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONTROL:
-                raise NotAchievedException("Did not get correct command")
-            if m.param6 != 17:
-                raise NotAchievedException("Did not get correct command_id")
-            break
+        self.assert_received_message_field_values('COMMAND_LONG', {
+            'command': mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONTROL,
+            'param6': 17,
+        }, timeout=2, check_context=True)
+        self.context_pop()
+
+        # test sending via commands:
+        for run_cmd in self.run_cmd, self.run_cmd_int:
+            self.progress("Sending control command")
+            self.context_push()
+            self.context_collect('COMMAND_LONG')
+            run_cmd(mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONTROL,
+                    p1=1, # start or keep it up
+                    p2=1, # zoom_pos
+                    p3=0, # zoom_step
+                    p4=0, # focus_lock
+                    p5=0, # 1 shot or start filming
+                    p6=37, # command id (de-dupe field)
+                    )
+
+            self.assert_received_message_field_values('COMMAND_LONG', {
+                'command': mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONTROL,
+                'param6': 37,
+            }, timeout=2, check_context=True)
+
+            self.context_pop()
+
+        # test sending via commands:
+        for run_cmd in self.run_cmd, self.run_cmd_int:
+            self.progress("Sending configure command")
+            self.context_push()
+            self.context_collect('COMMAND_LONG')
+            run_cmd(mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONFIGURE,
+                    p1=1,
+                    p2=1,
+                    p3=0,
+                    p4=0,
+                    p5=12,
+                    p6=37
+                    )
+
+            self.assert_received_message_field_values('COMMAND_LONG', {
+                'command': mavutil.mavlink.MAV_CMD_DO_DIGICAM_CONFIGURE,
+                'param5': 12,
+                'param6': 37,
+            }, timeout=2, check_context=True)
+
+            self.context_pop()
+
+        self.mav.mav.srcSystem = old_srcSystem
 
     def SkidSteer(self):
         '''Check skid-steering'''
@@ -6017,7 +6055,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             timeout=1,
             target_sysid=target_sysid,
             target_compid=target_compid,
-            want_result=mavutil.mavlink.MAV_RESULT_FAILED,
+            want_result=mavutil.mavlink.MAV_RESULT_DENIED,
         )
 
     def FlashStorage(self):
@@ -6576,6 +6614,20 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.run_cmd_int(mavutil.mavlink.MAV_CMD_DO_FENCE_ENABLE, p1=0)
         self.assert_fence_disabled()
 
+    def MAV_CMD_BATTERY_RESET(self):
+        '''manipulate battery levels with MAV_CMD_BATTERY_RESET'''
+        for (run_cmd, value) in (self.run_cmd, 56), (self.run_cmd_int, 97):
+            run_cmd(
+                mavutil.mavlink.MAV_CMD_BATTERY_RESET,
+                p1=65535,  # battery mask
+                p2=value,
+            )
+            self.assert_received_message_field_values('BATTERY_STATUS', {
+                "battery_remaining": value,
+            }, {
+                "poll": True,
+            })
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestRover, self).tests()
@@ -6659,6 +6711,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             self.MAV_CMD_DO_SET_REVERSE,
             self.MAV_CMD_GET_HOME_POSITION,
             self.MAV_CMD_DO_FENCE_ENABLE,
+            self.MAV_CMD_BATTERY_RESET,
         ])
         return ret
 

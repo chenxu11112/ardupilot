@@ -8,7 +8,6 @@ from __future__ import print_function
 import math
 import os
 import signal
-import sys
 import time
 
 from pymavlink import quaternion
@@ -191,16 +190,17 @@ class AutoTestPlane(vehicle_test_suite.TestSuite):
         self.context_collect("STATUSTEXT")
         tstart = self.get_sim_time()
         success = False
-        while not success:
-            if self.get_sim_time_cached() - tstart > 60:
-                raise NotAchievedException("Did not get correct failure reason")
-            self.run_cmd_run_prearms()
-            try:
-                self.wait_statustext(".*AHRS: not using configured AHRS type.*", timeout=1, check_context=True, regex=True)
-                success = True
-                continue
-            except AutoTestTimeoutException:
-                pass
+        for run_cmd in self.run_cmd, self.run_cmd_int:
+            while not success:
+                if self.get_sim_time_cached() - tstart > 60:
+                    raise NotAchievedException("Did not get correct failure reason")
+                run_cmd(mavutil.mavlink.MAV_CMD_RUN_PREARM_CHECKS)
+                try:
+                    self.wait_statustext(".*AHRS: not using configured AHRS type.*", timeout=1, check_context=True, regex=True)
+                    success = True
+                    continue
+                except AutoTestTimeoutException:
+                    pass
 
         self.set_parameter("SIM_GPS_DISABLE", 0)
         self.wait_ready_to_arm()
@@ -1908,7 +1908,40 @@ class AutoTestPlane(vehicle_test_suite.TestSuite):
                            accuracy=200,
                            target_altitude=None,
                            timeout=600)
-        self.progress("Reached rally point")
+        self.progress("Reached rally point with TERRAIN_FOLLOW")
+
+        # Fly back to guided location
+        self.change_mode("GUIDED")
+        self.do_reposition(guided_loc, frame=mavutil.mavlink.MAV_FRAME_GLOBAL_TERRAIN_ALT)
+        self.progress("Flying to back to guided location")
+
+        # Disable terrain following and re-load rally point with relative to terrain altitude
+        self.set_parameter("TERRAIN_FOLLOW", 0)
+
+        rally_item = [self.create_MISSION_ITEM_INT(
+            mavutil.mavlink.MAV_CMD_NAV_RALLY_POINT,
+            x=int(rally_loc.lat*1e7),
+            y=int(rally_loc.lng*1e7),
+            z=rally_loc.alt,
+            frame=mavutil.mavlink.MAV_FRAME_GLOBAL_TERRAIN_ALT,
+            mission_type=mavutil.mavlink.MAV_MISSION_TYPE_RALLY
+        )]
+        self.correct_wp_seq_numbers(rally_item)
+        self.check_rally_upload_download(rally_item)
+
+        # Once back at guided location re-trigger RTL
+        self.wait_location(guided_loc,
+                           accuracy=200,
+                           target_altitude=None,
+                           timeout=600)
+
+        self.change_mode("RTL")
+        self.progress("Flying to rally point")
+        self.wait_location(rally_loc,
+                           accuracy=200,
+                           target_altitude=None,
+                           timeout=600)
+        self.progress("Reached rally point with terrain alt frame")
 
         self.context_pop()
         self.disarm_vehicle(force=True)
@@ -4165,24 +4198,85 @@ class AutoTestPlane(vehicle_test_suite.TestSuite):
 
         self.fly_home_land_and_disarm()
 
-    def MegaSquirt(self):
-        '''Test MegaSquirt EFI'''
+    def EFITest(self, efi_type, name, sim_name, check_fuel_flow=True):
+        '''method to be called by EFI tests'''
+        self.start_subtest("EFI Test for (%s)" % name)
         self.assert_not_receiving_message('EFI_STATUS')
         self.set_parameters({
-            'SIM_EFI_TYPE': 1,
-            'EFI_TYPE': 1,
+            'SIM_EFI_TYPE': efi_type,
+            'EFI_TYPE': efi_type,
             'SERIAL5_PROTOCOL': 24,
+            'RPM1_TYPE': 10,
         })
-        self.customise_SITL_commandline(["--uartF=sim:megasquirt"])
-        self.delay_sim_time(5)
-        m = self.assert_receive_message('EFI_STATUS')
-        mavutil.dump_message_verbose(sys.stdout, m)
-        if m.throttle_out != 0:
-            raise NotAchievedException("Expected zero throttle")
-        if m.health != 1:
-            raise NotAchievedException("Not healthy")
-        if m.intake_manifold_temperature < 20:
-            raise NotAchievedException("Bad intake manifold temperature")
+
+        self.customise_SITL_commandline(
+            ["--uartF=sim:%s" % sim_name,
+             ],
+        )
+        self.wait_ready_to_arm()
+
+        baro_m = self.assert_receive_message("SCALED_PRESSURE")
+        self.progress(self.dump_message_verbose(baro_m))
+        baro_temperature = baro_m.temperature / 100.0  # cDeg->deg
+        m = self.assert_received_message_field_values("EFI_STATUS", {
+            "throttle_out": 0,
+            "health": 1,
+        }, very_verbose=1)
+
+        if abs(baro_temperature - m.intake_manifold_temperature) > 1:
+            raise NotAchievedException(
+                "Bad intake manifold temperature (want=%f got=%f)" %
+                (baro_temperature, m.intake_manifold_temperature))
+
+        self.arm_vehicle()
+
+        self.set_rc(3, 1300)
+
+        tstart = self.get_sim_time()
+        while True:
+            now = self.get_sim_time_cached()
+            if now - tstart > 10:
+                raise NotAchievedException("RPM1 and EFI_STATUS.rpm did not match")
+            rpm_m = self.assert_receive_message("RPM", verbose=1)
+            want_rpm = 1000
+            if rpm_m.rpm1 < want_rpm:
+                continue
+
+            m = self.assert_receive_message("EFI_STATUS", verbose=1)
+            if abs(m.rpm - rpm_m.rpm1) > 100:
+                continue
+
+            break
+
+        self.progress("now we're started, check a few more values")
+        # note that megasquirt drver doesn't send throttle, so throttle_out is zero!
+        m = self.assert_received_message_field_values("EFI_STATUS", {
+            "health": 1,
+        }, very_verbose=1)
+        m = self.wait_message_field_values("EFI_STATUS", {
+            "throttle_position": 31,
+            "intake_manifold_temperature": 28,
+        }, very_verbose=1, epsilon=2)
+
+        if check_fuel_flow:
+            if abs(m.fuel_flow - 0.2) < 0.0001:
+                raise NotAchievedException("Expected fuel flow")
+
+        self.set_rc(3, 1000)
+
+        # need to force disarm as the is_flying flag can trigger with the engine running
+        self.disarm_vehicle(force=True)
+
+    def MegaSquirt(self):
+        '''test MegaSquirt driver'''
+        self.EFITest(
+            1, "MegaSquirt", "megasquirt",
+            check_fuel_flow=False,
+        )
+
+    def Hirth(self):
+        '''Test Hirth EFI'''
+        self.EFITest(8, "Hirth", "hirth")
 
     def GlideSlopeThresh(self):
         '''Test rebuild glide slope if above and climbing'''
@@ -5061,6 +5155,52 @@ class AutoTestPlane(vehicle_test_suite.TestSuite):
 
         self.fly_home_land_and_disarm()
 
+    def MAV_CMD_NAV_ALTITUDE_WAIT(self):
+        '''test MAV_CMD_NAV_ALTITUDE_WAIT mission item, wiggling only'''
+
+        # Load a single waypoint
+        self.upload_simple_relhome_mission([
+            self.create_MISSION_ITEM_INT(
+                mavutil.mavlink.MAV_CMD_NAV_ALTITUDE_WAIT,
+                p1=1000, # 1000m alt threshold, this should not trigger
+                p2=10, # 10m/s descent rate, this should not trigger
+                p3=10 # servo wiggle every 10 seconds
+            )
+        ])
+
+        def look_for_wiggle(mav, m):
+            if m.get_type() == 'SERVO_OUTPUT_RAW':
+                # Throttle must be zero
+                if m.servo3_raw != 1000:
+                    raise NotAchievedException(
+                        "Throttle must be 0 in altitude wait, got %f" % m.servo3_raw)
+                # Aileron, elevator and rudder must all be the same
+                # However, aileron is revered, so we must un-reverse it
+                value = 1500 - (m.servo1_raw - 1500)
+                if (m.servo2_raw != value) or (m.servo4_raw != value):
+                    raise NotAchievedException(
+                        "Aileron, elevator and rudder must be the same")
+
+        # Start mission
+        self.change_mode('AUTO')
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        # Check outputs
+        self.context_push()
+        self.install_message_hook_context(look_for_wiggle)
+
+        # Wait for a bit to let message hook sample
+        self.delay_sim_time(60)
+
+        self.context_pop()
+
+        # If the mission item completes as there is no other waypoints we will end up in RTL
+        if not self.mode_is('AUTO'):
+            raise NotAchievedException("Must still be in AUTO")
+
+        self.disarm_vehicle()
+
     def start_flying_simple_rehome_mission(self, items):
         '''uploads items, changes mode to auto, waits ready to arm and arms
         vehicle.  If the first item it a takeoff you can expect the
@@ -5233,6 +5373,7 @@ class AutoTestPlane(vehicle_test_suite.TestSuite):
             self.AUTOTUNE,
             self.AutotuneFiltering,
             self.MegaSquirt,
+            self.Hirth,
             self.MSP_DJI,
             self.SpeedToFly,
             self.GlideSlopeThresh,
@@ -5259,6 +5400,7 @@ class AutoTestPlane(vehicle_test_suite.TestSuite):
             self.MAV_CMD_DO_GO_AROUND,
             self.MAV_CMD_DO_FLIGHTTERMINATION,
             self.MAV_CMD_DO_LAND_START,
+            self.MAV_CMD_NAV_ALTITUDE_WAIT,
             self.InteractTest,
             self.MAV_CMD_MISSION_START,
             self.TerrainRally,

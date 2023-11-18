@@ -17,7 +17,7 @@ const AP_Param::GroupInfo AP_BattMonitor_Params::var_info[] = {
     // @Param: MONITOR
     // @DisplayName: Battery monitoring
     // @Description: Controls enabling monitoring of the battery's voltage and current
-    // @Values: 0:Disabled,3:Analog Voltage Only,4:Analog Voltage and Current,5:Solo,6:Bebop,7:SMBus-Generic,8:DroneCAN-BatteryInfo,9:ESC,10:Sum Of Selected Monitors,11:FuelFlow,12:FuelLevelPWM,13:SMBUS-SUI3,14:SMBUS-SUI6,15:NeoDesign,16:SMBus-Maxell,17:Generator-Elec,18:Generator-Fuel,19:Rotoye,20:MPPT,21:INA2XX,22:LTC2946,23:Torqeedo,24:FuelLevelAnalog,25:Synthetic Current and Analog Voltage,26:INA239_SPI,27:EFI
+    // @Values: 0:Disabled,3:Analog Voltage Only,4:Analog Voltage and Current,5:Solo,6:Bebop,7:SMBus-Generic,8:DroneCAN-BatteryInfo,9:ESC,10:Sum Of Selected Monitors,11:FuelFlow,12:FuelLevelPWM,13:SMBUS-SUI3,14:SMBUS-SUI6,15:NeoDesign,16:SMBus-Maxell,17:Generator-Elec,18:Generator-Fuel,19:Rotoye,20:MPPT,21:INA2XX,22:LTC2946,23:Torqeedo,24:FuelLevelAnalog,25:Synthetic Current and Analog Voltage,26:INA239_SPI,27:EFI,28:AD7091R5
     // @User: Standard
     // @RebootRequired: True
     AP_GROUPINFO_FLAGS("MONITOR", 1, AP_BattMonitor_Params, _type, int8_t(AP_BattMonitor::Type::NONE), AP_PARAM_FLAG_ENABLE),
@@ -150,7 +150,7 @@ const AP_Param::GroupInfo AP_BattMonitor_Params::var_info[] = {
     // @Param: OPTIONS
     // @DisplayName: Battery monitor options
     // @Description: This sets options to change the behaviour of the battery monitor
-    // @Bitmask: 0:Ignore DroneCAN SoC, 1:MPPT reports input voltage and current, 2:MPPT Powered off when disarmed, 3:MPPT Powered on when armed, 4:MPPT Powered off at boot, 5:MPPT Powered on at boot, 6:Send resistance compensated voltage to GCS
+    // @Bitmask: 0:Ignore DroneCAN SoC, 1:MPPT reports input voltage and current, 2:MPPT Powered off when disarmed, 3:MPPT Powered on when armed, 4:MPPT Powered off at boot, 5:MPPT Powered on at boot, 6:Send resistance compensated voltage to GCS, 7:Allow DroneCAN InfoAux to be from a different CAN node
     // @User: Advanced
     AP_GROUPINFO("OPTIONS", 21, AP_BattMonitor_Params, _options, 0),
 #endif // HAL_BUILD_AP_PERIPH

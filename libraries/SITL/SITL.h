@@ -178,6 +178,7 @@ public:
     AP_Vector3f mag_offdiag[HAL_COMPASS_MAX_SENSORS];  // off-diagonal corrections
     AP_Int8 mag_orient[HAL_COMPASS_MAX_SENSORS];   // external compass orientation
     AP_Int8 mag_fail[HAL_COMPASS_MAX_SENSORS];   // fail magnetometer, 1 for no data, 2 for freeze
+    AP_Int8 mag_save_ids;
     AP_Float servo_speed; // servo speed in seconds
 
     AP_Float sonar_glitch;// probability between 0-1 that any given sonar sample will read as max distance
@@ -295,6 +296,7 @@ public:
     enum EFIType {
         EFI_TYPE_NONE = 0,
         EFI_TYPE_MS = 1,
+        EFI_TYPE_HIRTH = 8,
     };
     
     AP_Int8  efi_type;

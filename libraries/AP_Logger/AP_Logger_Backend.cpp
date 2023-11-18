@@ -519,7 +519,8 @@ bool AP_Logger_Backend::Write_RallyPoint(uint8_t total,
         sequence        : sequence,
         latitude        : rally_point.lat,
         longitude       : rally_point.lng,
-        altitude        : rally_point.alt
+        altitude        : rally_point.alt,
+        flags           : rally_point.flags
     };
     return WriteBlock(&pkt_rally, sizeof(pkt_rally));
 }
@@ -573,14 +574,13 @@ bool AP_Logger_Backend::Write_VER()
         patch: fwver.patch,
         fw_type: fwver.fw_type,
         git_hash: fwver.fw_hash,
-        build_type: fwver.vehicle_type,
     };
     strncpy(pkt.fw_string, fwver.fw_string, ARRAY_SIZE(pkt.fw_string)-1);
 
 #ifdef APJ_BOARD_ID
     pkt._APJ_BOARD_ID = APJ_BOARD_ID;
 #endif
-
+    pkt.build_type = fwver.vehicle_type;
     return WriteCriticalBlock(&pkt, sizeof(pkt));
 }
 

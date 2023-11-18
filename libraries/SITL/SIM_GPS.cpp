@@ -39,6 +39,7 @@ GPS_Backend::GPS_Backend(GPS &_front, uint8_t _instance)
     : front{_front},
       instance{_instance}
 {
+    _sitl = AP::sitl();
 }
 
 ssize_t GPS_Backend::write_to_autopilot(const char *p, size_t size) const
@@ -53,13 +54,6 @@ ssize_t GPS_Backend::read_from_autopilot(char *buffer, size_t size) const
 
 void GPS_Backend::update(const GPS_Data &d)
 {
-    if (_sitl == nullptr) {
-        _sitl = AP::sitl();
-        if (_sitl == nullptr) {
-            return;
-        }
-    }
-
     update_read(&d);
     update_write(&d);
 }
@@ -1086,9 +1080,9 @@ void GPS_GSOF::update_write(const GPS_Data *d)
     } pos {
         GSOF_POS_TYPE,
         GSOF_POS_LEN,
-        pack_double_into_gsof_packet(d->latitude * DEG_TO_RAD_DOUBLE),
-        pack_double_into_gsof_packet(d->longitude * DEG_TO_RAD_DOUBLE),
-        pack_double_into_gsof_packet(static_cast<double>(d->altitude))
+        gsof_pack_double(d->latitude * DEG_TO_RAD_DOUBLE),
+        gsof_pack_double(d->longitude * DEG_TO_RAD_DOUBLE),
+        gsof_pack_double(static_cast<double>(d->altitude))
     };
     static_assert(sizeof(gsof_pos) - (sizeof(gsof_pos::OUTPUT_RECORD_TYPE) + sizeof(gsof_pos::RECORD_LEN)) == GSOF_POS_LEN); 
     
@@ -1127,11 +1121,11 @@ void GPS_GSOF::update_write(const GPS_Data *d)
         GSOF_VEL_TYPE,
         GSOF_VEL_LEN,
         vel_flags,
-        pack_float_into_gsof_packet(d->speed_2d()),
-        pack_float_into_gsof_packet(d->heading()),
+        gsof_pack_float(d->speed_2d()),
+        gsof_pack_float(d->heading()),
         // Trimble API has ambiguous direction here.
         // Intentionally narrow from double.
-        pack_float_into_gsof_packet(static_cast<float>(d->speedD))
+        gsof_pack_float(static_cast<float>(d->speedD))
     };
     static_assert(sizeof(gsof_vel) - (sizeof(gsof_vel::OUTPUT_RECORD_TYPE) + sizeof(gsof_vel::RECORD_LEN)) == GSOF_VEL_LEN);
 
@@ -1219,7 +1213,6 @@ void GPS_GSOF::send_gsof(const uint8_t *buf, const uint16_t size)
         TRANSMISSION_NUMBER,
         PAGE_INDEX,
         MAX_PAGE_INDEX,
-
     };
     ++TRANSMISSION_NUMBER;
 
@@ -1243,7 +1236,6 @@ void GPS_GSOF::send_gsof(const uint8_t *buf, const uint16_t size)
         PACKET_TYPE,
         length
     };
-
 
 
     // Sum bytes (status + type + length + data bytes) and modulo 256 the summation
@@ -1273,7 +1265,7 @@ void GPS_GSOF::send_gsof(const uint8_t *buf, const uint16_t size)
     }
 }
 
-uint64_t GPS_GSOF::pack_double_into_gsof_packet(const double& src)
+uint64_t GPS_GSOF::gsof_pack_double(const double& src)
 {
     uint64_t dst;
     static_assert(sizeof(src) == sizeof(dst));
@@ -1282,7 +1274,7 @@ uint64_t GPS_GSOF::pack_double_into_gsof_packet(const double& src)
     return dst;
 }
 
-uint32_t GPS_GSOF::pack_float_into_gsof_packet(const float& src)
+uint32_t GPS_GSOF::gsof_pack_float(const float& src)
 {
     uint32_t dst;
     static_assert(sizeof(src) == sizeof(dst));

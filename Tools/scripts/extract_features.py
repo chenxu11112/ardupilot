@@ -82,6 +82,7 @@ class ExtractFeatures(object):
             ('AP_RANGEFINDER_LWI2C_ENABLED', r'AP_RangeFinder_LightWareI2C::update\b',),
             ('AP_RANGEFINDER_MAXBOTIX_SERIAL_ENABLED', r'AP_RangeFinder_MaxsonarSerialLV::get_reading\b',),
             ('AP_RANGEFINDER_TRI2C_ENABLED', r'AP_RangeFinder_TeraRangerI2C::update\b',),
+            ('AP_RANGEFINDER_JRE_SERIAL_ENABLED', r'AP_RangeFinder_JRE_Serial::get_reading\b',),
 
             ('AP_GPS_{type}_ENABLED', r'AP_GPS_(?P<type>.*)::read\b',),
 
@@ -122,6 +123,7 @@ class ExtractFeatures(object):
 
             ('AP_CAMERA_ENABLED', 'AP_Camera::var_info',),
             ('AP_CAMERA_{type}_ENABLED', 'AP_Camera_(?P<type>.*)::trigger_pic',),
+            ('AP_CAMERA_SEND_FOV_STATUS_ENABLED', 'AP_Camera::send_camera_fov_status'),
             ('HAL_RUNCAM_ENABLED', 'AP_RunCam::AP_RunCam',),
 
             ('HAL_PROXIMITY_ENABLED', 'AP_Proximity::AP_Proximity',),
@@ -140,6 +142,7 @@ class ExtractFeatures(object):
             ('HAL_EFI_ENABLED', 'AP_RPM_EFI::AP_RPM_EFI',),
             ('AP_EFI_NWPWU_ENABLED', r'AP_EFI_NWPMU::update\b',),
             ('AP_EFI_CURRAWONG_ECU_ENABLED', r'AP_EFI_Currawong_ECU::update\b',),
+            ('AP_EFI_SERIAL_HIRTH_ENABLED', r'AP_EFI_Serial_Hirth::update\b',),
             ('HAL_GENERATOR_ENABLED', 'AP_Generator::AP_Generator',),
             ('AP_GENERATOR_{type}_ENABLED', r'AP_Generator_(?P<type>.*)::init',),
 
@@ -190,6 +193,7 @@ class ExtractFeatures(object):
             ('HAL_DISPLAY_ENABLED', r'Display::init\b',),
             ('HAL_NMEA_OUTPUT_ENABLED', r'AP_NMEA_Output::update\b',),
             ('HAL_BARO_WIND_COMP_ENABLED', r'AP_Baro::wind_pressure_correction\b',),
+            ('AP_TEMPCALIBRATION_ENABLED', r'AP_TempCalibration::apply_calibration',),
 
             ('HAL_PICCOLO_CAN_ENABLE', r'AP_PiccoloCAN::update',),
             ('EK3_FEATURE_EXTERNAL_NAV', r'NavEKF3::writeExtNavVelData'),

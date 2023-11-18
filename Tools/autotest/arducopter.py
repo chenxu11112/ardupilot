@@ -3226,6 +3226,71 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.wait_disarmed()
             self.delay_sim_time(20)
 
+    def FlyMissionTwiceWithReset(self):
+        '''Fly a mission twice in a row without changing modes in between.
+        Allow the mission to complete, then reset the mission state machine and restart the mission.'''
+
+        self.upload_simple_relhome_mission([
+            (mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 20),
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 20, 0, 20),
+            (mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH, 0, 0, 0),
+        ])
+
+        num_wp = self.get_mission_count()
+        self.set_parameter("AUTO_OPTIONS", 3)
+        self.change_mode('AUTO')
+        self.wait_ready_to_arm()
+
+        for i in 1, 2:
+            self.progress("run %u" % i)
+            # Use the "Reset Mission" param of DO_SET_MISSION_CURRENT to reset mission state machine
+            self.set_current_waypoint_using_mav_cmd_do_set_mission_current(seq=0, reset=1)
+            self.arm_vehicle()
+            self.wait_waypoint(num_wp-1, num_wp-1)
+            self.wait_disarmed()
+            self.delay_sim_time(20)
+
+    def MissionIndexValidity(self):
+        '''Confirm that attempting to select an invalid mission item is rejected.'''
+
+        self.upload_simple_relhome_mission([
+            (mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 20),
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 20, 0, 20),
+            (mavutil.mavlink.MAV_CMD_NAV_RETURN_TO_LAUNCH, 0, 0, 0),
+        ])
+
+        num_wp = self.get_mission_count()
+        accepted_indices = [0, 1, num_wp-1]
+        denied_indices = [-1, num_wp]
+
+        for seq in accepted_indices:
+            self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SET_MISSION_CURRENT,
+                         p1=seq,
+                         timeout=1,
+                         want_result=mavutil.mavlink.MAV_RESULT_ACCEPTED)
+
+        for seq in denied_indices:
+            self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SET_MISSION_CURRENT,
+                         p1=seq,
+                         timeout=1,
+                         want_result=mavutil.mavlink.MAV_RESULT_DENIED)
+
+    def InvalidJumpTags(self):
+        '''Verify the behaviour when selecting invalid jump tags.'''
+
+        MAX_TAG_NUM = 65535
+        # Jump tag is not present, so expect FAILED
+        self.run_cmd(mavutil.mavlink.MAV_CMD_DO_JUMP_TAG,
+                     p1=MAX_TAG_NUM,
+                     timeout=1,
+                     want_result=mavutil.mavlink.MAV_RESULT_FAILED)
+
+        # Jump tag is too big, so expect DENIED
+        self.run_cmd(mavutil.mavlink.MAV_CMD_DO_JUMP_TAG,
+                     p1=MAX_TAG_NUM+1,
+                     timeout=1,
+                     want_result=mavutil.mavlink.MAV_RESULT_DENIED)
+
     def GPSViconSwitching(self):
         """Fly GPS and Vicon switching test"""
         self.customise_SITL_commandline(["--uartF=sim:vicon:"])
@@ -5121,7 +5186,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.progress("Pitching vehicle")
             self.do_pitch(despitch)
             self.wait_pitch(despitch, despitch_tolerance)
-            self.test_mount_pitch(-despitch, 1, mavutil.mavlink.MAV_MOUNT_MODE_RC_TARGETING)
+            self.test_mount_pitch(0, 1, mavutil.mavlink.MAV_MOUNT_MODE_RC_TARGETING)
 
             # point gimbal at specified angle
             self.progress("Point gimbal using GIMBAL_MANAGER_PITCHYAW (ANGLE)")
@@ -9851,7 +9916,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
 
         self.start_subtest("Checking mavlink commands")
         self.progress("Starting Sprayer")
-        self.run_cmd(mavutil.mavlink.MAV_CMD_DO_SPRAYER, p1=1)
+        self.run_cmd_int(mavutil.mavlink.MAV_CMD_DO_SPRAYER, p1=1)
 
         self.progress("Testing speed-ramping")
         self.wait_servo_channel_value(
@@ -10544,6 +10609,9 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
             self.ThrottleGainBoost,
             self.ScriptMountPOI,
             self.FlyMissionTwice,
+            self.FlyMissionTwiceWithReset,
+            self.MissionIndexValidity,
+            self.InvalidJumpTags,
             self.IMUConsistency,
             self.AHRSTrimLand,
             self.GuidedYawRate,
