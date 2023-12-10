@@ -22,6 +22,7 @@
 #include <AP_IOMCU/AP_IOMCU.h>
 extern AP_IOMCU iomcu;
 #endif
+#include <AP_Scripting/AP_Scripting.h>
 
 #define SCHED_TASK(func, rate_hz, max_time_micros, prio) SCHED_TASK_CLASS(AP_Vehicle, &vehicle, func, rate_hz, max_time_micros, prio)
 
@@ -241,6 +242,11 @@ const AP_Param::GroupInfo AP_Vehicle::var_info[] = {
 #endif
 #endif // AP_NETWORKING_ENABLED
 
+#if AP_FILTER_ENABLED
+    // @Group: FILT
+    // @Path: ../Filter/AP_Filter.cpp
+    AP_SUBGROUPINFO(filters, "FILT", 26, AP_Vehicle, AP_Filters),
+#endif
     AP_GROUPEND
 };
 
@@ -308,14 +314,14 @@ void AP_Vehicle::setup()
     gcs().init();
 #endif
 
-#if AP_NETWORKING_ENABLED
-    networking.init();
-#endif
-
     // initialise serial ports
     serial_manager.init();
 #if HAL_GCS_ENABLED
     gcs().setup_console();
+#endif
+
+#if AP_NETWORKING_ENABLED
+    networking.init();
 #endif
 
     // Register scheduler_delay_cb, which will run anytime you have
@@ -418,6 +424,10 @@ void AP_Vehicle::setup()
 #endif
 
     custom_rotations.init();
+
+#if AP_FILTER_ENABLED
+    filters.init();
+#endif
 
 #if HAL_WITH_ESC_TELEM && HAL_GYROFFT_ENABLED
     for (uint8_t i = 0; i<ESC_TELEM_MAX_ESCS; i++) {
@@ -553,11 +563,12 @@ const AP_Scheduler::Task AP_Vehicle::scheduler_tasks[] = {
 #if HAL_EFI_ENABLED
     SCHED_TASK_CLASS(AP_EFI,       &vehicle.efi,            update,                   50, 200, 250),
 #endif
-#if HAL_INS_ACCELCAL_ENABLED
     SCHED_TASK(one_Hz_update,                                                         1, 100, 252),
-#endif
 #if HAL_WITH_ESC_TELEM && HAL_GYROFFT_ENABLED
     SCHED_TASK(check_motor_noise,      5,     50, 252),
+#endif
+#if AP_FILTER_ENABLED
+    SCHED_TASK_CLASS(AP_Filters,   &vehicle.filters,        update,                   1, 100, 252),
 #endif
     SCHED_TASK(update_arming,          1,     50, 253),
 };
@@ -932,6 +943,14 @@ void AP_Vehicle::one_Hz_update(void)
         }
 #endif
     }
+
+#if AP_SCRIPTING_ENABLED
+    AP_Scripting *scripting = AP_Scripting::get_singleton();
+    if (scripting != nullptr) {
+        scripting->update();
+    }
+#endif
+
 }
 
 void AP_Vehicle::check_motor_noise()

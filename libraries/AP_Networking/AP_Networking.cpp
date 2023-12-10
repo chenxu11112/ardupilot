@@ -7,6 +7,7 @@
 #include "AP_Networking_Backend.h"
 #include <GCS_MAVLink/GCS.h>
 #include <AP_Math/crc.h>
+#include <AP_InternalError/AP_InternalError.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -31,6 +32,7 @@ const AP_Param::GroupInfo AP_Networking::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO_FLAGS("ENABLED",  1, AP_Networking, param.enabled, 0, AP_PARAM_FLAG_ENABLE),
 
+#if AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED
     // @Group: IPADDR
     // @Path: AP_Networking_address.cpp
     AP_SUBGROUPINFO(param.ipaddr, "IPADDR", 2,  AP_Networking, AP_Networking_IPV4),
@@ -43,6 +45,7 @@ const AP_Param::GroupInfo AP_Networking::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("NETMASK", 3,  AP_Networking,    param.netmask,   AP_NETWORKING_DEFAULT_NETMASK),
 
+#if AP_NETWORKING_DHCP_AVAILABLE
     // @Param: DHCP
     // @DisplayName: DHCP client
     // @Description: Enable/Disable DHCP client
@@ -50,6 +53,7 @@ const AP_Param::GroupInfo AP_Networking::var_info[] = {
     // @RebootRequired: True
     // @User: Advanced
     AP_GROUPINFO("DHCP", 4,  AP_Networking,    param.dhcp,   AP_NETWORKING_DEFAULT_DHCP_ENABLE),
+#endif
 
     // @Group: GWADDR
     // @Path: AP_Networking_address.cpp
@@ -58,12 +62,13 @@ const AP_Param::GroupInfo AP_Networking::var_info[] = {
     // @Group: MACADDR
     // @Path: AP_Networking_macaddr.cpp
     AP_SUBGROUPINFO(param.macaddr, "MACADDR", 6,  AP_Networking, AP_Networking_MAC),
+#endif // AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED
 
 #if AP_NETWORKING_TESTS_ENABLED
     // @Param: TESTS
     // @DisplayName: Test enable flags
     // @Description: Enable/Disable networking tests
-    // @Bitmask: 0:UDP echo test,1:TCP echo test
+    // @Bitmask: 0:UDP echo test,1:TCP echo test, 2:TCP discard test
     // @RebootRequired: True
     // @User: Advanced
     AP_GROUPINFO("TESTS", 7,  AP_Networking,    param.tests,   0),
@@ -99,6 +104,7 @@ void AP_Networking::init()
         return;
     }
 
+#if AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED
     // set default MAC Address as lower 3 bytes of the CRC of the UID
     uint8_t uid[50];
     uint8_t uid_len = sizeof(uid);
@@ -113,6 +119,7 @@ void AP_Networking::init()
         param.macaddr.set_default_address_byte(4, crc.bytes[1]);
         param.macaddr.set_default_address_byte(5, crc.bytes[2]);
     }
+#endif
 
 #if AP_NETWORKING_BACKEND_CHIBIOS
     backend = new AP_Networking_ChibiOS(*this);
@@ -150,7 +157,7 @@ void AP_Networking::init()
  */
 void AP_Networking::announce_address_changes()
 {
-    auto &as = backend->activeSettings;
+    const auto &as = backend->activeSettings;
 
     if (as.last_change_ms == 0 || as.last_change_ms == announce_ms) {
         // nothing changed and we've already printed it at least once. Nothing to do.
@@ -254,6 +261,25 @@ uint32_t AP_Networking::get_netmask_active() const
 uint32_t AP_Networking::get_gateway_active() const
 {
     return backend?backend->activeSettings.gw:0;
+}
+
+/*
+  wait for networking to be active
+ */
+void AP_Networking::startup_wait(void) const
+{
+    if (hal.scheduler->in_main_thread()) {
+        INTERNAL_ERROR(AP_InternalError::error_t::flow_of_control);
+        return;
+    }
+    while (!hal.scheduler->is_system_initialized()) {
+        hal.scheduler->delay(100);
+    }
+#if AP_NETWORKING_BACKEND_CHIBIOS
+    do {
+        hal.scheduler->delay(250);
+    } while (get_ip_active() == 0);
+#endif
 }
 
 AP_Networking *AP_Networking::singleton;
