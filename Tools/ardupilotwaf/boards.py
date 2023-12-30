@@ -438,22 +438,24 @@ class Board:
                 '-Wl,--gc-sections',
             ]
 
-        if self.with_can and not cfg.env.AP_PERIPH:
-            env.AP_LIBRARIES += [
-                'AP_DroneCAN',
-                'modules/DroneCAN/libcanard/*.c',
-                ]
-            if cfg.options.enable_dronecan_tests:
+        if self.with_can:
+            # for both AP_Perip and main fw enable deadlines
+            env.DEFINES.update(CANARD_ENABLE_DEADLINE = 1)
+
+            if not cfg.env.AP_PERIPH:
+                env.AP_LIBRARIES += [
+                    'AP_DroneCAN',
+                    'modules/DroneCAN/libcanard/*.c',
+                    ]
+                if cfg.options.enable_dronecan_tests:
+                    env.DEFINES.update(AP_TEST_DRONECAN_DRIVERS = 1)
+
                 env.DEFINES.update(
-                    AP_TEST_DRONECAN_DRIVERS = 1
+                    DRONECAN_CXX_WRAPPERS = 1,
+                    USE_USER_HELPERS = 1,
+                    CANARD_ALLOCATE_SEM=1
                 )
 
-            env.DEFINES.update(
-                DRONECAN_CXX_WRAPPERS = 1,
-                USE_USER_HELPERS = 1,
-                CANARD_ENABLE_DEADLINE = 1,
-                CANARD_ALLOCATE_SEM=1
-            )
 
 
         if cfg.options.build_dates:
@@ -847,6 +849,7 @@ class sitl_periph_gps(sitl):
             HAL_PERIPH_ENABLE_RPM = 1,
             HAL_PERIPH_ENABLE_RC_OUT = 1,
             HAL_PERIPH_ENABLE_ADSB = 1,
+            HAL_PERIPH_ENABLE_SERIAL_OPTIONS = 1,
             AP_ICENGINE_ENABLED = 0,
             AP_AIRSPEED_ENABLED = 1,
             AP_AIRSPEED_AUTOCAL_ENABLE = 0,

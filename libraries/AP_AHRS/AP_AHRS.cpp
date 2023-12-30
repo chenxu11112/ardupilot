@@ -220,12 +220,12 @@ void AP_AHRS::init()
     }
 #if !HAL_NAVEKF2_AVAILABLE && HAL_NAVEKF3_AVAILABLE
     if (_ekf_type.get() == 2) {
-        _ekf_type.set(3);
+        _ekf_type.set(EKFType::THREE);
         EKF3.set_enable(true);
     }
 #elif !HAL_NAVEKF3_AVAILABLE && HAL_NAVEKF2_AVAILABLE
     if (_ekf_type.get() == 3) {
-        _ekf_type.set(2);
+        _ekf_type.set(EKFType::TWO);
         EKF2.set_enable(true);
     }
 #endif
@@ -234,7 +234,7 @@ void AP_AHRS::init()
     // a special case to catch users who had AHRS_EKF_TYPE=2 saved and
     // updated to a version where EK2_ENABLE=0
     if (_ekf_type.get() == 2 && !EKF2.get_enable() && EKF3.get_enable()) {
-        _ekf_type.set(3);
+        _ekf_type.set(EKFType::THREE);
     }
 #endif
 
@@ -810,6 +810,32 @@ bool AP_AHRS::_wind_estimate(Vector3f &wind) const
 #endif
     }
     return false;
+}
+
+
+/*
+ * Determine how aligned heading_deg is with the wind. Return result
+ * is 1.0 when perfectly aligned heading into wind, -1 when perfectly
+ * aligned with-wind, and zero when perfect cross-wind. There is no
+ * distinction between a left or right cross-wind. Wind speed is ignored
+ */
+float AP_AHRS::wind_alignment(const float heading_deg) const
+{
+    Vector3f wind;
+    if (!wind_estimate(wind)) {
+        return 0;
+    }
+    const float wind_heading_rad = atan2f(-wind.y, -wind.x);
+    return cosf(wind_heading_rad - radians(heading_deg));
+}
+
+/*
+ * returns forward head-wind component in m/s. Negative means tail-wind.
+ */
+float AP_AHRS::head_wind(void) const
+{
+    const float alignment = wind_alignment(yaw_sensor*0.01f);
+    return alignment * wind_estimate().xy().length();
 }
 
 /*

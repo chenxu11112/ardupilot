@@ -16,7 +16,7 @@
     $ sim_vehicle.py -v Plane -A "--serial3=uart:/dev/3dm-gq7" --console --map -DG
     $ ./Tools/autotest/sim_vehicle.py -v Plane -A "--serial3=uart:/dev/3dm-gq7" -DG
     param set AHRS_EKF_TYPE 11
-    param set EAHRS_TYPE 4
+    param set EAHRS_TYPE 7
     param set GPS_TYPE 21
     param set SERIAL3_BAUD 115
     param set SERIAL3_PROTOCOL 36
@@ -64,6 +64,11 @@ AP_ExternalAHRS_MicroStrain7::AP_ExternalAHRS_MicroStrain7(AP_ExternalAHRS *_fro
     if (!hal.scheduler->thread_create(FUNCTOR_BIND_MEMBER(&AP_ExternalAHRS_MicroStrain7::update_thread, void), "AHRS", 2048, AP_HAL::Scheduler::PRIORITY_SPI, 0)) {
         AP_BoardConfig::allocation_error("MicroStrain7 failed to allocate ExternalAHRS update thread");
     }
+
+    // don't offer IMU by default, at 100Hz it is too slow for many aircraft
+    set_default_sensors(uint16_t(AP_ExternalAHRS::AvailableSensor::GPS) |
+                        uint16_t(AP_ExternalAHRS::AvailableSensor::BARO) |
+                        uint16_t(AP_ExternalAHRS::AvailableSensor::COMPASS));
 
     hal.scheduler->delay(5000);
     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "MicroStrain7 ExternalAHRS initialised");
