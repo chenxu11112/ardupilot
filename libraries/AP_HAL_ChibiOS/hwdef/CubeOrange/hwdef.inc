@@ -195,7 +195,7 @@ PE6 SPI4_MOSI SPI4
 # means sensors off, then it is pulled HIGH in peripheral_power_enable()
 PE3 VDD_3V3_SENSORS_EN OUTPUT LOW
 
-# UART7 maps to uartF in the HAL (serial5 in SERIALn_ parameters).
+# UART7 maps to SERIAL5.
 PE7 UART7_RX UART7
 PE8 UART7_TX UART7
 
@@ -322,6 +322,10 @@ define HAL_GPIO_PWM_VOLT_3v3 1
 # is "ROMFS ROMFS-filename source-filename". Paths are relative to the
 # ardupilot root.
 ROMFS io_firmware.bin Tools/IO_Firmware/iofirmware_highpolh.bin
+
+# enable support for dshot on iomcu
+ROMFS io_firmware_dshot.bin Tools/IO_Firmware/iofirmware_dshot_highpolh.bin
+define HAL_WITH_IO_MCU_DSHOT 1
 
 DMA_NOSHARE SPI1* SPI4* USART6*
 

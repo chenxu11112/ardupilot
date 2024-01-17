@@ -27,6 +27,8 @@
 /// change in your local copy of APM_Config.h.
 ///
 #include "APM_Config.h"
+#include <AP_ADSB/AP_ADSB_config.h>
+#include <AP_Follow/AP_Follow_config.h>
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -189,7 +191,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Follow - follow another vehicle or GCS
 #ifndef MODE_FOLLOW_ENABLED
-# define MODE_FOLLOW_ENABLED ENABLED
+# define MODE_FOLLOW_ENABLED AP_FOLLOW_ENABLED
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -255,7 +257,7 @@
 //////////////////////////////////////////////////////////////////////////////
 // Turtle - allow vehicle to be flipped over after a crash
 #ifndef MODE_TURTLE_ENABLED
-# define MODE_TURTLE_ENABLED !defined(DISABLE_DSHOT) && FRAME_CONFIG != HELI_FRAME
+# define MODE_TURTLE_ENABLED HAL_DSHOT_ENABLED && FRAME_CONFIG != HELI_FRAME
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -429,10 +431,6 @@
 
 #ifndef RTL_CLIMB_MIN_DEFAULT
  # define RTL_CLIMB_MIN_DEFAULT     0       // vehicle will always climb this many cm as first stage of RTL
-#endif
-
-#ifndef RTL_ABS_MIN_CLIMB
- # define RTL_ABS_MIN_CLIMB         250     // absolute minimum initial climb
 #endif
 
 #ifndef RTL_CONE_SLOPE_DEFAULT
@@ -636,4 +634,12 @@
 
 #ifndef AC_CUSTOMCONTROL_MULTI_ENABLED
 #define AC_CUSTOMCONTROL_MULTI_ENABLED FRAME_CONFIG == MULTICOPTER_FRAME && AP_CUSTOMCONTROL_ENABLED
+#endif
+
+#ifndef AC_PAYLOAD_PLACE_ENABLED
+#define AC_PAYLOAD_PLACE_ENABLED 1
+#endif
+
+#ifndef USER_PARAMS_ENABLED
+  #define USER_PARAMS_ENABLED DISABLED
 #endif

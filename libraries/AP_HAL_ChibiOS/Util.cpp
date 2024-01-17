@@ -27,6 +27,7 @@
 #include "hwdef/common/flash.h"
 #include <AP_ROMFS/AP_ROMFS.h>
 #include <AP_Common/ExpandingString.h>
+#include <AP_InternalError/AP_InternalError.h>
 #include "sdcard.h"
 #include "shared_dma.h"
 #if defined(HAL_PWM_ALARM) || HAL_DSHOT_ALARM_ENABLED || HAL_CANMANAGER_ENABLED || HAL_USE_PWM == TRUE
@@ -137,7 +138,7 @@ void *Util::heap_realloc(void *heap, void *ptr, size_t old_size, size_t new_size
     void *new_mem = chHeapAlloc((memory_heap_t *)heap, new_size);
     if (new_mem != nullptr) {
         const size_t old_size2 = chHeapGetSize(ptr);
-#ifdef HAL_DEBUG_BUILD
+#if defined(HAL_DEBUG_BUILD) && !defined(IOMCU_FW)
         if (new_size != 0 && old_size2 != old_size) {
             INTERNAL_ERROR(AP_InternalError::error_t::invalid_arg_or_result);
         }

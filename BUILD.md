@@ -88,6 +88,7 @@ list some basic and more used commands as example.
     ./waf rover                             # Ground-based rovers and surface boats
     ./waf sub                               # ROV and other submarines
     ./waf antennatracker                    # Antenna trackers
+    ./waf AP_Periph                         # AP Peripheral
     
     ```
 
@@ -162,6 +163,18 @@ list some basic and more used commands as example.
     # unit test of our math functions
     ./waf --targets tests/test_math
     ```
+
+* **Use clang instead of gcc**
+
+    Currently, gcc is the default on linux, and clang is used for MacOS.
+    Building with clang on linux can be accomplished by setting the CXX
+    environment variables during the configure step, e.g.:
+
+    ```
+    CXX=clang++ CC=clang ./waf configure --board=sitl
+    ```
+
+    Note: Your clang binary names may differ.
 
 * **Other options**
 

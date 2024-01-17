@@ -37,8 +37,7 @@ public:
     CLASS_NO_COPY(AP_Camera_Backend);
 
     enum CAMOPTIONS {
-        NONE = 0,
-        REC_ARM_DISARM = 1, // Recording start/stop on Arm/Disarm
+        REC_ARM_DISARM = 0, // Recording start/stop on Arm/Disarm
     };
 
     // init - performs any required initialisation
@@ -59,6 +58,9 @@ public:
     // take multiple pictures, time_interval between two consecutive pictures is in miliseconds
     // total_num is number of pictures to be taken, -1 means capture forever
     void take_multiple_pictures(uint32_t time_interval_ms, int16_t total_num);
+
+    // stop capturing multiple image sequence
+    void stop_capture();
 
     // entry point to actually take a picture.  returns true on success
     virtual bool trigger_pic() = 0;
@@ -82,14 +84,18 @@ public:
     // set camera lens as a value from 0 to 5
     virtual bool set_lens(uint8_t lens) { return false; }
 
+    // get camera image horizontal or vertical field of view in degrees.  returns 0 if unknown
+    float horizontal_fov() const { return MAX(0, _params.hfov); }
+    float vertical_fov() const { return MAX(0, _params.vfov); }
+
     // handle MAVLink messages from the camera
     virtual void handle_message(mavlink_channel_t chan, const mavlink_message_t &msg) {}
 
     // configure camera
-    virtual void configure(float shooting_mode, float shutter_speed, float aperture, float ISO, float exposure_type, float cmd_id, float engine_cutoff_time) {}
+    virtual void configure(float shooting_mode, float shutter_speed, float aperture, float ISO, int32_t exposure_type, int32_t cmd_id, float engine_cutoff_time) {}
 
     // handle camera control
-    virtual void control(float session, float zoom_pos, float zoom_step, float focus_lock, float shooting_cmd, float cmd_id);
+    virtual void control(float session, float zoom_pos, float zoom_step, float focus_lock, int32_t shooting_cmd, int32_t cmd_id);
 
     // set camera trigger distance in meters
     void set_trigger_distance(float distance_m) { _params.trigg_dist.set(distance_m); }
@@ -102,6 +108,14 @@ public:
 
     // send camera settings message to GCS
     virtual void send_camera_settings(mavlink_channel_t chan) const;
+
+#if AP_CAMERA_SEND_FOV_STATUS_ENABLED
+    // send camera field of view status
+    void send_camera_fov_status(mavlink_channel_t chan) const;
+#endif
+
+    // send camera capture status message to GCS
+    virtual void send_camera_capture_status(mavlink_channel_t chan) const;
 
 #if AP_CAMERA_SCRIPTING_ENABLED
     // accessor to allow scripting backend to retrieve state

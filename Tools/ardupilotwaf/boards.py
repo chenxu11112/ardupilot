@@ -148,6 +148,15 @@ class Board:
             )
             cfg.msg("Enabled custom controller", 'no', color='YELLOW')
 
+        if cfg.options.enable_ppp:
+            env.CXXFLAGS += ['-DAP_NETWORKING_BACKEND_PPP=1']
+
+        if cfg.options.disable_networking:
+            env.CXXFLAGS += ['-DAP_NETWORKING_ENABLED=0']
+
+        if cfg.options.enable_networking_tests:
+            env.CXXFLAGS += ['-DAP_NETWORKING_TESTS_ENABLED=1']
+            
         d = env.get_merged_dict()
         # Always prepend so that arguments passed in the command line get
         # the priority.
@@ -432,22 +441,24 @@ class Board:
                 '-Wl,--gc-sections',
             ]
 
-        if self.with_can and not cfg.env.AP_PERIPH:
-            env.AP_LIBRARIES += [
-                'AP_DroneCAN',
-                'modules/DroneCAN/libcanard/*.c',
-                ]
-            if cfg.options.enable_dronecan_tests:
+        if self.with_can:
+            # for both AP_Perip and main fw enable deadlines
+            env.DEFINES.update(CANARD_ENABLE_DEADLINE = 1)
+
+            if not cfg.env.AP_PERIPH:
+                env.AP_LIBRARIES += [
+                    'AP_DroneCAN',
+                    'modules/DroneCAN/libcanard/*.c',
+                    ]
+                if cfg.options.enable_dronecan_tests:
+                    env.DEFINES.update(AP_TEST_DRONECAN_DRIVERS = 1)
+
                 env.DEFINES.update(
-                    AP_TEST_DRONECAN_DRIVERS = 1
+                    DRONECAN_CXX_WRAPPERS = 1,
+                    USE_USER_HELPERS = 1,
+                    CANARD_ALLOCATE_SEM=1
                 )
 
-            env.DEFINES.update(
-                DRONECAN_CXX_WRAPPERS = 1,
-                USE_USER_HELPERS = 1,
-                CANARD_ENABLE_DEADLINE = 1,
-                CANARD_ALLOCATE_SEM=1
-            )
 
 
         if cfg.options.build_dates:
@@ -456,8 +467,8 @@ class Board:
         # We always want to use PRI format macros
         cfg.define('__STDC_FORMAT_MACROS', 1)
 
-        if cfg.options.disable_ekf2:
-            env.CXXFLAGS += ['-DHAL_NAVEKF2_AVAILABLE=0']
+        if cfg.options.enable_ekf2:
+            env.CXXFLAGS += ['-DHAL_NAVEKF2_AVAILABLE=1']
 
         if cfg.options.disable_ekf3:
             env.CXXFLAGS += ['-DHAL_NAVEKF3_AVAILABLE=0']
@@ -508,6 +519,7 @@ class Board:
     def build(self, bld):
         bld.ap_version_append_str('GIT_VERSION', bld.git_head_hash(short=True))
         bld.ap_version_append_int('GIT_VERSION_INT', int("0x" + bld.git_head_hash(short=True), base=16))
+        bld.ap_version_append_str('AP_BUILD_ROOT', bld.srcnode.abspath())
         import time
         ltime = time.localtime()
         if bld.env.build_dates:
@@ -614,7 +626,7 @@ Please use a replacement build as follows:
 ''' % ctx.env.BOARD)
 
         boards = _board_classes.keys()
-        if not ctx.env.BOARD in boards:
+        if ctx.env.BOARD not in boards:
             ctx.fatal("Invalid board '%s': choices are %s" % (ctx.env.BOARD, ', '.join(sorted(boards, key=str.lower))))
         _board = _board_classes[ctx.env.BOARD]()
     return _board
@@ -626,10 +638,7 @@ Please use a replacement build as follows:
 class sitl(Board):
 
     def __init__(self):
-        if Utils.unversioned_sys_platform().startswith("linux"):
-            self.with_can = True
-        else:
-            self.with_can = False
+        self.with_can = True
 
     def configure_env(self, cfg, env):
         super(sitl, self).configure_env(cfg, env)
@@ -639,6 +648,8 @@ class sitl(Board):
             AP_SCRIPTING_CHECKS = 1, # SITL should always do runtime scripting checks
             AP_BARO_PROBE_EXTERNAL_I2C_BUSES = 1,
         )
+
+        env.BOARD_CLASS = "SITL"
 
         cfg.define('AP_SIM_ENABLED', 1)
         cfg.define('HAL_WITH_SPI', 1)
@@ -650,18 +661,36 @@ class sitl(Board):
         cfg.define('AP_NOTIFY_LP5562_BUS', 2)
         cfg.define('AP_NOTIFY_LP5562_ADDR', 0x30)
 
+        try:
+            env.CXXFLAGS.remove('-DHAL_NAVEKF2_AVAILABLE=0')
+        except ValueError:
+            pass
+        env.CXXFLAGS += ['-DHAL_NAVEKF2_AVAILABLE=1']
+
         if self.with_can:
             cfg.define('HAL_NUM_CAN_IFACES', 2)
             env.DEFINES.update(CANARD_MULTI_IFACE=1,
                                CANARD_IFACE_ALL = 0x3,
-                                CANARD_ENABLE_CANFD = 1,
-                                CANARD_ENABLE_ASSERTS = 1)
+                               CANARD_ENABLE_CANFD = 1,
+                               CANARD_ENABLE_ASSERTS = 1)
+            if not cfg.options.force_32bit:
+                # needed for cygwin
+                env.CXXFLAGS += [ '-DCANARD_64_BIT=1' ]
+                env.CFLAGS += [ '-DCANARD_64_BIT=1' ]
+            if Utils.unversioned_sys_platform().startswith("linux"):
+                cfg.define('HAL_CAN_WITH_SOCKETCAN', 1)
+            else:
+                cfg.define('HAL_CAN_WITH_SOCKETCAN', 0)
 
         env.CXXFLAGS += [
             '-Werror=float-equal',
             '-Werror=missing-declarations',
         ]
 
+        if not cfg.options.disable_networking and not 'clang' in cfg.env.COMPILER_CC:
+            # lwip doesn't build with clang
+            env.CXXFLAGS += ['-DAP_NETWORKING_ENABLED=1']
+        
         if cfg.options.ubsan or cfg.options.ubsan_abort:
             env.CXXFLAGS += [
                 "-fsanitize=undefined",
@@ -706,10 +735,9 @@ class sitl(Board):
             'AP_CSVReader',
         ]
 
-        if not cfg.env.AP_PERIPH:
-            env.AP_LIBRARIES += [
-                'SITL',
-            ]
+        env.AP_LIBRARIES += [
+            'SITL',
+        ]
 
         if cfg.options.enable_sfml:
             if not cfg.check_SFML(env):
@@ -779,6 +807,7 @@ class sitl(Board):
         # whitelist of compilers which we should build with -Werror
         gcc_whitelist = frozenset([
                 ('11','3','0'),
+                ('11','4','0'),
                 ('12','1','0'),
             ])
 
@@ -815,14 +844,28 @@ class sitl_periph_gps(sitl):
         env.DEFINES.update(
             HAL_BUILD_AP_PERIPH = 1,
             PERIPH_FW = 1,
-            CAN_APP_NODE_NAME = '"org.ardupilot.ap_periph_gps"',
-            AP_AIRSPEED_ENABLED = 0,
+            CAN_APP_NODE_NAME = '"org.ardupilot.ap_periph"',
             HAL_PERIPH_ENABLE_GPS = 1,
+            HAL_PERIPH_ENABLE_AIRSPEED = 1,
+            HAL_PERIPH_ENABLE_MAG = 1,
+            HAL_PERIPH_ENABLE_BARO = 1,
+            HAL_PERIPH_ENABLE_RANGEFINDER = 1,
+            HAL_PERIPH_ENABLE_BATTERY = 1,
+            HAL_PERIPH_ENABLE_EFI = 1,
+            HAL_PERIPH_ENABLE_RPM = 1,
+            HAL_PERIPH_ENABLE_RC_OUT = 1,
+            HAL_PERIPH_ENABLE_ADSB = 1,
+            HAL_PERIPH_ENABLE_SERIAL_OPTIONS = 1,
+            AP_ICENGINE_ENABLED = 0,
+            AP_AIRSPEED_ENABLED = 1,
+            AP_AIRSPEED_AUTOCAL_ENABLE = 0,
+            AP_AHRS_ENABLED = 1,
             AP_UART_MONITOR_ENABLED = 1,
             HAL_CAN_DEFAULT_NODE_ID = 0,
             HAL_RAM_RESERVE_START = 0,
             APJ_BOARD_ID = 100,
             HAL_GCS_ENABLED = 0,
+            HAL_MAVLINK_BINDINGS_ENABLED = 1,
             HAL_LOGGING_ENABLED = 0,
             HAL_LOGGING_MAVLINK_ENABLED = 0,
             AP_MISSION_ENABLED = 0,
@@ -836,7 +879,7 @@ class sitl_periph_gps(sitl):
             COMPASS_CAL_ENABLED = 0,
             COMPASS_MOT_ENABLED = 0,
             COMPASS_LEARN_ENABLED = 0,
-            AP_BATTERY_ESC_ENABLED = 0,
+            AP_BATTERY_ESC_ENABLED = 1,
             HAL_EXTERNAL_AHRS_ENABLED = 0,
             HAL_GENERATOR_ENABLED = 0,
             AP_STATS_ENABLED = 0,
@@ -844,14 +887,24 @@ class sitl_periph_gps(sitl):
             AP_CAN_SLCAN_ENABLED = 0,
             HAL_PROXIMITY_ENABLED = 0,
             AP_SCRIPTING_ENABLED = 0,
-            AP_AHRS_ENABLED = 0,
+            HAL_NAVEKF3_AVAILABLE = 0,
+            HAL_PWM_COUNT = 32,
+            HAL_WITH_ESC_TELEM = 1,
+            AP_RTC_ENABLED = 0,
         )
 
+        try:
+            env.CXXFLAGS.remove('-DHAL_NAVEKF2_AVAILABLE=1')
+        except ValueError:
+            pass
+        env.CXXFLAGS += ['-DHAL_NAVEKF2_AVAILABLE=0']
 
 class esp32(Board):
     abstract = True
     toolchain = 'xtensa-esp32-elf'
     def configure_env(self, cfg, env):
+        env.BOARD_CLASS = "ESP32"
+
         def expand_path(p):
             print("USING EXPRESSIF IDF:"+str(env.idf))
             return cfg.root.find_dir(env.IDF+p).abspath()
@@ -943,6 +996,7 @@ class chibios(Board):
 
         cfg.load('chibios')
         env.BOARD = self.name
+        env.BOARD_CLASS = "ChibiOS"
 
         env.DEFINES.update(
             CONFIG_HAL_BOARD = 'HAL_BOARD_CHIBIOS',
@@ -1107,7 +1161,8 @@ class chibios(Board):
         ]
 
         env.INCLUDES += [
-            cfg.srcnode.find_dir('libraries/AP_GyroFFT/CMSIS_5/include').abspath()
+            cfg.srcnode.find_dir('libraries/AP_GyroFFT/CMSIS_5/include').abspath(),
+            cfg.srcnode.find_dir('modules/lwip/src/include/compat/posix').abspath()
         ]
 
         # whitelist of compilers which we should build with -Werror
@@ -1118,6 +1173,7 @@ class chibios(Board):
             ('9','3','1'),
             ('10','2','1'),
             ('11','3','0'),
+            ('11','4','0'),
         ])
 
         if cfg.env.HAL_CANFD_SUPPORTED:
@@ -1181,6 +1237,8 @@ class linux(Board):
         if cfg.options.board == 'linux':
             self.with_can = True
         super(linux, self).configure_env(cfg, env)
+
+        env.BOARD_CLASS = "LINUX"
 
         env.DEFINES.update(
             CONFIG_HAL_BOARD = 'HAL_BOARD_LINUX',
@@ -1484,6 +1542,19 @@ class obal(linux):
             CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_OBAL_V1',
         )
 
+class canzero(linux):
+    toolchain = 'arm-linux-gnueabihf'
+
+    def __init__(self):
+        self.with_can = True
+
+    def configure_env(self, cfg, env):
+        super(canzero, self).configure_env(cfg, env)
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD_SUBTYPE = 'HAL_BOARD_SUBTYPE_LINUX_CANZERO',
+        )
+        
 class SITL_static(sitl):
     def configure_env(self, cfg, env):
         super(SITL_static, self).configure_env(cfg, env)
