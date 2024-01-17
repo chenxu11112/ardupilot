@@ -7,8 +7,8 @@
 
 
 #ifndef AP_NETWORKING_ENABLED
-#if defined(__APPLE__) || defined(__clang__)
-// MacOS can't build lwip, and clang fails on linux
+#if !defined(__APPLE__) && defined(__clang__)
+// clang fails on linux
 #define AP_NETWORKING_ENABLED 0
 #else
 #define AP_NETWORKING_ENABLED ((CONFIG_HAL_BOARD == HAL_BOARD_LINUX) || (CONFIG_HAL_BOARD == HAL_BOARD_SITL))
@@ -17,15 +17,6 @@
 
 #ifndef AP_NETWORKING_BACKEND_DEFAULT_ENABLED
 #define AP_NETWORKING_BACKEND_DEFAULT_ENABLED AP_NETWORKING_ENABLED
-#endif
-
-#ifndef AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED
-// AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED should only be true if we have the ability to
-// change the IP address. If not then the IP, GW, NetMask, MAC and DHCP params are hidden. 
-// This does not mean that the system/OS does not have the ability to set the IP, just that
-// we have no control from this scope. For example, Linux systems (including SITL) have
-// their own DHCP client running but we have no control over it.
-#define AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED (CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS)
 #endif
 
 // ---------------------------
@@ -48,6 +39,15 @@
 
 #ifndef AP_NETWORKING_SOCKETS_ENABLED
 #define AP_NETWORKING_SOCKETS_ENABLED AP_NETWORKING_ENABLED
+#endif
+
+#ifndef AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED
+// AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED should only be true if we have the ability to
+// change the IP address. If not then the IP, GW, NetMask, MAC and DHCP params are hidden. 
+// This does not mean that the system/OS does not have the ability to set the IP, just that
+// we have no control from this scope. For example, Linux systems (including SITL) have
+// their own DHCP client running but we have no control over it.
+#define AP_NETWORKING_CONTROLS_HOST_IP_SETTINGS_ENABLED AP_NETWORKING_BACKEND_CHIBIOS
 #endif
 
 #define AP_NETWORKING_NEED_LWIP (AP_NETWORKING_BACKEND_CHIBIOS || AP_NETWORKING_BACKEND_PPP)
@@ -117,5 +117,19 @@
 #endif
 
 #ifndef AP_NETWORKING_SENDFILE_BUFSIZE
-#define AP_NETWORKING_SENDFILE_BUFSIZE 10000
+#define AP_NETWORKING_SENDFILE_BUFSIZE (64*512)
 #endif
+
+#ifndef AP_NETWORKING_PPP_GATEWAY_ENABLED
+#define AP_NETWORKING_PPP_GATEWAY_ENABLED (AP_NETWORKING_BACKEND_CHIBIOS && AP_NETWORKING_BACKEND_PPP)
+#endif
+
+/*
+  the IP address given to the remote end of the PPP link when running
+  as a PPP<->ethernet gateway. If this is on the same subnet as the
+  ethernet interface IP then proxyarp will be used
+ */
+#ifndef AP_NETWORKING_REMOTE_PPP_IP
+#define AP_NETWORKING_REMOTE_PPP_IP "0.0.0.0"
+#endif
+

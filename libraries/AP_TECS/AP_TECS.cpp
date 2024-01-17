@@ -470,11 +470,19 @@ void AP_TECS::_update_speed_demand(void)
     // Constrain speed demand, taking into account the load factor
     _TAS_dem = constrain_float(_TAS_dem, _TASmin, _TASmax);
 
+    // Determine the true cruising airspeed (m/s)
+    const float TAScruise = 0.01f * (float)aparm.airspeed_cruise_cm * _ahrs.get_EAS2TAS();
+
     // calculate velocity rate limits based on physical performance limits
     // provision to use a different rate limit if bad descent or underspeed condition exists
-    // Use 50% of maximum energy rate to allow margin for total energy contgroller
+    // Use 50% of maximum energy rate on gain, 90% on dissipation to allow margin for total energy controller
     const float velRateMax = 0.5f * _STEdot_max / _TAS_state;
-    const float velRateMin = 0.5f * _STEdot_min / _TAS_state;
+    // Maximum permissible rate of deceleration value at max airspeed
+    const float velRateNegMax = 0.9f * _STEdot_neg_max / _TASmax;
+    // Maximum permissible rate of deceleration value at cruise speed
+    const float velRateNegCruise = 0.9f * _STEdot_min / TAScruise;
+    // Linear interpolation between velocity rate at cruise and max speeds, capped at those speeds
+    const float velRateMin = linear_interpolate(velRateNegMax, velRateNegCruise, _TAS_state, _TASmax, TAScruise);
     const float TAS_dem_previous = _TAS_dem_adj;
 
     // Apply rate limit
@@ -780,6 +788,7 @@ void AP_TECS::_update_throttle_with_airspeed(void)
         // Sum the components.
         _throttle_dem = _throttle_dem + _integTHR_state;
 
+#if HAL_LOGGING_ENABLED
         if (AP::logger().should_log(_log_bitmask)){
             AP::logger().WriteStreaming("TEC3","TimeUS,KED,PED,KEDD,PEDD,TEE,TEDE,FFT,Imin,Imax,I,Emin,Emax",
                                         "Qffffffffffff",
@@ -797,6 +806,7 @@ void AP_TECS::_update_throttle_with_airspeed(void)
                                         (double)SPE_err_min,
                                         (double)SPE_err_max);
         }
+#endif
     }
 
     // Constrain throttle demand and record clipping
@@ -848,7 +858,7 @@ void AP_TECS::_update_throttle_without_airspeed(int16_t throttle_nudge)
     // so that the throttle mapping adjusts for the effect of pitch control errors
     _pitch_demand_lpf.apply(_pitch_dem, _DT);
     const float pitch_demand_hpf = _pitch_dem - _pitch_demand_lpf.get();
-    _pitch_measured_lpf.apply(_ahrs.pitch, _DT);
+    _pitch_measured_lpf.apply(_ahrs.get_pitch(), _DT);
     const float pitch_corrected_lpf = _pitch_measured_lpf.get() - radians(0.01f * (float)aparm.pitch_trim_cd);
     const float pitch_blended = pitch_demand_hpf + pitch_corrected_lpf;
 
@@ -1049,6 +1059,7 @@ void AP_TECS::_update_pitch(void)
 
     _last_pitch_dem = _pitch_dem;
 
+#if HAL_LOGGING_ENABLED
     if (AP::logger().should_log(_log_bitmask)){
         // log to AP_Logger
         // @LoggerMessage: TEC2
@@ -1086,6 +1097,7 @@ void AP_TECS::_update_pitch(void)
                                     (double)_PITCHminf,
                                     (double)_PITCHmaxf);
     }
+#endif
 }
 
 void AP_TECS::_initialise_states(int32_t ptchMinCO_cd, float hgt_afe)
@@ -1099,7 +1111,7 @@ void AP_TECS::_initialise_states(int32_t ptchMinCO_cd, float hgt_afe)
         _integSEBdot          = 0.0f;
         _integKE              = 0.0f;
         _last_throttle_dem    = aparm.throttle_cruise * 0.01f;
-        _last_pitch_dem       = _ahrs.pitch;
+        _last_pitch_dem       = _ahrs.get_pitch();
         _hgt_afe              = hgt_afe;
         _hgt_dem_in_prev      = hgt_afe;
         _hgt_dem_lpf          = hgt_afe;
@@ -1130,8 +1142,8 @@ void AP_TECS::_initialise_states(int32_t ptchMinCO_cd, float hgt_afe)
         const float fc = 1.0f / (M_2PI * _timeConst);
         _pitch_demand_lpf.set_cutoff_frequency(fc);
         _pitch_measured_lpf.set_cutoff_frequency(fc);
-        _pitch_demand_lpf.reset(_ahrs.pitch);
-        _pitch_measured_lpf.reset(_ahrs.pitch);
+        _pitch_demand_lpf.reset(_ahrs.get_pitch());
+        _pitch_measured_lpf.reset(_ahrs.get_pitch());
 
     } else if (_flight_stage == AP_FixedWing::FlightStage::TAKEOFF || _flight_stage == AP_FixedWing::FlightStage::ABORT_LANDING) {
         _PITCHminf            = 0.000174533f * ptchMinCO_cd;
@@ -1151,8 +1163,8 @@ void AP_TECS::_initialise_states(int32_t ptchMinCO_cd, float hgt_afe)
         _max_climb_scaler = 1.0f;
         _max_sink_scaler = 1.0f;
 
-        _pitch_demand_lpf.reset(_ahrs.pitch);
-        _pitch_measured_lpf.reset(_ahrs.pitch);
+        _pitch_demand_lpf.reset(_ahrs.get_pitch());
+        _pitch_measured_lpf.reset(_ahrs.get_pitch());
     }
 
     if (_flight_stage != AP_FixedWing::FlightStage::TAKEOFF && _flight_stage != AP_FixedWing::FlightStage::ABORT_LANDING) {
@@ -1163,10 +1175,12 @@ void AP_TECS::_initialise_states(int32_t ptchMinCO_cd, float hgt_afe)
 
 void AP_TECS::_update_STE_rate_lim(void)
 {
-    // Calculate Specific Total Energy Rate Limits
+    // Calculate Specific Total Energy Rate Limits & deceleration rate bounds
+	// Keep the 50% energy margin from the original velRate calculation for now
     // This is a trivial calculation at the moment but will get bigger once we start adding altitude effects
     _STEdot_max = _climb_rate_limit * GRAVITY_MSS;
     _STEdot_min = - _minSinkRate * GRAVITY_MSS;
+    _STEdot_neg_max = - _maxSinkRate * GRAVITY_MSS;
 }
 
 
@@ -1362,6 +1376,7 @@ void AP_TECS::update_pitch_throttle(int32_t hgt_dem_cm,
         _flags.badDescent = false;
     }
 
+#if HAL_LOGGING_ENABLED
     if (AP::logger().should_log(_log_bitmask)){
         // log to AP_Logger
         // @LoggerMessage: TECS
@@ -1404,4 +1419,5 @@ void AP_TECS::update_pitch_throttle(int32_t hgt_dem_cm,
                                     (double)_TAS_rate_dem,
                                     _flags_byte);
     }
+#endif
 }
