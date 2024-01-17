@@ -1,8 +1,0 @@
-include ../GWIND-Periph/hwdef-bl.inc
-
-
-define CAN_APP_NODE_NAME "gwind.pwm"
-
-# a fault LED
-PA6 LED_BOOTLOADER OUTPUT LOW
-define HAL_LED_ON 0
