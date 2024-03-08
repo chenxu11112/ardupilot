@@ -544,7 +544,9 @@ static const ap_message STREAM_EXTRA3_msgs[] = {
     MSG_AHRS,
     MSG_SYSTEM_TIME,
     MSG_WIND,
+#if AP_RANGEFINDER_ENABLED
     MSG_RANGEFINDER,
+#endif
     MSG_DISTANCE_SENSOR,
 #if AP_TERRAIN_AVAILABLE
     MSG_TERRAIN,
@@ -1167,7 +1169,7 @@ bool GCS_MAVLINK_Copter::sane_vel_or_acc_vector(const Vector3f &vec) const
     return true;
 }
 
-void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
+void GCS_MAVLINK_Copter::handle_message(const mavlink_message_t &msg)
 {
 #if MODE_GUIDED_ENABLED == ENABLED
     // for mavlink SET_POSITION_TARGET messages
@@ -1485,17 +1487,6 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
     }
 #endif
 
-    case MAVLINK_MSG_ID_RADIO:
-    case MAVLINK_MSG_ID_RADIO_STATUS:       // MAV ID: 109
-    {
-#if HAL_LOGGING_ENABLED
-        handle_radio_status(msg, copter.should_log(MASK_LOG_PM));
-#else
-        handle_radio_status(msg, false);
-#endif
-        break;
-    }
-
     case MAVLINK_MSG_ID_TERRAIN_DATA:
     case MAVLINK_MSG_ID_TERRAIN_CHECK:
 #if AP_TERRAIN_AVAILABLE
@@ -1510,7 +1501,7 @@ void GCS_MAVLINK_Copter::handleMessage(const mavlink_message_t &msg)
 #endif
         
     default:
-        handle_common_message(msg);
+        GCS_MAVLINK::handle_message(msg);
         break;
     }     // end switch
 } // end handle mavlink

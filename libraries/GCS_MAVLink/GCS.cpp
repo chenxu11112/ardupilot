@@ -18,6 +18,7 @@
 #include <AP_Notify/AP_Notify.h>
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_GPS/AP_GPS.h>
+#include <RC_Channel/RC_Channel.h>
 
 #include "MissionItemProtocol_Waypoints.h"
 #include "MissionItemProtocol_Rally.h"
@@ -25,16 +26,16 @@
 
 extern const AP_HAL::HAL& hal;
 
-// if this assert fails then fix it and the comment in GCS.h where
-// _statustext_queue is declared
-#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
-assert_storage_size<GCS::statustext_t, 58> _assert_statustext_t_size;
-#endif
-
 void GCS::get_sensor_status_flags(uint32_t &present,
                                   uint32_t &enabled,
                                   uint32_t &health)
 {
+// if this assert fails then fix it and the comment in GCS.h where
+// _statustext_queue is declared
+#if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS
+ASSERT_STORAGE_SIZE(GCS::statustext_t, 58);
+#endif
+
     update_sensor_status_flags();
 
     present = control_sensors_present;
@@ -330,12 +331,22 @@ void GCS::update_sensor_status_flags()
 
     // give GCS status of prearm checks. This is enabled if any arming checks are enabled.
     // it is healthy if armed or checks are passing
-#if !defined(HAL_BUILD_AP_PERIPH)
+#if AP_ARMING_ENABLED
     control_sensors_present |= MAV_SYS_STATUS_PREARM_CHECK;
     if (AP::arming().get_enabled_checks()) {
         control_sensors_enabled |= MAV_SYS_STATUS_PREARM_CHECK;
         if (hal.util->get_soft_armed() || AP_Notify::flags.pre_arm_check) {
             control_sensors_health |= MAV_SYS_STATUS_PREARM_CHECK;
+        }
+    }
+#endif
+
+#if AP_RC_CHANNEL_ENABLED
+    if (rc().has_ever_seen_rc_input()) {
+        control_sensors_present |= MAV_SYS_STATUS_SENSOR_RC_RECEIVER;
+        control_sensors_enabled |= MAV_SYS_STATUS_SENSOR_RC_RECEIVER;
+        if (!rc().in_rc_failsafe()) {  // should this be has_valid_input?
+            control_sensors_health |= MAV_SYS_STATUS_SENSOR_RC_RECEIVER;
         }
     }
 #endif

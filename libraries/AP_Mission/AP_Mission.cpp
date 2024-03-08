@@ -2,18 +2,19 @@
 /// @brief   Handles the MAVLINK command mission stack.  Reads and writes mission to storage.
 
 #include "AP_Mission_config.h"
-#include <AP_Vehicle/AP_Vehicle_Type.h>
-#include <AP_Gripper/AP_Gripper_config.h>
-#include <GCS_MAVLink/GCS.h>
 
 #if AP_MISSION_ENABLED
 
-#include "AP_Mission.h"
-#include <AP_Terrain/AP_Terrain.h>
 #include <AP_AHRS/AP_AHRS.h>
-#include <AP_Camera/AP_Camera.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
+#include <AP_Camera/AP_Camera.h>
+#include <AP_Gripper/AP_Gripper_config.h>
+#include "AP_Mission.h"
+#include <AP_Scripting/AP_Scripting.h>
 #include <AP_ServoRelayEvents/AP_ServoRelayEvents_config.h>
+#include <AP_Terrain/AP_Terrain.h>
+#include <AP_Vehicle/AP_Vehicle_Type.h>
+#include <GCS_MAVLink/GCS.h>
 #include <RC_Channel/RC_Channel_config.h>
 
 const AP_Param::GroupInfo AP_Mission::var_info[] = {
@@ -728,6 +729,7 @@ struct PACKED Packed_Location_Option_Flags {
     uint8_t origin_alt   : 1;           // this altitude is above ekf origin
     uint8_t loiter_xtrack : 1;          // 0 to crosstrack from center of waypoint, 1 to crosstrack from tangent exit location
     uint8_t type_specific_bit_0 : 1;    // each mission item type can use this for storing 1 bit of extra data
+    uint8_t type_specific_bit_1 : 1;    // each mission item type can use this for storing 1 bit of extra data
 };
 
 struct PACKED PackedLocation {
@@ -754,12 +756,12 @@ union PackedContent {
 
 };
 
-assert_storage_size<PackedContent, 12> assert_storage_size_PackedContent;
-
 /// load_cmd_from_storage - load command from storage
 ///     true is return if successful
 bool AP_Mission::read_cmd_from_storage(uint16_t index, Mission_Command& cmd) const
 {
+    ASSERT_STORAGE_SIZE(PackedContent, 12);
+
     WITH_SEMAPHORE(_rsem);
 
     // special handling for command #0 which is home
@@ -815,7 +817,10 @@ bool AP_Mission::read_cmd_from_storage(uint16_t index, Mission_Command& cmd) con
         cmd.content.location.lng = packed_content.location.lng;
 
         if (packed_content.location.flags.type_specific_bit_0) {
-            cmd.type_specific_bits = 1U << 0;
+            cmd.type_specific_bits |= 1U << 0;
+        }
+        if (packed_content.location.flags.type_specific_bit_1) {
+            cmd.type_specific_bits |= 1U << 1;
         }
     } else {
         // all other options in Content are assumed to be packed:
@@ -831,8 +836,6 @@ bool AP_Mission::read_cmd_from_storage(uint16_t index, Mission_Command& cmd) con
     // return success
     return true;
 }
-
-#endif  // AP_MISSION_ENABLED
 
 bool AP_Mission::stored_in_location(uint16_t id)
 {
@@ -860,8 +863,6 @@ bool AP_Mission::stored_in_location(uint16_t id)
     }
 }
 
-#if AP_MISSION_ENABLED
-
 /// write_cmd_to_storage - write a command to storage
 ///     index is used to calculate the storage location
 ///     true is returned if successful
@@ -882,7 +883,8 @@ bool AP_Mission::write_cmd_to_storage(uint16_t index, const Mission_Command& cmd
         packed.location.flags.terrain_alt = cmd.content.location.terrain_alt;
         packed.location.flags.origin_alt = cmd.content.location.origin_alt;
         packed.location.flags.loiter_xtrack = cmd.content.location.loiter_xtrack;
-        packed.location.flags.type_specific_bit_0 = cmd.type_specific_bits & (1U<<0);
+        packed.location.flags.type_specific_bit_0 = (cmd.type_specific_bits & (1U<<0)) >> 0;
+        packed.location.flags.type_specific_bit_1 = (cmd.type_specific_bits & (1U<<1)) >> 1;
         packed.location.alt = cmd.content.location.alt;
         packed.location.lat = cmd.content.location.lat;
         packed.location.lng = cmd.content.location.lng;
@@ -934,8 +936,6 @@ void AP_Mission::write_home_to_storage()
     write_cmd_to_storage(0,home_cmd);
 }
 
-#endif  // AP_MISSION_ENABLED
-
 MAV_MISSION_RESULT AP_Mission::sanity_check_params(const mavlink_mission_item_int_t& packet)
 {
     uint8_t nan_mask;
@@ -983,6 +983,8 @@ MAV_MISSION_RESULT AP_Mission::sanity_check_params(const mavlink_mission_item_in
 //  return MAV_MISSION_ACCEPTED on success, MAV_MISSION_RESULT error on failure
 MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_item_int_t& packet, AP_Mission::Mission_Command& cmd)
 {
+    cmd = {};
+
     // command's position in mission list and mavlink id
     cmd.index = packet.seq;
     cmd.id = packet.command;
@@ -1029,18 +1031,25 @@ MAV_MISSION_RESULT AP_Mission::mavlink_int_to_mission_cmd(const mavlink_mission_
         break;
 
     case MAV_CMD_NAV_LOITER_TURNS: {                    // MAV ID: 18
-        // number of turns is stored in the lowest bits.  radii below
-        // 255m are stored in the top 8 bits as an 8-bit integer.
+        // number of turns is stored in the lowest bits. Number of
+        // turns 0 < N < 1 are stored multiplied by 256 and a bit set
+        // in storage so that on retrieval they are divided by 256.
+        // Radii below 255m are stored in the top 8 bits as an 8-bit integer.
         // Radii above 255m are stored divided by 10 and a bit set in
         // storage so that on retrieval they are multiplied by 10
-        cmd.p1 = MIN(255, packet.param1); // store number of times to circle in low p1
+        float param1_stored = packet.param1;
+        if (param1_stored > 0 && param1_stored < 1) {
+            param1_stored *= 256.0;
+            cmd.type_specific_bits |= (1U << 1);
+        }
+        cmd.p1 = MIN(255, param1_stored); // store number of times to circle in low p1
         uint8_t radius_m;
         const float abs_radius = fabsf(packet.param3);
         if (abs_radius <= 255) {
             radius_m = abs_radius;
         } else {
             radius_m = MIN(255, abs_radius * 0.1);
-            cmd.type_specific_bits = 1U << 0;
+            cmd.type_specific_bits |= (1U << 0);
         }
         cmd.p1 |= (radius_m<<8);   // store radius in high byte of p1
         cmd.content.location.loiter_ccw = (packet.param3 < 0);
@@ -1496,8 +1505,6 @@ MAV_MISSION_RESULT AP_Mission::convert_MISSION_ITEM_INT_to_MISSION_ITEM(const ma
     return MAV_MISSION_ACCEPTED;
 }
 
-#if AP_MISSION_ENABLED
-
 // mission_cmd_to_mavlink_int - converts an AP_Mission::Mission_Command object to a mavlink message which can be sent to the GCS
 //  return true on success, false on failure
 //  NOTE: callers to this method current fill parts of "packet" in before calling this method, so do NOT attempt to zero the entire packet in here
@@ -1549,6 +1556,9 @@ bool AP_Mission::mission_cmd_to_mavlink_int(const AP_Mission::Mission_Command& c
         }
         if (cmd.type_specific_bits & (1U<<0)) {
             packet.param3 *= 10;
+        }
+        if (cmd.type_specific_bits & (1U<<1)) {
+            packet.param1 /= 256.0;
         }
         packet.param4 = cmd.content.location.loiter_xtrack; // 0 to xtrack from center of waypoint, 1 to xtrack from tangent exit location
         break;
@@ -2729,8 +2739,6 @@ bool AP_Mission::contains_item(MAV_CMD command) const
     return false;
 }
 
-#endif  // AP_MISSION_ENABLED
-
 /*
   return true if the mission item has a location
 */
@@ -2739,8 +2747,6 @@ bool AP_Mission::cmd_has_location(const uint16_t command)
 {
     return stored_in_location(command);
 }
-
-#if AP_MISSION_ENABLED
 
 /*
   return true if the mission has a terrain relative item.  ~2200us for 530 items on H7

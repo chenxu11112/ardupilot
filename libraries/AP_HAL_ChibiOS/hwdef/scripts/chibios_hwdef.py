@@ -689,11 +689,13 @@ class ChibiOSHWDef(object):
         return lib.mcu[name]
 
     def get_ram_reserve_start(self):
-        '''get amount of memory to reserve for bootloader comms'''
+        '''get amount of memory to reserve for bootloader comms and the address if non-zero'''
         ram_reserve_start = self.get_config('RAM_RESERVE_START', default=0, type=int)
         if ram_reserve_start == 0 and self.is_periph_fw():
             ram_reserve_start = 256
-        return ram_reserve_start
+        ram_map_bootloader = self.get_ram_map(use_bootloader=True)
+        ram0_start_address = ram_map_bootloader[0][0]
+        return ram_reserve_start, ram0_start_address
 
     def make_line(self, label):
         '''return a line for a label'''
@@ -757,19 +759,11 @@ class ChibiOSHWDef(object):
                 return True
         return False
 
-    def get_ram_map(self):
+    def get_ram_map(self, use_bootloader=False):
         '''get RAM_MAP. May be different for bootloader'''
-        if 'APP_RAM_START' not in self.env_vars:
-            self.env_vars['APP_RAM_START'] = None
-        if self.is_bootloader_fw():
+        if self.is_bootloader_fw() or use_bootloader:
             ram_map = self.get_mcu_config('RAM_MAP_BOOTLOADER', False)
             if ram_map is not None:
-                app_ram_map = self.get_mcu_config('RAM_MAP', False)
-                if app_ram_map is not None and app_ram_map[0][0] != ram_map[0][0]:
-                    # we need to find the location of app_ram_map[0] in ram_map
-                    for i in range(len(ram_map)):
-                        if app_ram_map[0][0] == ram_map[i][0] and self.env_vars['APP_RAM_START'] is None:
-                            self.env_vars['APP_RAM_START'] = i
                 return ram_map
         elif self.env_vars['EXT_FLASH_SIZE_MB'] and not self.env_vars['INT_FLASH_PRIMARY']:
             ram_map = self.get_mcu_config('RAM_MAP_EXTERNAL_FLASH', False)
@@ -782,6 +776,7 @@ class ChibiOSHWDef(object):
 
     def get_flash_pages_sizes(self):
         mcu_series = self.mcu_series
+        mcu_type = self.mcu_type
         if mcu_series.startswith('STM32F4') or mcu_series.startswith('CKS32F4'):
             if self.get_config('FLASH_SIZE_KB', type=int) == 512:
                 return [16, 16, 16, 16, 64, 128, 128, 128]
@@ -808,6 +803,8 @@ class ChibiOSHWDef(object):
                         256, 256, 256, 256]
             else:
                 raise Exception("Unsupported flash size %u" % self.get_config('FLASH_SIZE_KB', type=int))
+        elif mcu_type.startswith('STM32H7A'):
+            return [8] * (self.get_config('FLASH_SIZE_KB', type=int)//8)
         elif mcu_series.startswith('STM32H7'):
             return [128] * (self.get_config('FLASH_SIZE_KB', type=int)//128)
         elif mcu_series.startswith('STM32F100') or mcu_series.startswith('STM32F103'):
@@ -879,6 +876,8 @@ class ChibiOSHWDef(object):
         storage_flash_page = self.get_storage_flash_page()
         pages = self.get_flash_pages_sizes()
         page_size = pages[storage_flash_page] * 1024
+        if self.intdefines.get('AP_FLASH_STORAGE_DOUBLE_PAGE', 0) == 1:
+            page_size *= 2
         storage_size = self.intdefines.get('HAL_STORAGE_SIZE', None)
         if storage_size is None:
             self.error('Need HAL_STORAGE_SIZE define')
@@ -1107,7 +1106,13 @@ class ChibiOSHWDef(object):
             f.write('#define APP_START_OFFSET_KB %u\n' % self.get_config('APP_START_OFFSET_KB', default=0, type=int))
         f.write('\n')
 
+        ram_reserve_start, ram0_start_address = self.get_ram_reserve_start()
+        f.write('#define HAL_RAM0_START 0x%08x\n' % ram0_start_address)
+        if ram_reserve_start > 0:
+            f.write('#define HAL_RAM_RESERVE_START 0x%08x\n' % ram_reserve_start)
+
         ram_map = self.get_ram_map()
+
         f.write('// memory regions\n')
         regions = []
         cc_regions = []
@@ -1115,8 +1120,7 @@ class ChibiOSHWDef(object):
         for (address, size, flags) in ram_map:
             size *= 1024
             cc_regions.append('{0x%08x, 0x%08x, CRASH_CATCHER_BYTE }' % (address, address + size))
-            if self.env_vars['APP_RAM_START'] is not None and address == ram_map[self.env_vars['APP_RAM_START']][0]:
-                ram_reserve_start = self.get_ram_reserve_start()
+            if address == ram0_start_address:
                 address += ram_reserve_start
                 size -= ram_reserve_start
             regions.append('{(void*)0x%08x, 0x%08x, 0x%02x }' % (address, size, flags))
@@ -1124,14 +1128,6 @@ class ChibiOSHWDef(object):
         f.write('#define HAL_MEMORY_REGIONS %s\n' % ', '.join(regions))
         f.write('#define HAL_CC_MEMORY_REGIONS %s\n' % ', '.join(cc_regions))
         f.write('#define HAL_MEMORY_TOTAL_KB %u\n' % (total_memory/1024))
-
-        if self.env_vars['APP_RAM_START'] is not None:
-            f.write('#define HAL_RAM0_START 0x%08x\n' % ram_map[self.env_vars['APP_RAM_START']][0])
-        else:
-            f.write('#define HAL_RAM0_START 0x%08x\n' % ram_map[0][0])
-        ram_reserve_start = self.get_ram_reserve_start()
-        if ram_reserve_start > 0:
-            f.write('#define HAL_RAM_RESERVE_START 0x%08x\n' % ram_reserve_start)
 
         f.write('\n// CPU serial number (12 bytes)\n')
         udid_start = self.get_mcu_config('UDID_START')
@@ -1261,7 +1257,9 @@ class ChibiOSHWDef(object):
 #ifndef CH_CFG_USE_MUTEXES
 #define CH_CFG_USE_MUTEXES FALSE
 #endif
+#ifndef CH_CFG_USE_EVENTS
 #define CH_CFG_USE_EVENTS FALSE
+#endif
 #define CH_CFG_USE_EVENTS_TIMEOUT FALSE
 #define CH_CFG_OPTIMIZE_SPEED FALSE
 #define HAL_USE_EMPTY_STORAGE 1
@@ -1387,10 +1385,8 @@ class ChibiOSHWDef(object):
         if ext_flash_size > 32:
             self.error("We only support 24bit addressing over external flash")
 
-        if self.env_vars['APP_RAM_START'] is None:
-            # default to start of ram for shared ram
-            # possibly reserve some memory for app/bootloader comms
-            ram_reserve_start = self.get_ram_reserve_start()
+        ram_reserve_start, ram0_start_address = self.get_ram_reserve_start()
+        if ram_reserve_start > 0 and ram0_start_address == ram0_start:
             ram0_start += ram_reserve_start
             ram0_len -= ram_reserve_start
         if ext_flash_length == 0 or self.is_bootloader_fw():
@@ -2392,12 +2388,13 @@ INCLUDE common.ld
         gpios = sorted(gpios)
         for (gpio, pwm, port, pin, p, enabled) in gpios:
             f.write('#define HAL_GPIO_LINE_GPIO%u PAL_LINE(GPIO%s,%uU)\n' % (gpio, port, pin))
-        f.write('#define HAL_GPIO_PINS { \\\n')
-        for (gpio, pwm, port, pin, p, enabled) in gpios:
-            f.write('{ %3u, %s, %2u, PAL_LINE(GPIO%s,%uU)}, /* %s */ \\\n' %
-                    (gpio, enabled, pwm, port, pin, p))
-        # and write #defines for use by config code
-        f.write('}\n\n')
+        if len(gpios) > 0:
+            f.write('#define HAL_GPIO_PINS { \\\n')
+            for (gpio, pwm, port, pin, p, enabled) in gpios:
+                f.write('{ %3u, %s, %2u, PAL_LINE(GPIO%s,%uU)}, /* %s */ \\\n' %
+                        (gpio, enabled, pwm, port, pin, p))
+            # and write #defines for use by config code
+            f.write('}\n\n')
         f.write('// full pin define list\n')
         last_label = None
         for label in sorted(list(set(self.bylabel.keys()))):
@@ -2416,6 +2413,10 @@ INCLUDE common.ld
         this_dir = os.path.realpath(__file__)
         rootdir = os.path.relpath(os.path.join(this_dir, "../../../../.."))
         hwdef_dirname = os.path.basename(os.path.dirname(args.hwdef[0]))
+        # allow re-using of bootloader from different build:
+        use_bootloader_from_board = self.get_config('USE_BOOTLOADER_FROM_BOARD', default=None, required=False)
+        if use_bootloader_from_board is not None:
+            hwdef_dirname = use_bootloader_from_board
         bootloader_filename = "%s_bl.bin" % (hwdef_dirname,)
         bootloader_path = os.path.join(rootdir,
                                        "Tools",
@@ -2624,6 +2625,11 @@ Please run: Tools/scripts/build_bootloaders.py %s
         self.embed_bootloader(f)
 
         if len(self.romfs) > 0:
+            # Allow lua to load from ROMFS if any lua files are added
+            for file in self.romfs.keys():
+                if file.startswith("scripts") and file.endswith(".lua"):
+                    f.write('#define HAL_HAVE_AP_ROMFS_EMBEDDED_LUA 1\n')
+                    break
             f.write('#define HAL_HAVE_AP_ROMFS_EMBEDDED_H 1\n')
 
         if self.mcu_series.startswith('STM32F1'):
@@ -2866,10 +2872,13 @@ Please run: Tools/scripts/build_bootloaders.py %s
             if fnmatch.fnmatch(f, pattern):
                 self.romfs[f] = os.path.join(pattern_dir, f)
 
-    def romfs_add_dir(self, subdirs):
+    def romfs_add_dir(self, subdirs, relative_to_base=False):
         '''add a filesystem directory to ROMFS'''
         for dirname in subdirs:
-            romfs_dir = os.path.join(os.path.dirname(args.hwdef[0]), dirname)
+            if relative_to_base:
+                romfs_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', dirname)
+            else:
+                romfs_dir = os.path.join(os.path.dirname(args.hwdef[0]), dirname)
             if not self.is_bootloader_fw() and os.path.exists(romfs_dir):
                 for root, d, files in os.walk(romfs_dir):
                     for f in files:
@@ -2878,6 +2887,8 @@ Please run: Tools/scripts/build_bootloaders.py %s
                             continue
                         fullpath = os.path.join(root, f)
                         relpath = os.path.normpath(os.path.join(dirname, os.path.relpath(root, romfs_dir), f))
+                        if relative_to_base:
+                            relpath = relpath[len(dirname)+1:]
                         self.romfs[relpath] = fullpath
 
     def valid_type(self, ptype, label):
@@ -3008,6 +3019,8 @@ Please run: Tools/scripts/build_bootloaders.py %s
             self.romfs_add(a[1], a[2])
         elif a[0] == 'ROMFS_WILDCARD':
             self.romfs_wildcard(a[1])
+        elif a[0] == 'ROMFS_DIRECTORY':
+            self.romfs_add_dir([a[1]], relative_to_base=True)
         elif a[0] == 'undef':
             for u in a[1:]:
                 self.progress("Removing %s" % u)
@@ -3041,6 +3054,8 @@ Please run: Tools/scripts/build_bootloaders.py %s
                     self.baro_list = []
                 if u == 'AIRSPEED':
                     self.airspeed_list = []
+                if u == 'ROMFS':
+                    self.romfs = {}
         elif a[0] == 'env':
             self.progress("Adding environment %s" % ' '.join(a[1:]))
             if len(a[1:]) < 2:
@@ -3049,8 +3064,6 @@ Please run: Tools/scripts/build_bootloaders.py %s
             value = ' '.join(a[2:])
             if name == 'AP_PERIPH' and value != "1":
                 raise ValueError("AP_PERIPH may only have value 1")
-            if name == 'APP_RAM_START':
-                value = int(value, 0)
             self.env_vars[name] = value
         elif a[0] == 'define':
             # extract numerical defines for processing by other parts of the script
@@ -3198,14 +3211,15 @@ Please run: Tools/scripts/build_bootloaders.py %s
         # write out hw.dat for ROMFS
         self.write_all_lines(os.path.join(self.outdir, "hw.dat"))
 
+        # Add ROMFS directories
+        self.romfs_add_dir(['scripts'])
+        self.romfs_add_dir(['param'])
+
         # write out hwdef.h
         self.write_hwdef_header(os.path.join(self.outdir, "hwdef.h"))
 
         # write out ldscript.ld
         self.write_ldscript(os.path.join(self.outdir, "ldscript.ld"))
-
-        self.romfs_add_dir(['scripts'])
-        self.romfs_add_dir(['param'])
 
         self.write_ROMFS(self.outdir)
 
