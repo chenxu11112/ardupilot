@@ -1,0 +1,123 @@
+# hw definition file for processing by chibios_hwdef.py for CUAV-X7
+
+# MCU class and specific type
+MCU STM32H7xx STM32H743xx
+
+define HAL_BUILD_AP_PERIPH
+
+# crystal frequency
+OSCILLATOR_HZ 8000000
+
+# board ID for firmware load
+APJ_BOARD_ID 10201
+
+FLASH_SIZE_KB 2048
+
+# with 2M flash we can afford to optimize for speed
+env OPTIMIZE -O2
+
+# setup build for a peripheral firmware
+env AP_PERIPH 1
+
+# ChibiOS system timer
+STM32_ST_USE_TIMER 13
+define CH_CFG_ST_RESOLUTION 16
+
+# the location where the bootloader will put the firmware
+# the H757 has 128k sectors, assign 2 sectors for BL
+FLASH_BOOTLOADER_LOAD_KB 256
+FLASH_RESERVE_START_KB 256
+
+
+# order of UARTs (and USB)
+SERIAL_ORDER OTG1 USART1 USART3
+
+# default the 2nd interface to MAVLink2
+# define HAL_OTG2_PROTOCOL SerialProtocol_SLCAN
+
+# now we define the pins that USB is connected on
+PA11 OTG_FS_DM OTG1
+PA12 OTG_FS_DP OTG1
+# PA9  VBUS INPUT PULLDOWN
+
+# these are the pins for SWD debugging with a STlinkv2 or black-magic probe
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+# UART1
+PB15 USART1_RX USART1
+PB14 USART1_TX USART1
+
+# UART4 GPS MB2
+PD9 USART3_RX USART3
+PD8 USART3_TX USART3
+
+# ethernet (not implemented yet)
+PC1     ETH_MDC             ETH1
+PA2     ETH_MDIO            ETH1
+PC4     ETH_RMII_RXD0       ETH1
+PC5     ETH_RMII_RXD1       ETH1
+PB12    ETH_RMII_TXD0       ETH1
+PB13    ETH_RMII_TXD1       ETH1
+PB11    ETH_RMII_TX_EN      ETH1
+PA7     ETH_RMII_CRS_DV     ETH1
+PA1     ETH_RMII_REF_CLK    ETH1
+
+PA8     GPIO_ETH_ENABLE OUTPUT HIGH GPIO(113)
+define HAL_GPIO_ETH_ENABLE 113
+
+define BOARD_PHY_ID  MII_LAN8742A_ID
+define BOARD_PHY_RMII
+define HAL_PERIPH_ENABLE_NETWORKING
+
+# use DNA
+define HAL_CAN_DEFAULT_NODE_ID 0
+
+# PWM channels
+PD12  TIM4_CH1  TIM4  PWM(1)  GPIO(50)
+PD13  TIM4_CH2  TIM4  PWM(2)  GPIO(51)
+PD14  TIM4_CH3  TIM4  PWM(3)  GPIO(52)
+PD15  TIM4_CH4  TIM4  PWM(4)  GPIO(53)
+PE9   TIM1_CH1  TIM1  PWM(5)  GPIO(54)
+PE11  TIM1_CH2  TIM1  PWM(6)  GPIO(55)
+PE13  TIM1_CH3  TIM1  PWM(7)  GPIO(56)
+PE14  TIM1_CH4  TIM1  PWM(8)  GPIO(57)
+
+# NeoPixels
+PA0   TIM2_CH1 TIM2 PWM(9) GPIO(58)
+
+
+define HAL_USE_ADC FALSE
+define STM32_ADC_USE_ADC1 FALSE
+define HAL_DISABLE_ADC_DRIVER TRUE
+
+
+# CAN bus
+PD0  CAN1_RX CAN1
+PD1  CAN1_TX CAN1
+
+CAN_ORDER 1
+
+define CAN_APP_NODE_NAME "tsdpilot.s4.mod"
+
+
+# ---------------------------------------------------------------------------------------------
+# AP_Periph - boiler-plate configurations that all HW AP-Periph need
+# ---------------------------------------------------------------------------------------------
+define DISABLE_SERIAL_ESC_COMM TRUE
+define HAL_NO_RCIN_THREAD
+#define HAL_NO_GPIO_IRQ
+define HAL_DISABLE_LOOP_DELAY
+
+# LED setup is similar to PixRacer
+PB0 LED OUTPUT LOW
+
+STORAGE_FLASH_PAGE 14
+define HAL_STORAGE_SIZE 32768
+
+define HAL_PERIPH_ENABLE_NOTIFY
+define HAL_PERIPH_ENABLE_RC_OUT
+
+define AP_NETWORKING_MAX_INSTANCES 4
+
+define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
