@@ -568,7 +568,9 @@ static const ap_message STREAM_EXTRA2_msgs[] = {
 static const ap_message STREAM_EXTRA3_msgs[] = {
     MSG_AHRS,
     MSG_WIND,
+#if AP_RANGEFINDER_ENABLED
     MSG_RANGEFINDER,
+#endif
     MSG_DISTANCE_SENSOR,
     MSG_SYSTEM_TIME,
 #if AP_BATTERY_ENABLED
@@ -777,7 +779,7 @@ MAV_RESULT GCS_MAVLINK_Rover::handle_command_int_do_reposition(const mavlink_com
     return MAV_RESULT_ACCEPTED;
 }
 
-void GCS_MAVLINK_Rover::handleMessage(const mavlink_message_t &msg)
+void GCS_MAVLINK_Rover::handle_message(const mavlink_message_t &msg)
 {
     switch (msg.msgid) {
 
@@ -793,13 +795,8 @@ void GCS_MAVLINK_Rover::handleMessage(const mavlink_message_t &msg)
         handle_set_position_target_global_int(msg);
         break;
 
-    case MAVLINK_MSG_ID_RADIO:
-    case MAVLINK_MSG_ID_RADIO_STATUS:
-        handle_radio(msg);
-        break;
-
     default:
-        handle_common_message(msg);
+        GCS_MAVLINK::handle_message(msg);
         break;
     }
 }
@@ -1061,15 +1058,6 @@ void GCS_MAVLINK_Rover::handle_set_position_target_global_int(const mavlink_mess
         // consume just turn rate(probably only skid steering vehicles can do this)
         rover.mode_guided.set_desired_turn_rate_and_speed(target_turn_rate_cds, 0.0f);
     }
-}
-
-void GCS_MAVLINK_Rover::handle_radio(const mavlink_message_t &msg)
-{
-#if HAL_LOGGING_ENABLED
-    handle_radio_status(msg, rover.should_log(MASK_LOG_PM));
-#else
-    handle_radio_status(msg, false);
-#endif
 }
 
 /*

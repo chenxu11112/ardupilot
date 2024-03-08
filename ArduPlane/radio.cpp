@@ -49,16 +49,9 @@ void Plane::set_control_channels(void)
     quadplane.rc_fwd_thr_ch = rc().find_channel_for_option(RC_Channel::AUX_FUNC::FWD_THR);
 #endif
 
-    bool set_throttle_esc_scaling = true;
-#if HAL_QUADPLANE_ENABLED
-    set_throttle_esc_scaling = !quadplane.enable;
-#endif
-    if (set_throttle_esc_scaling) {
-        // setup correct scaling for ESCs like the UAVCAN ESCs which
-        // take a proportion of speed. For quadplanes we use AP_Motors
-        // scaling
-        g2.servo_channels.set_esc_scaling_for(SRV_Channel::k_throttle);
-    }
+    // setup correct scaling for ESCs like the UAVCAN ESCs which
+    // take a proportion of speed.
+    g2.servo_channels.set_esc_scaling_for(SRV_Channel::k_throttle);
 }
 
 /*
@@ -197,7 +190,7 @@ void Plane::read_radio()
         && stickmixing) {
         float nudge = (channel_throttle->get_control_in() - 50) * 0.02f;
         if (ahrs.using_airspeed_sensor()) {
-            airspeed_nudge_cm = (aparm.airspeed_max * 100 - aparm.airspeed_cruise_cm) * nudge;
+            airspeed_nudge_cm = (aparm.airspeed_max - aparm.airspeed_cruise) * nudge * 100;
         } else {
             throttle_nudge = (aparm.throttle_max - aparm.throttle_cruise) * nudge;
         }

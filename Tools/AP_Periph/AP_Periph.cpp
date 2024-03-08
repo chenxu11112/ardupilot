@@ -62,9 +62,6 @@ void loop(void)
 static uint32_t start_ms;
 
 AP_Periph_FW::AP_Periph_FW()
-#if HAL_LOGGING_ENABLED
-    : logger(g.log_bitmask)
-#endif
 {
     if (_singleton != nullptr) {
         AP_HAL::panic("AP_Periph_FW must be singleton");
@@ -127,7 +124,7 @@ void AP_Periph_FW::init()
 #endif
 
 #if HAL_LOGGING_ENABLED
-    logger.Init(log_structure, ARRAY_SIZE(log_structure));
+    logger.init(g.log_bitmask, log_structure, ARRAY_SIZE(log_structure));
 #endif
 
     check_firmware_print();
@@ -592,6 +589,14 @@ void AP_Periph_FW::prepare_reboot()
         // delay to give the ACK a chance to get out, the LEDs to flash,
         // the IO board safety to be forced on, the parameters to flush,
         hal.scheduler->delay(40);
+}
+
+/*
+  reboot, optionally holding in bootloader. For scripting
+ */
+void AP_Periph_FW::reboot(bool hold_in_bootloader)
+{
+    hal.scheduler->reboot(hold_in_bootloader);
 }
 
 AP_Periph_FW *AP_Periph_FW::_singleton;

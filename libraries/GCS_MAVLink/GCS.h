@@ -25,6 +25,7 @@
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_RangeFinder/AP_RangeFinder_config.h>
 #include <AP_Winch/AP_Winch_config.h>
+#include <AP_Arming/AP_Arming_config.h>
 
 #include "ap_message.h"
 
@@ -527,7 +528,9 @@ protected:
     virtual bool set_home_to_current_location(bool lock) = 0;
     virtual bool set_home(const Location& loc, bool lock) = 0;
 
+#if AP_ARMING_ENABLED
     virtual MAV_RESULT handle_command_component_arm_disarm(const mavlink_command_int_t &packet);
+#endif
     MAV_RESULT handle_command_do_aux_function(const mavlink_command_int_t &packet);
     MAV_RESULT handle_command_storage_format(const mavlink_command_int_t &packet, const mavlink_message_t &msg);
     void handle_mission_request_list(const mavlink_message_t &msg);
@@ -573,11 +576,14 @@ protected:
 #endif
     void handle_fence_message(const mavlink_message_t &msg);
     void handle_param_value(const mavlink_message_t &msg);
-    void handle_radio_status(const mavlink_message_t &msg, bool log_radio);
+#if HAL_LOGGING_ENABLED
+    virtual uint32_t log_radio_bit() const { return 0; }
+#endif
+    void handle_radio_status(const mavlink_message_t &msg);
     void handle_serial_control(const mavlink_message_t &msg);
     void handle_vision_position_delta(const mavlink_message_t &msg);
 
-    void handle_common_message(const mavlink_message_t &msg);
+    virtual void handle_message(const mavlink_message_t &msg);
     void handle_set_gps_global_origin(const mavlink_message_t &msg);
     void handle_setup_signing(const mavlink_message_t &msg) const;
     virtual MAV_RESULT handle_preflight_reboot(const mavlink_command_int_t &packet, const mavlink_message_t &msg);
@@ -588,6 +594,8 @@ protected:
     } _deadlock_sem;
     void deadlock_sem(void);
 #endif
+
+    MAV_RESULT handle_do_set_safety_switch_state(const mavlink_command_int_t &packet, const mavlink_message_t &msg);
 
     // reset a message interval via mavlink:
     MAV_RESULT handle_command_set_message_interval(const mavlink_command_int_t &packet);
@@ -776,8 +784,6 @@ private:
 
     void service_statustext(void);
 
-    virtual void        handleMessage(const mavlink_message_t &msg) = 0;
-
     MAV_RESULT handle_servorelay_message(const mavlink_command_int_t &packet);
     bool send_relay_status() const;
 
@@ -935,6 +941,7 @@ private:
 
     uint8_t send_parameter_async_replies();
 
+#if AP_MAVLINK_FTP_ENABLED
     enum class FTP_OP : uint8_t {
         None = 0,
         TerminateSession = 1,
@@ -1010,10 +1017,11 @@ private:
     bool send_ftp_reply(const pending_ftp &reply);
     void ftp_worker(void);
     void ftp_push_replies(pending_ftp &reply);
+#endif  // AP_MAVLINK_FTP_ENABLED
 
     void send_distance_sensor(const class AP_RangeFinder_Backend *sensor, const uint8_t instance) const;
 
-    virtual bool handle_guided_request(AP_Mission::Mission_Command &cmd) = 0;
+    virtual bool handle_guided_request(AP_Mission::Mission_Command &cmd) { return false; };
     virtual void handle_change_alt_request(AP_Mission::Mission_Command &cmd) {};
     void handle_common_mission_message(const mavlink_message_t &msg);
 
@@ -1280,10 +1288,12 @@ private:
 
     char statustext_printf_buffer[256+1];
 
+#if AP_GPS_ENABLED
     virtual AP_GPS::GPS_Status min_status_for_gps_healthy() const {
         // NO_FIX simply excludes NO_GPS
         return AP_GPS::GPS_Status::NO_FIX;
     }
+#endif
 
     void update_sensor_status_flags();
 
@@ -1337,11 +1347,13 @@ GCS &gcs();
 // send text when we do have a GCS
 #if !defined(HAL_BUILD_AP_PERIPH)
 #define GCS_SEND_TEXT(severity, format, args...) gcs().send_text(severity, format, ##args)
+#define AP_HAVE_GCS_SEND_TEXT 1
 #else
 extern "C" {
-void can_printf(const char *fmt, ...);
+    void can_printf_severity(uint8_t severity, const char *fmt, ...);
 }
-#define GCS_SEND_TEXT(severity, format, args...) (void)severity; can_printf(format, ##args)
+#define GCS_SEND_TEXT(severity, format, args...) can_printf_severity(severity, format, ##args)
+#define AP_HAVE_GCS_SEND_TEXT 1
 #endif
 
 #define GCS_SEND_MESSAGE(msg) gcs().send_message(msg)
@@ -1350,15 +1362,36 @@ void can_printf(const char *fmt, ...);
 
 // map send text to can_printf() on larger AP_Periph boards
 extern "C" {
-void can_printf(const char *fmt, ...);
+    void can_printf_severity(uint8_t severity, const char *fmt, ...);
 }
-#define GCS_SEND_TEXT(severity, format, args...) can_printf(format, ##args)
+#define GCS_SEND_TEXT(severity, format, args...) can_printf_severity(severity, format, ##args)
 #define GCS_SEND_MESSAGE(msg)
+#define AP_HAVE_GCS_SEND_TEXT 1
+
+/*
+  we need a severity enum for the can_printf_severity function with no GCS present
+ */
+#ifndef HAVE_ENUM_MAV_SEVERITY
+enum MAV_SEVERITY
+{
+    MAV_SEVERITY_EMERGENCY=0,
+    MAV_SEVERITY_ALERT=1,
+    MAV_SEVERITY_CRITICAL=2,
+    MAV_SEVERITY_ERROR=3,
+    MAV_SEVERITY_WARNING=4,
+    MAV_SEVERITY_NOTICE=5,
+    MAV_SEVERITY_INFO=6,
+    MAV_SEVERITY_DEBUG=7,
+    MAV_SEVERITY_ENUM_END=8,
+};
+#define HAVE_ENUM_MAV_SEVERITY
+#endif
 
 #else // HAL_GCS_ENABLED
 // empty send text when we have no GCS
 #define GCS_SEND_TEXT(severity, format, args...)
 #define GCS_SEND_MESSAGE(msg)
+#define AP_HAVE_GCS_SEND_TEXT 0
 
 #endif // HAL_GCS_ENABLED
 
