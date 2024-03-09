@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "ardupilot",
+            "includePath": [
+               "build/TSDPilot-S4-FCU",
+               "libraries",
+               "ArduCopter",
+               "Tools",
+               "modules",
+            ],
+            "defines": [
+               
+            ],
+            "intelliSenseMode": "${default}"
+        }
+    ],
+    "version": 4
+}

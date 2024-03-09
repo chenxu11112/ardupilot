@@ -1,6 +1,4 @@
 # hw definition file for processing by chibios_hwdef.py
-# for CUAV-X7 board
-
 # MCU class and specific type
 MCU STM32H7xx STM32H743xx
 
@@ -20,10 +18,8 @@ FLASH_RESERVE_START_KB 0
 
 # the location where the bootloader will put the firmware
 # the H757 has 128k sectors, assign 2 sectors for BL
-FLASH_BOOTLOADER_LOAD_KB 256
+FLASH_BOOTLOADER_LOAD_KB 128
 
-# ChibiOS system timer
-STM32_ST_USE_TIMER 5
 
 PB0 LED_BOOTLOADER OUTPUT HIGH # green 
 
@@ -42,14 +38,8 @@ PA14 JTCK-SWCLK SWD
 # CAN1
 PD0 CAN1_RX CAN1
 PD1 CAN1_TX CAN1
+define CAN_APP_NODE_NAME "tsdpilot.s4.modbl"
 
-# Add CS pins to ensure they are high in bootloader
-PC14    BMI_CS    CS
-PC13    ICM_CS    CS
-PE4     BARO1_CS  CS
-PE1     BARO2_CS  CS
-PE0     RM3100_CS CS
-PB9     FRAM_CS   CS
 
-# use a small bootloader timeout
-define HAL_BOOTLOADER_TIMEOUT 2000
+# default to all pins low to avoid ESD issues
+DEFAULTGPIO OUTPUT LOW PULLDOWN
