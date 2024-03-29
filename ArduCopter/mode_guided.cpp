@@ -313,14 +313,11 @@ void ModeGuided::angle_control_start()
 
     // initialise targets
     guided_angle_state.update_time_ms = millis();
-    guided_angle_state.attitude_quat.initialise();
+    guided_angle_state.attitude_quat.from_euler(Vector3f(0.0, 0.0, attitude_control->get_att_target_euler_rad().z));
     guided_angle_state.ang_vel.zero();
     guided_angle_state.climb_rate_cms = 0.0f;
     guided_angle_state.yaw_rate_cds = 0.0f;
     guided_angle_state.use_yaw_rate = false;
-
-    // pilot always controls yaw
-    auto_yaw.set_mode(AutoYaw::Mode::HOLD);
 }
 
 // set_destination - sets guided mode's target destination
@@ -800,7 +797,7 @@ void ModeGuided::velaccel_control_run()
     }
 
     bool do_avoid = false;
-#if AC_AVOID_ENABLED
+#if AP_AVOIDANCE_ENABLED
     // limit the velocity for obstacle/fence avoidance
     copter.avoid.adjust_velocity(guided_vel_target_cms, pos_control->get_pos_xy_p().kP(), pos_control->get_max_accel_xy_cmss(), pos_control->get_pos_z_p().kP(), pos_control->get_max_accel_z_cmss(), G_Dt);
     do_avoid = copter.avoid.limits_active();
@@ -939,7 +936,7 @@ void ModeGuided::angle_control_run()
     // check for timeout - set lean angles and climb rate to zero if no updates received for 3 seconds
     uint32_t tnow = millis();
     if (tnow - guided_angle_state.update_time_ms > get_timeout_ms()) {
-        guided_angle_state.attitude_quat.initialise();
+        guided_angle_state.attitude_quat.from_euler(Vector3f(0.0, 0.0, attitude_control->get_att_target_euler_rad().z));
         guided_angle_state.ang_vel.zero();
         climb_rate_cms = 0.0f;
         if (guided_angle_state.use_thrust) {

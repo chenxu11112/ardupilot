@@ -29,7 +29,7 @@
 #include "APM_Config.h"
 #include <AP_ADSB/AP_ADSB_config.h>
 #include <AP_Follow/AP_Follow_config.h>
-
+#include <AC_Avoidance/AC_Avoidance_config.h>
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
@@ -195,7 +195,11 @@
 //////////////////////////////////////////////////////////////////////////////
 // Follow - follow another vehicle or GCS
 #ifndef MODE_FOLLOW_ENABLED
-# define MODE_FOLLOW_ENABLED AP_FOLLOW_ENABLED
+#if AP_FOLLOW_ENABLED && AP_AVOIDANCE_ENABLED
+#define MODE_FOLLOW_ENABLED ENABLED
+#else
+#define MODE_FOLLOW_ENABLED DISABLED
+#endif
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -430,7 +434,7 @@
 #endif
 
 #ifndef RTL_ALT_MIN
- # define RTL_ALT_MIN               200     // min height above ground for RTL (i.e 2m)
+ # define RTL_ALT_MIN               30     // min height above ground for RTL (i.e 30cm)
 #endif
 
 #ifndef RTL_CLIMB_MIN_DEFAULT
@@ -557,16 +561,8 @@
 // Fence, Rally and Terrain and AC_Avoidance defaults
 //
 
-#ifndef AC_AVOID_ENABLED
- #define AC_AVOID_ENABLED   ENABLED
-#endif
-
-#ifndef AC_OAPATHPLANNER_ENABLED
- #define AC_OAPATHPLANNER_ENABLED   ENABLED
-#endif
-
-#if MODE_FOLLOW_ENABLED && !AC_AVOID_ENABLED
-  #error Follow Mode relies on AC_AVOID which is disabled
+#if MODE_FOLLOW_ENABLED && !AP_AVOIDANCE_ENABLED
+  #error Follow Mode relies on AP_AVOIDANCE_ENABLED which is disabled
 #endif
 
 #if MODE_AUTO_ENABLED && !MODE_GUIDED_ENABLED

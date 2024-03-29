@@ -273,9 +273,11 @@ void Plane::update_logging25(void)
 
     if (should_log(MASK_LOG_CTUN)) {
         Log_Write_Control_Tuning();
+#if AP_INERTIALSENSOR_HARMONICNOTCH_ENABLED
         if (!should_log(MASK_LOG_NOTCH_FULLRATE)) {
             AP::ins().write_notch_log_messages();
         }
+#endif
 #if HAL_GYROFFT_ENABLED
         gyro_fft.write_log_messages();
 #endif
@@ -869,8 +871,8 @@ bool Plane::update_target_location(const Location &old_loc, const Location &new_
     next_WP_loc = new_loc;
 
 #if HAL_QUADPLANE_ENABLED
-    if (control_mode == &mode_qland) {
-        mode_qland.last_target_loc_set_ms = AP_HAL::millis();
+    if (control_mode == &mode_qland || control_mode == &mode_qloiter) {
+        mode_qloiter.last_target_loc_set_ms = AP_HAL::millis();
     }
 #endif
 
@@ -966,8 +968,7 @@ bool Plane::flight_option_enabled(FlightOptions flight_option) const
 void Plane::precland_update(void)
 {
     // alt will be unused if we pass false through as the second parameter:
-    return g2.precland.update(rangefinder_state.height_estimate*100,
-                              rangefinder_state.in_range && rangefinder_state.in_use);
+    return g2.precland.update(rangefinder_state.height_estimate*100, rangefinder_state.in_range);
 }
 #endif
 

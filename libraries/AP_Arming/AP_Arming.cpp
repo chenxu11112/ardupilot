@@ -142,7 +142,7 @@ const AP_Param::GroupInfo AP_Arming::var_info[] = {
     // @Param: OPTIONS
     // @DisplayName: Arming options
     // @Description: Options that can be applied to change arming behaviour
-    // @Values: 0:None,1:Disable prearm display,2:Do not send status text on state change
+    // @Bitmask: 0:Disable prearm display,1:Do not send status text on state change
     // @User: Advanced
     AP_GROUPINFO("OPTIONS", 9,   AP_Arming, _arming_options, 0),
 
@@ -576,7 +576,7 @@ bool AP_Arming::gps_checks(bool report)
         }
 
         for (uint8_t i = 0; i < gps.num_sensors(); i++) {
-#if defined(GPS_BLENDED_INSTANCE)
+#if AP_GPS_BLENDED_ENABLED
             if ((i != GPS_BLENDED_INSTANCE) &&
 #else
             if (
@@ -614,7 +614,7 @@ bool AP_Arming::gps_checks(bool report)
                          (double)distance_m);
             return false;
         }
-#if defined(GPS_BLENDED_INSTANCE)
+#if AP_GPS_BLENDED_ENABLED
         if (!gps.blend_health_check()) {
             check_failed(ARMING_CHECK_GPS, report, "GPS blending unhealthy");
             return false;
@@ -1054,6 +1054,11 @@ bool AP_Arming::system_checks(bool report)
     }
 
     if (check_enabled(ARMING_CHECK_PARAMETERS)) {
+#if !AP_GPS_BLENDED_ENABLED
+        if (!blending_auto_switch_checks(report)) {
+            return false;
+        }
+#endif
 #if AP_RPM_ENABLED
         auto *rpm = AP::rpm();
         if (rpm && !rpm->arming_checks(sizeof(buffer), buffer)) {
@@ -1244,6 +1249,13 @@ bool AP_Arming::fence_checks(bool display_failure)
         check_failed(display_failure, "%s", fail_msg);
     }
 
+#if AP_SDCARD_STORAGE_ENABLED
+    if (fence->failed_sdcard_storage() || StorageManager::storage_failed()) {
+        check_failed(display_failure, "Failed to open fence storage");
+        return false;
+    }
+#endif
+    
     return false;
 }
 #endif  // AP_FENCE_ENABLED
@@ -1637,6 +1649,19 @@ bool AP_Arming::arm_checks(AP_Arming::Method method)
 
     return true;
 }
+
+#if !AP_GPS_BLENDED_ENABLED
+bool AP_Arming::blending_auto_switch_checks(bool report)
+{
+    if (AP::gps().get_auto_switch_type() == 2) {
+        if (report) {
+            check_failed(ARMING_CHECK_GPS, true, "GPS_AUTO_SWITCH==2 but no blending");
+        }
+        return false;
+    }
+    return true;
+}
+#endif
 
 bool AP_Arming::mandatory_checks(bool report)
 {

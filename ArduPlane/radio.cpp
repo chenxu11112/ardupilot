@@ -49,9 +49,16 @@ void Plane::set_control_channels(void)
     quadplane.rc_fwd_thr_ch = rc().find_channel_for_option(RC_Channel::AUX_FUNC::FWD_THR);
 #endif
 
-    // setup correct scaling for ESCs like the UAVCAN ESCs which
-    // take a proportion of speed.
-    g2.servo_channels.set_esc_scaling_for(SRV_Channel::k_throttle);
+    bool set_throttle_esc_scaling = true;
+#if HAL_QUADPLANE_ENABLED
+    set_throttle_esc_scaling = !quadplane.enable;
+#endif
+    if (set_throttle_esc_scaling) {
+        // setup correct scaling for ESCs like the UAVCAN ESCs which
+        // take a proportion of speed. For quadplanes we use AP_Motors
+        // scaling
+        g2.servo_channels.set_esc_scaling_for(SRV_Channel::k_throttle);
+    }
 }
 
 /*
@@ -431,11 +438,15 @@ float Plane::rudder_in_expo(bool use_dz) const
 
 bool Plane::throttle_at_zero(void) const
 {
-/* true if throttle stick is at idle position...if throttle trim has been moved
-   to center stick area in conjunction with sprung throttle, cannot use in_trim, must use rc_min
-*/
-    if (((!(flight_option_enabled(FlightOptions::CENTER_THROTTLE_TRIM) && channel_throttle->in_trim_dz())) ||
-        (flight_option_enabled(FlightOptions::CENTER_THROTTLE_TRIM)&& channel_throttle->in_min_dz()))) {
+    /*
+      true if throttle stick is at idle position...if throttle trim has been moved
+       to center stick area in conjunction with sprung throttle, cannot use in_trim, must use rc_min
+    */
+    const bool center_trim = flight_option_enabled(FlightOptions::CENTER_THROTTLE_TRIM);
+    if (center_trim && channel_throttle->in_trim_dz()) {
+        return true;
+    }
+    if (!center_trim && channel_throttle->in_min_dz()) {
         return true;
     }
     return false;
