@@ -345,6 +345,7 @@ void AP_Torqeedo::report_error_codes()
 
     // report display system errors
     const char* msg_prefix = "Torqeedo:";
+    (void)msg_prefix;  // sometimes unused when HAL_GCS_ENABLED is false
     if (_display_system_state.flags.set_throttle_stop) {
         GCS_SEND_TEXT(MAV_SEVERITY_CRITICAL, "%s zero throttle required", msg_prefix);
     }
@@ -750,7 +751,7 @@ void AP_Torqeedo::parse_message()
                     // @Field: TimeUS: Time since system startup
                     // @Field: State: Motor status flags
                     // @Field: Err: Motor error flags
-                    AP::logger().Write("TRMS", "TimeUS,State,Err", "QBHH",
+                    AP::logger().Write("TRMS", "TimeUS,State,Err", "QBH",
                                        AP_HAL::micros64(),
                                        _motor_status.status_flags_value,
                                        _motor_status.error_flags_value);
@@ -1089,6 +1090,7 @@ void AP_Torqeedo::log_TRQD(bool force_logging)
     }
     _last_log_TRQD_ms = now_ms;
 
+#if HAL_LOGGING_ENABLED || HAL_GCS_ENABLED
     const bool health = healthy();
     int16_t actual_motor_speed = get_motor_speed_limited();
 
@@ -1120,6 +1122,7 @@ void AP_Torqeedo::log_TRQD(bool force_logging)
                 (unsigned long)_parse_success_count,
                 (unsigned long)_parse_error_count);
     }
+#endif  // HAL_LOGGING_ENABLED || HAL_GCS_ENABLED
 }
 
 // send ESC telemetry

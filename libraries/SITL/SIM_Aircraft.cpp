@@ -35,10 +35,8 @@
 #include <AP_Terrain/AP_Terrain.h>
 #include <AP_Scheduler/AP_Scheduler.h>
 #include <AP_BoardConfig/AP_BoardConfig.h>
-#if USE_PICOJSON
-#include "picojson.h"
+#include <AP_JSON/AP_JSON.h>
 #include <AP_Filesystem/AP_Filesystem.h>
-#endif
 
 using namespace SITL;
 
@@ -1003,7 +1001,7 @@ void Aircraft::update_external_payload(const struct sitl_input &input)
     }
 
     if (precland && precland->is_enabled()) {
-        precland->update(get_location(), get_position_relhome());
+        precland->update(get_location());
         if (precland->_over_precland_base) {
             local_ground_level += precland->_device_height;
         }
@@ -1013,6 +1011,13 @@ void Aircraft::update_external_payload(const struct sitl_input &input)
     if (richenpower) {
         richenpower->update(input);
     }
+
+#if AP_SIM_LOWEHEISER_ENABLED
+    // update Loweheiser generator
+    if (loweheiser) {
+        loweheiser->update();
+    }
+#endif
 
     if (fetteconewireesc) {
         fetteconewireesc->update(*this);

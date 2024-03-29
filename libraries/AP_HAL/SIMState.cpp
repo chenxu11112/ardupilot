@@ -20,6 +20,7 @@
 #include <SITL/SIM_Tracker.h>
 #include <SITL/SIM_Submarine.h>
 #include <SITL/SIM_Blimp.h>
+#include <SITL/SIM_NoVehicle.h>
 #include <AP_Vehicle/AP_Vehicle_Type.h>
 
 #include <AP_Baro/AP_Baro.h>
@@ -45,6 +46,8 @@ using namespace AP_HAL;
 #define AP_SIM_FRAME_CLASS Blimp
 #elif APM_BUILD_TYPE(APM_BUILD_ArduSub)
 #define AP_SIM_FRAME_CLASS Submarine
+#else
+#define AP_SIM_FRAME_CLASS NoVehicle
 #endif
 #endif
 
@@ -63,6 +66,8 @@ using namespace AP_HAL;
 #define AP_SIM_FRAME_STRING "blimp"
 #elif APM_BUILD_TYPE(APM_BUILD_ArduSub)
 #define AP_SIM_FRAME_STRING "sub"
+#else
+#define AP_SIM_FRAME_STRING ""
 #endif
 #endif
 
@@ -120,12 +125,6 @@ void SIMState::fdm_input_local(void)
     }
     if (_sitl) {
         sitl_model->fill_fdm(_sitl->state);
-
-        if (_sitl->rc_fail == SITL::SIM::SITL_RCFail_None) {
-            for (uint8_t i=0; i< _sitl->state.rcin_chan_count; i++) {
-                pwm_input[i] = 1000 + _sitl->state.rcin[i]*1000;
-            }
-        }
     }
 
     // output JSON state to ride along flight controllers

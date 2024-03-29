@@ -142,7 +142,7 @@ const AP_Param::GroupInfo AP_Arming::var_info[] = {
     // @Param: OPTIONS
     // @DisplayName: Arming options
     // @Description: Options that can be applied to change arming behaviour
-    // @Values: 0:None,1:Disable prearm display,2:Do not send status text on state change
+    // @Bitmask: 0:Disable prearm display,1:Do not send status text on state change
     // @User: Advanced
     AP_GROUPINFO("OPTIONS", 9,   AP_Arming, _arming_options, 0),
 
@@ -352,44 +352,15 @@ bool AP_Arming::logging_checks(bool report)
 #if AP_INERTIALSENSOR_ENABLED
 bool AP_Arming::ins_accels_consistent(const AP_InertialSensor &ins)
 {
-    const uint8_t accel_count = ins.get_accel_count();
-    if (accel_count <= 1) {
-        return true;
-    }
-
-    const Vector3f &prime_accel_vec = ins.get_accel();
     const uint32_t now = AP_HAL::millis();
-    for(uint8_t i=0; i<accel_count; i++) {
-        if (!ins.use_accel(i)) {
-            continue;
-        }
-        // get next accel vector
-        const Vector3f &accel_vec = ins.get_accel(i);
-        Vector3f vec_diff = accel_vec - prime_accel_vec;
-        // allow for user-defined difference, typically 0.75 m/s/s. Has to pass in last 10 seconds
-        float threshold = accel_error_threshold;
-        if (i >= 2) {
-            /*
-              we allow for a higher threshold for IMU3 as it
-              runs at a different temperature to IMU1/IMU2,
-              and is not used for accel data in the EKF
-            */
-            threshold *= 3;
-        }
-
-        // EKF is less sensitive to Z-axis error
-        vec_diff.z *= 0.5f;
-
-        if (vec_diff.length() > threshold) {
-            // this sensor disagrees with the primary sensor, so
-            // accels are inconsistent:
-            last_accel_pass_ms = 0;
-            return false;
-        }
+    if (!ins.accels_consistent(accel_error_threshold)) {
+        // accels are inconsistent:
+        last_accel_pass_ms = 0;
+        return false;
     }
 
     if (last_accel_pass_ms == 0) {
-        // we didn't return false in the loop above, so sensors are
+        // we didn't return false above, so sensors are
         // consistent right now:
         last_accel_pass_ms = now;
     }
@@ -404,30 +375,15 @@ bool AP_Arming::ins_accels_consistent(const AP_InertialSensor &ins)
 
 bool AP_Arming::ins_gyros_consistent(const AP_InertialSensor &ins)
 {
-    const uint8_t gyro_count = ins.get_gyro_count();
-    if (gyro_count <= 1) {
-        return true;
-    }
-
-    const Vector3f &prime_gyro_vec = ins.get_gyro();
     const uint32_t now = AP_HAL::millis();
-    for(uint8_t i=0; i<gyro_count; i++) {
-        if (!ins.use_gyro(i)) {
-            continue;
-        }
-        // get next gyro vector
-        const Vector3f &gyro_vec = ins.get_gyro(i);
-        const Vector3f vec_diff = gyro_vec - prime_gyro_vec;
-        // allow for up to 5 degrees/s difference
-        if (vec_diff.length() > radians(5)) {
-            // this sensor disagrees with the primary sensor, so
-            // gyros are inconsistent:
-            last_gyro_pass_ms = 0;
-            return false;
-        }
+    // allow for up to 5 degrees/s difference
+    if (!ins.gyros_consistent(5)) {
+        // gyros are inconsistent:
+        last_gyro_pass_ms = 0;
+        return false;
     }
 
-    // we didn't return false in the loop above, so sensors are
+    // we didn't return false above, so sensors are
     // consistent right now:
     if (last_gyro_pass_ms == 0) {
         last_gyro_pass_ms = now;
@@ -620,7 +576,7 @@ bool AP_Arming::gps_checks(bool report)
         }
 
         for (uint8_t i = 0; i < gps.num_sensors(); i++) {
-#if defined(GPS_BLENDED_INSTANCE)
+#if AP_GPS_BLENDED_ENABLED
             if ((i != GPS_BLENDED_INSTANCE) &&
 #else
             if (
@@ -658,7 +614,7 @@ bool AP_Arming::gps_checks(bool report)
                          (double)distance_m);
             return false;
         }
-#if defined(GPS_BLENDED_INSTANCE)
+#if AP_GPS_BLENDED_ENABLED
         if (!gps.blend_health_check()) {
             check_failed(ARMING_CHECK_GPS, report, "GPS blending unhealthy");
             return false;
@@ -1098,6 +1054,11 @@ bool AP_Arming::system_checks(bool report)
     }
 
     if (check_enabled(ARMING_CHECK_PARAMETERS)) {
+#if !AP_GPS_BLENDED_ENABLED
+        if (!blending_auto_switch_checks(report)) {
+            return false;
+        }
+#endif
 #if AP_RPM_ENABLED
         auto *rpm = AP::rpm();
         if (rpm && !rpm->arming_checks(sizeof(buffer), buffer)) {
@@ -1242,7 +1203,7 @@ bool AP_Arming::can_checks(bool report)
                 }
                 case AP_CAN::Protocol::USD1:
                 case AP_CAN::Protocol::TOFSenseP:
-                case AP_CAN::Protocol::NanoRadar_NRA24:
+                case AP_CAN::Protocol::NanoRadar:
                 case AP_CAN::Protocol::Benewake:
                 {
                     for (uint8_t j = i; j; j--) {
@@ -1288,6 +1249,13 @@ bool AP_Arming::fence_checks(bool display_failure)
         check_failed(display_failure, "%s", fail_msg);
     }
 
+#if AP_SDCARD_STORAGE_ENABLED
+    if (fence->failed_sdcard_storage() || StorageManager::storage_failed()) {
+        check_failed(display_failure, "Failed to open fence storage");
+        return false;
+    }
+#endif
+    
     return false;
 }
 #endif  // AP_FENCE_ENABLED
@@ -1681,6 +1649,19 @@ bool AP_Arming::arm_checks(AP_Arming::Method method)
 
     return true;
 }
+
+#if !AP_GPS_BLENDED_ENABLED
+bool AP_Arming::blending_auto_switch_checks(bool report)
+{
+    if (AP::gps().get_auto_switch_type() == 2) {
+        if (report) {
+            check_failed(ARMING_CHECK_GPS, true, "GPS_AUTO_SWITCH==2 but no blending");
+        }
+        return false;
+    }
+    return true;
+}
+#endif
 
 bool AP_Arming::mandatory_checks(bool report)
 {

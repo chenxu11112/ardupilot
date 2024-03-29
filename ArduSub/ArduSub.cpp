@@ -102,10 +102,7 @@ const AP_Scheduler::Task Sub::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_RPM,              &sub.rpm_sensor,   update,              10, 200,  66),
 #endif
     SCHED_TASK(terrain_update,        10,    100,  72),
-#if AP_GRIPPER_ENABLED
-    SCHED_TASK_CLASS(AP_Gripper,          &sub.g2.gripper,   update,              10,  75,  75),
-#endif
-#if STATS_ENABLED == ENABLED
+#if AP_STATS_ENABLED
     SCHED_TASK(stats_update,           1,    200,  76),
 #endif
 #ifdef USERHOOK_FASTLOOP
@@ -164,6 +161,7 @@ void Sub::fifty_hz_loop()
 
     // Update rc input/output
     rc().read_input();
+    SRV_Channels::calc_pwm();
     SRV_Channels::output_ch_all();
 }
 
@@ -324,7 +322,9 @@ void Sub::update_altitude()
 #if HAL_LOGGING_ENABLED
     if (should_log(MASK_LOG_CTUN)) {
         Log_Write_Control_Tuning();
+#if AP_INERTIALSENSOR_HARMONICNOTCH_ENABLED
         AP::ins().write_notch_log_messages();
+#endif
 #if HAL_GYROFFT_ENABLED
         gyro_fft.write_log_messages();
 #endif
@@ -370,14 +370,13 @@ bool Sub::get_wp_crosstrack_error_m(float &xtrack_error) const
     return true;
 }
 
-#if STATS_ENABLED == ENABLED
+#if AP_STATS_ENABLED
 /*
   update AP_Stats
 */
 void Sub::stats_update(void)
 {
-    g2.stats.set_flying(motors.armed());
-    g2.stats.update();
+    AP::stats()->set_flying(motors.armed());
 }
 #endif
 

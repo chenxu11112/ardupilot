@@ -95,9 +95,6 @@ const AP_Scheduler::Task Blimp::scheduler_tasks[] = {
 #if HAL_LOGGING_ENABLED
     SCHED_TASK_CLASS(AP_Scheduler,         &blimp.scheduler,           update_logging, 0.1,  75,  69),
 #endif
-#if STATS_ENABLED == ENABLED
-    SCHED_TASK_CLASS(AP_Stats,             &blimp.g2.stats,            update,           1, 100,  75),
-#endif
 };
 
 void Blimp::get_scheduler_tasks(const AP_Scheduler::Task *&tasks,
@@ -258,7 +255,9 @@ void Blimp::update_altitude()
 
 #if HAL_LOGGING_ENABLED
     if (should_log(MASK_LOG_CTUN)) {
+#if AP_INERTIALSENSOR_HARMONICNOTCH_ENABLED
         AP::ins().write_notch_log_messages();
+#endif
 #if HAL_GYROFFT_ENABLED
         gyro_fft.write_log_messages();
 #endif
@@ -289,9 +288,6 @@ void Blimp::rotate_NE_to_BF(Vector2f &vec)
  */
 Blimp::Blimp(void)
     :
-#if HAL_LOGGING_ENABLED
-      logger(g.log_bitmask),
-#endif
       flight_modes(&g.flight_mode1),
       control_mode(Mode::Number::MANUAL),
       rc_throttle_control_in_filter(1.0f),

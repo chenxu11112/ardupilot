@@ -128,6 +128,10 @@ public:
     virtual bool allows_autotune() const { return false; }
     virtual bool allows_flip() const { return false; }
 
+#if FRAME_CONFIG == HELI_FRAME
+    virtual bool allows_inverted() const { return false; };
+#endif
+
     // return a string for this flightmode
     virtual const char *name() const = 0;
     virtual const char *name4() const = 0;
@@ -1574,6 +1578,8 @@ public:
     bool init(bool ignore_checks) override;
     void run() override;
 
+    bool allows_inverted() const override { return true; };
+
 protected:
 
 private:
@@ -1768,7 +1774,7 @@ private:
 
 };
 
-#if AP_FOLLOW_ENABLED
+#if MODE_FOLLOW_ENABLED == ENABLED
 class ModeFollow : public ModeGuided {
 
 public:

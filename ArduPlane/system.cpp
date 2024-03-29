@@ -17,19 +17,7 @@ static void failsafe_check_static()
 void Plane::init_ardupilot()
 {
 
-#if STATS_ENABLED == ENABLED
-    // initialise stats module
-    g2.stats.init();
-#endif
-
     ins.set_log_raw_bit(MASK_LOG_IMU_RAW);
-
-    // setup any board specific drivers
-    BoardConfig.init();
-
-#if HAL_MAX_CAN_PROTOCOL_DRIVERS
-    can_mgr.init();
-#endif
 
     rollController.convert_pid();
     pitchController.convert_pid();
@@ -76,10 +64,6 @@ void Plane::init_ardupilot()
     osd.init();
 #endif
 
-#if HAL_LOGGING_ENABLED
-    log_init();
-#endif
-
     AP::compass().set_log_bit(MASK_LOG_COMPASS);
     AP::compass().init();
 
@@ -90,7 +74,7 @@ void Plane::init_ardupilot()
 
     // GPS Initialization
     gps.set_log_gps_bit(MASK_LOG_GPS);
-    gps.init(serial_manager);
+    gps.init();
 
     init_rc_in();               // sets up rc channels from radio
 
@@ -149,9 +133,8 @@ void Plane::init_ardupilot()
     }
 #endif
 
-// init cargo gripper
-#if AP_GRIPPER_ENABLED
-    g2.gripper.init();
+#if AC_PRECLAND_ENABLED
+    g2.precland.init(scheduler.get_loop_rate_hz());
 #endif
 }
 
@@ -187,10 +170,6 @@ void Plane::startup_ground(void)
         FUNCTOR_BIND(&plane, &Plane::Log_Write_Vehicle_Startup_Messages, void)
         );
 #endif
-
-#if AP_SCRIPTING_ENABLED
-    g2.scripting.init();
-#endif // AP_SCRIPTING_ENABLED
 
     // reset last heartbeat time, so we don't trigger failsafe on slow
     // startup

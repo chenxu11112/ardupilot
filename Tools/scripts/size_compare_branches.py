@@ -453,8 +453,8 @@ class SizeCompareBranches(object):
 
         thread_number = 0
         while len(self.parallel_tasks) or len(threads):
-            if len(tasks) < self.n_threads:
-                self.n_threads = len(tasks)
+            if len(self.parallel_tasks) < self.n_threads:
+                self.n_threads = len(self.parallel_tasks)
             while len(threads) < self.n_threads:
                 self.progress(f"Starting thread {thread_number}")
                 t = threading.Thread(
@@ -483,8 +483,9 @@ class SizeCompareBranches(object):
             for task in tasks:
                 task_results.append(self.gather_results_for_task(task))
             # progress CSV:
-            with open("/tmp/some.csv", "w") as f:
-                f.write(self.csv_for_results(self.compare_task_results(task_results, no_elf_diff=True)))
+            csv_for_results = self.csv_for_results(self.compare_task_results(task_results, no_elf_diff=True))
+            path = pathlib.Path("/tmp/some.csv")
+            path.write_text(csv_for_results)
 
             time.sleep(1)
         self.progress("All threads returned")
