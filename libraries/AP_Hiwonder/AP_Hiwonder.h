@@ -51,5 +51,5 @@ private:
 
     uint8_t serial_servo_checksum(const uint8_t buf[]);
 
-    void serial_servo_set_position(uint32_t servo_id, int position, uint32_t duration);
+    void set_position(uint32_t servo_id, int position, uint32_t duration);
 };
