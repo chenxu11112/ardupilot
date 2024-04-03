@@ -71,6 +71,7 @@
 #include <AC_PrecLand/AC_PrecLand_config.h>
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_Winch/AP_Winch_config.h>
+#include <AP_Hiwonder/AP_Hiwonder.h>
 
 // Configuration
 #include "defines.h"
@@ -1055,6 +1056,11 @@ private:
 
 public:
     void failsafe_check();      // failsafe.cpp
+
+
+private:
+    AP_Hiwonder hiwonder;
+
 };
 
 extern Copter copter;
